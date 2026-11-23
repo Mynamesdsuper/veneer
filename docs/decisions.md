@@ -6,6 +6,23 @@ Record each decision with its date, context, the options considered and the outc
 
 C# + WPF on .NET 10 (LTS), Windows 11 only. .NET 8 reached end of support on 2026-11-10.
 
+## 2026-11-23: Theme engine (Phase 2)
+
+- **Layers merge on raw JSON, before binding.** Theme → variant → user overrides are merged as `JsonNode`
+  trees, and only then turned into typed records. This way overrides have exactly the theme's shape,
+  fields unknown to this version are not lost, and each value records the layer it came from (needed for
+  "reset to theme value").
+- **Orphans are tracked per surface.** A user override for a surface `id` the theme no longer has is kept and
+  reported. Field-level overrides always apply: any field in the schema is valid for the user to set, even
+  when the theme leaves it out.
+- **`height` became `thickness`.** In the draft, `height` was wrong for left/right bars.
+- **No exceptions for bad input.** Loading returns a result with diagnostics, and a catch-all turns any
+  unexpected failure into an error diagnostic.
+- **Fallback theme.** `BuiltInTheme` is plain JSON loaded through the same loader. It is used until a theme
+  loads.
+- **Hot reload.** A `FileSystemWatcher` with a 300 ms debounce raises `ThemeManager.Loaded` on a thread-pool
+  thread; the WPF layer marshals it to the UI thread.
+
 ## 2026-11-23: Phase 0 spikes
 
 The spikes live in `spikes/` (throwaway code, not in `Veneer.slnx`, not built by CI). Test machine: Windows 11
