@@ -1,0 +1,11 @@
+SHAppBarMessage
+FindWindow
+FindWindowEx
+ShowWindow
+IsWindowVisible
+RegisterWindowMessage
+SetWindowPos
+SystemParametersInfo
+WINDOWPOS
+SetWinEventHook
+GetWindowThreadProcessId

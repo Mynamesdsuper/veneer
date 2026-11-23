@@ -46,7 +46,8 @@ full multi-monitor support.
 ## Roadmap
 
 - [x] **Phase 1:** repository skeleton, CI
-- [ ] **Phase 0:** technical spikes: blurred overlay windows, app bars on several edges, safe taskbar hiding
+- [x] **Phase 0:** technical spikes: blurred overlay windows, app bars on several edges, safe taskbar hiding,
+  accent color API (results in [docs/decisions.md](docs/decisions.md))
 - [ ] **Phase 2:** theme engine and personalization layers
 - [ ] **Phase 3:** layout engine and bars
 - [ ] **Phase 4:** dock
