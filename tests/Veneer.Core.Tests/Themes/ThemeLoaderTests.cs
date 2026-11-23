@@ -273,6 +273,39 @@ public class ThemeLoaderTests
     }
 
     [Fact]
+    public void Text_style_padding_spacing_and_module_style_are_read()
+    {
+        string json = Replace("\"style\": { \"background\": \"$glass\", \"blur\": true, \"foreground\": \"$text\" }",
+                "\"style\": { \"background\": \"$glass\", \"blur\": true, \"foreground\": \"$text\", \"font\": \"ui\", \"fontSize\": 13, \"fontWeight\": \"medium\", \"padding\": 12, \"spacing\": 8 }")
+            .Replace("{ \"module\": \"active-app\", \"bold\": true }", "{ \"module\": \"active-app\", \"style\": { \"fontWeight\": \"bold\", \"padding\": 4, \"foreground\": \"#FF000000\" } }");
+        var r = LoadSample(json: json);
+
+        Assert.True(r.Success, string.Join("\n", r.Diagnostics));
+        var bar = (BarSurface)r.Theme!.Surfaces[0];
+        Assert.Equal(new TextStyle("ui", 13, 500), bar.Style.Text);
+        Assert.Equal(12, bar.Style.Padding);
+        Assert.Equal(8, bar.Style.Spacing);
+        var app = bar.Start[1].Style;
+        Assert.Equal(700, app.Text.FontWeight);
+        Assert.Null(app.Text.FontSize); // inherits from the bar
+        Assert.Equal(4, app.Padding);
+        Assert.Equal(new ThemeColor(0xFF, 0, 0, 0), app.Foreground);
+    }
+
+    [Theory]
+    [InlineData("\"format\": \"ddd d MMM HH:mm\"", "\"format\": \"'unclosed\"", "surfaces[id=menubar].end[1].format", "not a valid date/time format")]
+    [InlineData("{ \"module\": \"volume\" }", "{ \"module\": \"spacer\", \"size\": -5 }", "surfaces[id=menubar].end[0].size", "out of range")]
+    [InlineData("{ \"module\": \"volume\" }", "{ \"module\": \"volume\", \"style\": { \"fontWeight\": \"heavy-ish\" } }", "surfaces[id=menubar].end[0].style.fontWeight", "not valid")]
+    [InlineData("\"style\": { \"background\": \"$glass\"", "\"style\": { \"fontSize\": 0, \"background\": \"$glass\"", "surfaces[id=menubar].style.fontSize", "out of range")]
+    public void Invalid_text_and_module_options_give_readable_errors(string from, string to, string path, string message)
+    {
+        var r = LoadSample(json: Replace(from, to));
+
+        Assert.False(r.Success);
+        Assert.Contains(r.Errors, e => e.Path == path && e.Message.Contains(message));
+    }
+
+    [Fact]
     public void Built_in_theme_is_valid()
     {
         Assert.Equal("veneer.fallback", BuiltInTheme.Theme.Id);

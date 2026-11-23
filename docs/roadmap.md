@@ -8,6 +8,7 @@ Legend:
 
 - `[x]` done and tested.
 - `[~]` proven in a Phase 0 spike, not yet in the app.
+- Each Phase 3 item is tagged (3a) or (3b).
 - `[ ]` planned.
 
 Every phase ends with `dotnet build` and `dotnet test` green and one commit.
@@ -17,7 +18,7 @@ Every phase ends with `dotnet build` and `dotnet test` green and one commit.
 - [Phase 1: repository skeleton](#phase-1-repository-skeleton): ✅ done
 - [Phase 0: technical spikes](#phase-0-technical-spikes): ✅ done
 - [Phase 2: theme engine and personalization layers](#phase-2-theme-engine-and-personalization-layers): ✅ done
-- [Phase 3: layout engine and bars](#phase-3-layout-engine-and-bars): ⏳ next
+- [Phase 3: layout engine and bars](#phase-3-layout-engine-and-bars): 🚧 3a done, 3b next
 - [Phase 4: dock](#phase-4-dock)
 - [Phase 5: Windows settings from themes](#phase-5-windows-settings-from-themes)
 - [Phase 6: profiles, settings, tray, install, autostart](#phase-6-profiles-settings-tray-install-autostart)
@@ -99,46 +100,53 @@ Code: [`src/Veneer.Core/Themes`](../src/Veneer.Core/Themes). Format: [theme-form
 
 ## Phase 3: layout engine and bars
 
-**Interop: move the spikes into `Veneer.Interop`, behind interfaces**
-- [~] App bar service: register, position, pin the rect, `ABN_POSCHANGED`, remove on exit.
-- [~] Taskbar service: snapshot, hide, re-hide hook, restore, dirty state file in `%APPDATA%\Veneer\state\`.
-- [~] Watchdog process (`--watchdog <pid>`), started before any window.
-- [~] `TaskbarCreated`: hide again and re-register the bars.
-- [~] Blurred surface window (DWM acrylic recipe).
-- [~] Rounded corners: DWM rounding up to 8 px, window region above.
-- [ ] Foreground-window tracking with WinEvent hooks (no polling).
-- [ ] Per-monitor DPI awareness v2.
-- [ ] CsWin32 for P/Invoke, with an explicit platform target (x64, then arm64).
+Split in two steps: **3a** (foundations and the first visible bars) is done; **3b** (the remaining modules) is next.
 
-**Layout (`Veneer.Core`, tested)**
-- [ ] Surface rectangles per edge, with reserve-space ordering when several surfaces share an edge.
-- [ ] Primary monitor only, without assuming a single monitor.
-- [ ] Module registry by name: a new module needs no engine change.
-- [ ] Module option validation (each module checks its own options).
+**Interop: spike code moved into [`Veneer.Interop`](../src/Veneer.Interop)** (3a)
+- [x] `AppBar`: register, position, pin the rect, `ABN_POSCHANGED`, remove on exit, re-register after an Explorer restart.
+- [x] `Taskbar` (`ITaskbar`): snapshot, hide, re-hide hook, restore. Dirty state file in `%APPDATA%\Veneer\state\`.
+- [x] `Watchdog` process (`--watchdog <pid>`), started before any window.
+- [x] `TaskbarCreated`: hide again and re-register the bars.
+- [x] `SurfaceWindow`: blurred surface window (DWM acrylic recipe) and corner rounding (DWM up to 8 px, window
+      region above).
+- [x] `ForegroundWatcher`: foreground window via a WinEvent hook (used by `active-app` in 3b).
+- [x] Primary monitor bounds and DPI, global hotkeys, screen capture.
+- [x] Per-monitor DPI awareness v2 (`app.manifest`).
+- [x] CsWin32 for P/Invoke, x64 platform target. ARM64 build: later.
 
-**Bars (`Veneer.App`)**
-- [ ] Surface windows built from the theme and rebuilt on hot reload (on the UI thread).
-- [ ] Bars on any edge, with optional reserved space.
-- [ ] Start / center / end module zones.
+**Layout (`Veneer.Core`, tested)** (3a)
+- [x] Surface rectangles per edge, stacked in theme order; side bars fit between top and bottom bars.
+- [x] Primary monitor only, without assuming a single monitor (monitor offsets tested).
+- [x] DIP → physical pixel conversion per monitor DPI.
+- [x] Module options checked by name (`clock.format`, `spacer.size`); one place per module.
+
+**Bars (`Veneer.App`)** (3a)
+- [x] Bar windows built from the theme, rebuilt on hot reload and on display changes.
+- [x] Bars on any edge, with optional reserved space.
+- [x] Start / center / end module zones (center stays centered on the whole bar).
+- [x] Theme text style (font from the theme or the system, size, weight), padding, spacing, per-module style.
+- [x] Command line until profiles exist: `--theme`, `--variant`, `--overrides`, `--keep-taskbar`, `--restore-taskbar`.
 
 **Modules**
+- [x] `clock`: format from the theme; wakes once per minute (per second if the format shows seconds). (3a)
+- [x] `spacer`. (3a)
 - [ ] `logo-menu`: theme icon and a system menu (About this PC, Settings, Sleep, Restart, Shut down, Lock).
-      Destructive actions ask for confirmation.
+      Destructive actions ask for confirmation. (3b)
 - [ ] `active-app`: name of the foreground app and a fixed menu (Close window, Minimize, Quit). Real app menus
-      are never read.
-- [ ] `clock`: format from the theme.
-- [ ] `volume`: level and mute, with Core Audio.
-- [ ] `network`: connection state.
-- [ ] `battery`: shown only on devices with a battery.
-- [ ] `spacer`.
-- [ ] Each module styled by the theme.
+      are never read. (3b)
+- [ ] `volume`: level and mute, with Core Audio. (3b)
+- [ ] `network`: connection state. (3b)
+- [ ] `battery`: shown only on devices with a battery. (3b)
 
-**Theme format and tools**
-- [ ] Theme format extended for text (font, size, weight), spacing and module padding.
-- [ ] Debug hotkey: PNG of every surface in `artifacts/screenshots/`, for visual comparison.
+**Safety, verified in the app** (3a)
+- [x] Taskbar restored on normal exit (hotkey), unhandled exception (debug hotkey), `taskkill /f` (watchdog),
+      next start (dirty state); hidden again after an Explorer restart.
+- [x] Idle CPU 0.04% with two bars and a clock.
 
-**Safety**
-- [ ] Taskbar restore in the app on every exit path, with a debug command until the tray exists (Phase 6).
+**Tools** (3a)
+- [x] Hotkeys (Ctrl+Alt+Shift): **Q** quit, **R** reload theme, **T** restore taskbar; debug builds also **S**
+      screenshot to `artifacts/screenshots/` and **X** simulated crash.
+- [ ] Visual comparison with the reference screenshots. (3b)
 
 ## Phase 4: dock
 

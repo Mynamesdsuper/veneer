@@ -41,8 +41,9 @@ Themes are **data only**. A theme cannot run code, and every path must stay insi
       "edge": "top",
       "thickness": 24,
       "reserveSpace": true,
-      "style": { "background": "$glass", "foreground": "$text", "blur": true },
-      "start":  [ { "module": "logo-menu", "icon": "assets/logo.png" }, { "module": "active-app", "bold": true } ],
+      "style": { "background": "$glass", "foreground": "$text", "blur": true,
+                 "font": "ui", "fontSize": 13, "padding": 12, "spacing": 14 },
+      "start":  [ { "module": "logo-menu", "icon": "assets/logo.png" }, { "module": "active-app", "style": { "fontWeight": "bold" } } ],
       "center": [],
       "end":    [ { "module": "volume" }, { "module": "clock", "format": "ddd d MMM HH:mm" } ]
     },
@@ -115,8 +116,13 @@ Each surface has:
 | `type` | `bar` \| `dock` | **Required.** Unknown types are skipped with a warning, so newer themes still load. |
 | `edge` | `top` \| `bottom` \| `left` \| `right` | **Required.** A dock cannot use `top`. |
 | `monitor` | string | Only `primary` for now. |
-| `style.background`, `style.foreground`, `style.border` | color | |
-| `style.blur` | boolean (`false`) | Real blur behind the surface. |
+| `style.background`, `style.foreground`, `style.border` | color | On a bar, the border is a 1 px line on the side facing the desktop. |
+| `style.blur` | boolean (`false`) | Real blur behind the surface. Without blur, a translucent background shows the desktop unblurred. |
+| `style.font` | string | A key of `fonts` (a font file in the theme) or an installed font family. Default: the Windows 11 UI font. |
+| `style.fontSize` | number 4–200 (`12`) | In device-independent pixels. |
+| `style.fontWeight` | `thin` \| `extralight` \| `light` \| `regular` \| `medium` \| `semibold` \| `bold` \| `extrabold` \| `black` | |
+| `style.padding` | number 0–200 (`0`) | Space at both ends of a bar. |
+| `style.spacing` | number 0–200 (`0`) | Gap between modules. |
 
 **Bar** (`"type": "bar"`):
 
@@ -127,8 +133,16 @@ Each surface has:
 | `start`, `center`, `end` | array of modules | Each module is `{ "module": "<name>", ...options }`. |
 
 Modules: `logo-menu`, `active-app`, `clock`, `volume`, `network`, `battery`, `spacer`. Unknown modules
-are skipped with a warning. A module's `icon` option is a theme path (`.png`, `.ico`, `.jpg`, `.jpeg`). The
-other options belong to each module and are documented with it.
+are skipped with a warning. A module's `icon` option is a theme path (`.png`, `.ico`, `.jpg`, `.jpeg`).
+
+Every module accepts a `style` with `foreground`, `font`, `fontSize`, `fontWeight` and `padding` (space on
+both sides of the module). Missing values come from the bar's `style`.
+
+| Module | Options |
+|--------|---------|
+| `clock` | `format`: a .NET date/time format (`"HH:mm"`). Uses the Windows regional language. |
+| `spacer` | `size`: number 0–1000 (`8`), empty space along the bar. |
+| `logo-menu`, `active-app`, `volume`, `network`, `battery` | Coming in Phase 3b. |
 
 **Dock** (`"type": "dock"`):
 

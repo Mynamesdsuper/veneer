@@ -56,11 +56,34 @@ public sealed record Theme(
 /// <summary>Windows settings a theme may change. Each one is optional and the user can turn it off.</summary>
 public sealed record WindowsSettings(string? Wallpaper, Appearance? Appearance, ThemeColor? AccentColor);
 
-public sealed record SurfaceStyle(ThemeColor? Background, ThemeColor? Foreground, ThemeColor? Border, bool Blur);
+/// <summary>
+/// Text settings. <see cref="Font"/> is a key of the theme's <c>fonts</c> map or an installed font family name.
+/// <see cref="FontWeight"/> is 100–900 (400 regular, 700 bold). Null means "inherit".
+/// </summary>
+public sealed record TextStyle(string? Font, double? FontSize, int? FontWeight);
+
+/// <summary>
+/// <see cref="Padding"/> is the inner space at both ends of a bar; <see cref="Spacing"/> is the gap between modules.
+/// Both are in device-independent pixels (1/96 inch).
+/// </summary>
+public sealed record SurfaceStyle(
+    ThemeColor? Background,
+    ThemeColor? Foreground,
+    ThemeColor? Border,
+    bool Blur,
+    TextStyle Text,
+    double Padding,
+    double Spacing);
+
+/// <summary>A module's own look. Null values inherit from the surface.</summary>
+public sealed record ModuleStyle(ThemeColor? Foreground, TextStyle Text, double? Padding);
 
 public abstract record Surface(string Id, Edge Edge, string Monitor, SurfaceStyle Style);
 
-/// <summary><see cref="Thickness"/> is the size across the edge: height for top/bottom bars, width for left/right.</summary>
+/// <summary>
+/// <see cref="Thickness"/> is the size across the edge in device-independent pixels: height for top/bottom bars,
+/// width for left/right.
+/// </summary>
 public sealed record BarSurface(
     string Id,
     Edge Edge,
@@ -93,4 +116,4 @@ public sealed record RunningIndicator(IndicatorShape Shape, ThemeColor? Color, d
 /// A module in a bar. <see cref="Options"/> holds the module's own settings (already token-resolved);
 /// each module validates them itself. <see cref="Icon"/> is the resolved absolute path of an <c>icon</c> option.
 /// </summary>
-public sealed record ModuleSpec(string Module, string Path, string? Icon, JsonObject Options);
+public sealed record ModuleSpec(string Module, string Path, string? Icon, ModuleStyle Style, JsonObject Options);

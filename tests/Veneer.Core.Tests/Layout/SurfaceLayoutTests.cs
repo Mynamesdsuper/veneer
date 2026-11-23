@@ -1,0 +1,55 @@
+using Veneer.Core.Layout;
+using Veneer.Core.Themes;
+
+namespace Veneer.Core.Tests.Layout;
+
+public class SurfaceLayoutTests
+{
+    static readonly PixelRect Screen = new(0, 0, 1920, 1080);
+
+    [Fact]
+    public void Top_and_bottom_bars_span_the_full_width()
+    {
+        var r = SurfaceLayout.Compute(Screen, [new("top", Edge.Top, 24), new("bottom", Edge.Bottom, 40)]);
+
+        Assert.Equal(new PixelRect(0, 0, 1920, 24), r["top"]);
+        Assert.Equal(new PixelRect(0, 1040, 1920, 1080), r["bottom"]);
+    }
+
+    [Fact]
+    public void Bars_on_the_same_edge_stack_in_theme_order()
+    {
+        var r = SurfaceLayout.Compute(Screen, [new("a", Edge.Top, 24), new("b", Edge.Top, 30), new("c", Edge.Right, 50), new("d", Edge.Right, 10)]);
+
+        Assert.Equal(new PixelRect(0, 0, 1920, 24), r["a"]);
+        Assert.Equal(new PixelRect(0, 24, 1920, 54), r["b"]);
+        Assert.Equal(new PixelRect(1870, 54, 1920, 1080), r["c"]);
+        Assert.Equal(new PixelRect(1860, 54, 1870, 1080), r["d"]);
+    }
+
+    [Fact]
+    public void Side_bars_fit_between_top_and_bottom_bars_whatever_the_theme_order()
+    {
+        var r = SurfaceLayout.Compute(Screen, [new("left", Edge.Left, 48), new("top", Edge.Top, 24), new("bottom", Edge.Bottom, 40)]);
+
+        Assert.Equal(new PixelRect(0, 24, 48, 1040), r["left"]);
+    }
+
+    [Fact]
+    public void Works_on_a_monitor_that_is_not_at_the_origin()
+    {
+        var second = new PixelRect(-2560, 0, 0, 1440);
+        var r = SurfaceLayout.Compute(second, [new("top", Edge.Top, 30), new("left", Edge.Left, 60)]);
+
+        Assert.Equal(new PixelRect(-2560, 0, 0, 30), r["top"]);
+        Assert.Equal(new PixelRect(-2560, 30, -2500, 1440), r["left"]);
+    }
+
+    [Theory]
+    [InlineData(24, 96u, 24)]
+    [InlineData(24, 144u, 36)]
+    [InlineData(25, 120u, 31)] // 31.25
+    [InlineData(26, 120u, 33)] // 32.5 rounds away from zero
+    public void Converts_dips_to_physical_pixels(double dips, uint dpi, int expected) =>
+        Assert.Equal(expected, SurfaceLayout.ToPhysical(dips, dpi));
+}

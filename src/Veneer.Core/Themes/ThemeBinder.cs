@@ -100,8 +100,15 @@ internal sealed partial class ThemeBinder(string root, List<Diagnostic> diagnost
             var styleObj = Obj(s, "style", p);
             string sp = ThemeLayers.Join(p, "style");
             var style = styleObj is null
-                ? new SurfaceStyle(null, null, null, false)
-                : new SurfaceStyle(Color(styleObj, "background", sp), Color(styleObj, "foreground", sp), Color(styleObj, "border", sp), Bool(styleObj, "blur", sp) ?? false);
+                ? new SurfaceStyle(null, null, null, false, new TextStyle(null, null, null), 0, 0)
+                : new SurfaceStyle(
+                    Color(styleObj, "background", sp),
+                    Color(styleObj, "foreground", sp),
+                    Color(styleObj, "border", sp),
+                    Bool(styleObj, "blur", sp) ?? false,
+                    Text(styleObj, sp),
+                    Num(styleObj, "padding", sp, 0, 200) ?? 0,
+                    Num(styleObj, "spacing", sp, 0, 200) ?? 0);
 
             if (edge is not { } e)
                 continue;
@@ -168,13 +175,64 @@ internal sealed partial class ThemeBinder(string root, List<Diagnostic> diagnost
                     }
 
                     string? icon = m["icon"] is null ? null : Asset(m, "icon", mp, AssetPaths.ImageExtensions);
-                    list.Add(new ModuleSpec(module, mp, icon, (JsonObject)m.DeepClone()));
+                    var styleObj = Obj(m, "style", mp);
+                    string sp = ThemeLayers.Join(mp, "style");
+                    var style = styleObj is null
+                        ? new ModuleStyle(null, new TextStyle(null, null, null), null)
+                        : new ModuleStyle(Color(styleObj, "foreground", sp), Text(styleObj, sp), Num(styleObj, "padding", sp, 0, 200));
+                    ModuleOptions(module, m, mp);
+                    list.Add(new ModuleSpec(module, mp, icon, style, (JsonObject)m.DeepClone()));
                 }
 
                 return list;
             default:
                 Error(lp, "must be an array of modules");
                 return list;
+        }
+    }
+
+    static readonly Dictionary<string, int> FontWeights = new()
+    {
+        ["thin"] = 100, ["extralight"] = 200, ["light"] = 300, ["regular"] = 400, ["medium"] = 500,
+        ["semibold"] = 600, ["bold"] = 700, ["extrabold"] = 800, ["black"] = 900,
+    };
+
+    TextStyle Text(JsonObject style, string p)
+    {
+        int? weight = null;
+        if (Str(style, "fontWeight", p) is { } w)
+        {
+            if (FontWeights.TryGetValue(w, out int n))
+                weight = n;
+            else
+                Error(ThemeLayers.Join(p, "fontWeight"), $"\"{w}\" is not valid (allowed: {string.Join(", ", FontWeights.Keys)})");
+        }
+
+        return new TextStyle(Str(style, "font", p), Num(style, "fontSize", p, 4, 200), weight);
+    }
+
+    /// <summary>Checks the options each module understands. A new module adds its case here and its view in the app.</summary>
+    void ModuleOptions(string module, JsonObject m, string p)
+    {
+        switch (module)
+        {
+            case "clock":
+                if (Str(m, "format", p) is { } format)
+                {
+                    try
+                    {
+                        _ = DateTime.Now.ToString(format, System.Globalization.CultureInfo.InvariantCulture);
+                    }
+                    catch (FormatException)
+                    {
+                        Error(ThemeLayers.Join(p, "format"), $"\"{format}\" is not a valid date/time format");
+                    }
+                }
+
+                break;
+            case "spacer":
+                Num(m, "size", p, 0, 1000);
+                break;
         }
     }
 

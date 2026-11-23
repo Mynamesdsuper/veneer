@@ -1,4 +1,4 @@
-# Spike helper: print taskbar visibility, auto-hide bit, work area and whether the state file is dirty.
+# Spike helper (set VENEER_STATE to check another state file): print taskbar visibility, auto-hide bit, work area and whether the state file is dirty.
 Add-Type @'
 using System; using System.Runtime.InteropServices;
 public static class TB {
@@ -17,4 +17,4 @@ public static class TB {
   }
 }
 '@
-"{0} stateDirty={1} explorer={2}" -f [TB]::Report(), (Test-Path "$env:APPDATA\Veneer-spike\taskbar-state.json"), ((Get-Process explorer -EA SilentlyContinue).Id -join ',')
+"{0} stateDirty={1} explorer={2}" -f [TB]::Report(), (Test-Path ($(if ($env:VENEER_STATE) { $env:VENEER_STATE } else { "$env:APPDATA\Veneer-spike\taskbar-state.json" }))), ((Get-Process explorer -EA SilentlyContinue).Id -join ',')

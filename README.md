@@ -17,22 +17,21 @@ which components exist, which screen edge they sit on, which modules they show a
 
 ## Project status
 
-**Early. Nothing is usable yet.** The theme engine works and is tested. The riskiest Windows parts (blur,
-several app bars, hiding and always restoring the taskbar, the accent color) are proven in spikes but are not
-in the app yet. The checklist of every feature is in [docs/roadmap.md](docs/roadmap.md).
+**Early. Not usable day to day yet.** The theme engine works and is tested. The app already draws blurred bars
+from a theme, hides the taskbar and always gives it back. Most bar modules and the dock are still missing. The checklist of every feature is in [docs/roadmap.md](docs/roadmap.md).
 
 | What | Status |
 |---|---|
 | Repository, CI (build + tests on `windows-latest`) | ✅ Done |
-| Real blur and rounded corners behind bars and the dock | 🧪 Proven in a spike: DWM acrylic on a non-activating window; native rounding up to 8 px, a window region above ([details](docs/decisions.md#blurred-overlay-windows-spikesoverlayblur)) |
-| Several app bars at once (top + bottom) | 🧪 Proven in a spike, including reserved screen space and its release on exit |
-| Hide the taskbar, always bring it back | 🧪 Proven in a spike on every exit path tried: normal exit, exception, `FailFast`, `taskkill /f` (watchdog), next start, Explorer restart. Logoff is wired but untested |
+| Real blur behind bars | ✅ In the app: DWM acrylic on a non-activating window ([details](docs/decisions.md#blurred-overlay-windows-spikesoverlayblur)). Rounded corners above 8 px (dock) wait for Phase 4 |
+| Bars on any edge, several at once, with reserved screen space | ✅ In the app, built from the theme and rebuilt on hot reload |
+| Hide the taskbar, always bring it back | ✅ In the app: normal exit, unhandled exception, `taskkill /f` (watchdog), next start, Explorer restart. Logoff is wired but untested |
 | Accent color API | 🧪 Found and tested with byte-for-byte restore (`SetUserColorPreference`) |
 | Theme engine: parse, validate, tokens, light/dark variants | ✅ Done, unit-tested |
 | Your overrides on top of a theme, with value origins and orphans | ✅ Done, unit-tested |
 | Safe theme files and `.zip` install (path, link, type and size checks) | ✅ Done, unit-tested |
 | Hot reload, fallback to the previous theme on errors | ✅ Done, unit-tested |
-| Bars and modules (logo menu, active app, clock, volume, network, battery) | ⏳ Next (Phase 3) |
+| Bar modules | ⚠️ `clock` and `spacer` work. Logo menu, active app, volume, network and battery are next (Phase 3b) |
 | Dock (pinned and running apps, magnification, drag to reorder) | ⏳ Planned (Phase 4) |
 | Wallpaper, accent color, light/dark from the theme, with restore | ⏳ Planned (Phase 5) |
 | Profiles, settings window, tray icon, start with Windows | ⏳ Planned (Phase 6) |
@@ -40,7 +39,7 @@ in the app yet. The checklist of every feature is in [docs/roadmap.md](docs/road
 | First release | ⏳ Planned (Phase 8) |
 | Multi-monitor, display scaling above 100%, ARM64 | ❔ Not verified yet |
 
-✅ done · 🧪 proven in a spike, not in the app yet · ⏳ planned · ❔ not verified
+✅ done · ⚠️ partly done · 🧪 proven in a spike, not in the app yet · ⏳ planned · ❔ not verified
 
 ## Why Veneer
 
@@ -85,7 +84,7 @@ full multi-monitor support.
 | 1 | Repository skeleton, CI | ✅ |
 | 0 | Technical spikes: blur, app bars, taskbar safety, accent API | ✅ |
 | 2 | Theme engine and personalization layers | ✅ |
-| 3 | Layout engine, bars and their modules | ⏳ next |
+| 3 | Layout engine, bars and their modules | ⚠️ 3a done, 3b next |
 | 4 | Dock | ⏳ |
 | 5 | Windows settings from themes (wallpaper, accent, light/dark) with restore | ⏳ |
 | 6 | Profiles, settings window, tray, theme install, start with Windows | ⏳ |
@@ -106,7 +105,11 @@ git clone https://github.com/Mynamesdsuper/veneer.git
 cd veneer
 dotnet build
 dotnet test
+dotnet run --project src/Veneer.App -- --theme <theme folder>
 ```
+
+While Veneer runs, **Ctrl+Alt+Shift+Q** quits and gives the taskbar back. **Ctrl+Alt+Shift+T** restores the
+taskbar without quitting. If anything ever goes wrong, `Veneer.App --restore-taskbar` restores it by hand.
 
 ## Repository layout
 

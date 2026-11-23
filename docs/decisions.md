@@ -6,6 +6,21 @@ Record each decision with its date, context, the options considered and the outc
 
 C# + WPF on .NET 10 (LTS), Windows 11 only. .NET 8 reached end of support on 2026-11-10.
 
+## 2026-11-24: Bars in the app (Phase 3a)
+
+- **Target framework `net10.0-windows10.0.22621.0`** for `Veneer.Interop` and `Veneer.App` (Windows 11 22H2), and
+  `PlatformTarget` x64 for CsWin32.
+- **Default font: "Segoe UI Variable Text, Segoe UI", 12 px.** `SystemFonts.MessageFontFamily` returned Tahoma on
+  the test PC, an old non-client metrics value, so it is not used. Themes set their own font anyway.
+- **A hidden top-level window** receives `TaskbarCreated` and the hotkeys. Message-only windows do not receive
+  broadcasts.
+- **Bars are rebuilt from scratch** on every theme load and display change. This is simple and fast enough
+  (two bars in well under a second). Incremental updates only if this ever shows up as a problem.
+- **Without blur**, a translucent bar background shows the desktop unblurred: DWM draws no backdrop
+  (`DWMSBT_NONE`) and the extended frame stays transparent.
+- **The clock wakes once per minute** (once per second only when the format shows seconds), aligned to the
+  boundary. Idle CPU with two bars: 0.04%.
+
 ## 2026-11-23: Theme engine (Phase 2)
 
 - **Layers merge on raw JSON, before binding.** Theme → variant → user overrides are merged as `JsonNode`
