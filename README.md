@@ -1,11 +1,46 @@
-# Veneer
+<h1 align="center">Veneer</h1>
 
-**A themeable desktop shell for Windows 11.** Veneer replaces the taskbar with its own bars and dock,
-and lets *themes* decide everything about them: which components exist, which screen edge they sit on,
-which modules they show and how they look.
+<h4 align="center">A themeable desktop shell for Windows 11: themes decide which bars and docks you get, where they sit and how they look.</h4>
 
-> **Status: early development.** Nothing is usable yet. The repository currently holds the project
-> skeleton. Follow the [roadmap](#roadmap) to see what is coming.
+<p align="center">
+  <a href="#project-status">Status</a> |
+  <a href="docs/roadmap.md">Roadmap</a> |
+  <a href="#why-veneer">Why Veneer</a> |
+  <a href="#build">Build</a> |
+  <a href="#themes">Themes</a> |
+  <a href="docs/decisions.md">Decisions</a> |
+  <a href="#license">License</a>
+</p>
+
+Veneer replaces the Windows taskbar with its own bars and dock, and lets *themes* decide everything about them:
+which components exist, which screen edge they sit on, which modules they show and how they look.
+
+## Project status
+
+**Early. Nothing is usable yet.** The theme engine works and is tested. The riskiest Windows parts (blur,
+several app bars, hiding and always restoring the taskbar, the accent color) are proven in spikes but are not
+in the app yet. The checklist of every feature is in [docs/roadmap.md](docs/roadmap.md).
+
+| What | Status |
+|---|---|
+| Repository, CI (build + tests on `windows-latest`) | ✅ Done |
+| Real blur and rounded corners behind bars and the dock | 🧪 Proven in a spike: DWM acrylic on a non-activating window; native rounding up to 8 px, a window region above ([details](docs/decisions.md#blurred-overlay-windows-spikesoverlayblur)) |
+| Several app bars at once (top + bottom) | 🧪 Proven in a spike, including reserved screen space and its release on exit |
+| Hide the taskbar, always bring it back | 🧪 Proven in a spike on every exit path tried: normal exit, exception, `FailFast`, `taskkill /f` (watchdog), next start, Explorer restart. Logoff is wired but untested |
+| Accent color API | 🧪 Found and tested with byte-for-byte restore (`SetUserColorPreference`) |
+| Theme engine: parse, validate, tokens, light/dark variants | ✅ Done, unit-tested |
+| Your overrides on top of a theme, with value origins and orphans | ✅ Done, unit-tested |
+| Safe theme files and `.zip` install (path, link, type and size checks) | ✅ Done, unit-tested |
+| Hot reload, fallback to the previous theme on errors | ✅ Done, unit-tested |
+| Bars and modules (logo menu, active app, clock, volume, network, battery) | ⏳ Next (Phase 3) |
+| Dock (pinned and running apps, magnification, drag to reorder) | ⏳ Planned (Phase 4) |
+| Wallpaper, accent color, light/dark from the theme, with restore | ⏳ Planned (Phase 5) |
+| Profiles, settings window, tray icon, start with Windows | ⏳ Planned (Phase 6) |
+| Two bundled themes with very different layouts | ⏳ Planned (Phase 7) |
+| First release | ⏳ Planned (Phase 8) |
+| Multi-monitor, display scaling above 100%, ARM64 | ❔ Not verified yet |
+
+✅ done · 🧪 proven in a spike, not in the app yet · ⏳ planned · ❔ not verified
 
 ## Why Veneer
 
@@ -45,16 +80,19 @@ full multi-monitor support.
 
 ## Roadmap
 
-- [x] **Phase 1:** repository skeleton, CI
-- [x] **Phase 0:** technical spikes: blurred overlay windows, app bars on several edges, safe taskbar hiding,
-  accent color API (results in [docs/decisions.md](docs/decisions.md))
-- [x] **Phase 2:** theme engine and personalization layers
-- [ ] **Phase 3:** layout engine and bars
-- [ ] **Phase 4:** dock
-- [ ] **Phase 5:** Windows settings from themes (wallpaper, accent, light/dark) with restore
-- [ ] **Phase 6:** profiles, settings window, tray, theme install, start with Windows
-- [ ] **Phase 7:** bundled themes
-- [ ] **Phase 8:** polish, documentation, first release
+| Phase | Scope | Status |
+|---|---|---|
+| 1 | Repository skeleton, CI | ✅ |
+| 0 | Technical spikes: blur, app bars, taskbar safety, accent API | ✅ |
+| 2 | Theme engine and personalization layers | ✅ |
+| 3 | Layout engine, bars and their modules | ⏳ next |
+| 4 | Dock | ⏳ |
+| 5 | Windows settings from themes (wallpaper, accent, light/dark) with restore | ⏳ |
+| 6 | Profiles, settings window, tray, theme install, start with Windows | ⏳ |
+| 7 | Bundled themes | ⏳ |
+| 8 | Polish, documentation, first release | ⏳ |
+
+Every feature, phase by phase, with its checkbox: [docs/roadmap.md](docs/roadmap.md).
 
 ## Requirements
 
@@ -84,14 +122,15 @@ themes/             Themes shipped with Veneer (original assets only).
 tools/              Developer tools (e.g. icon import). Never used by the theme loader.
 docs/
   theme-format.md   How to write a theme.
+  roadmap.md        Full plan with a checklist of every feature.
   decisions.md      Technical decisions and spike results.
+spikes/             Phase 0 throwaway code (not in the solution, not built by CI).
 ```
 
 ## Themes
 
 A theme is a folder (or `.zip`) with a `theme.json` and an `assets/` folder. See
-[docs/theme-format.md](docs/theme-format.md). The format is still a draft and will change until the
-first release.
+[docs/theme-format.md](docs/theme-format.md). The format can still change until the first release.
 
 Community themes must respect the licenses of the assets they use. Veneer only ships original assets
 or assets with a compatible, declared license.
