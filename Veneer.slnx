@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Veneer.App/Veneer.App.csproj" />
+    <Project Path="src/Veneer.Core/Veneer.Core.csproj" />
+    <Project Path="src/Veneer.Interop/Veneer.Interop.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Veneer.Core.Tests/Veneer.Core.Tests.csproj" />
+  </Folder>
+</Solution>
