@@ -65,6 +65,25 @@ public static class SurfaceLayout
         return new PixelRect(monitor.Left + Sum(Edge.Left), monitor.Top + Sum(Edge.Top), monitor.Right - Sum(Edge.Right), monitor.Bottom - Sum(Edge.Bottom));
     }
 
+    /// <summary>
+    /// Whether a maximized window no longer matches the work area (its maximized size is from before the bars or the
+    /// taskbar changed). A maximized window overhangs the work area by its frame width on every side; that overhang
+    /// is read from the left edge.
+    /// </summary>
+    public static bool NeedsRefit(PixelRect window, PixelRect work)
+    {
+        var expected = MaximizedBounds(window, work);
+        return Math.Abs(window.Top - expected.Top) > 2 || Math.Abs(window.Bottom - expected.Bottom) > 2
+            || Math.Abs(window.Right - expected.Right) > 2;
+    }
+
+    /// <summary>Where a maximized window belongs on <paramref name="work"/>, keeping its frame overhang.</summary>
+    public static PixelRect MaximizedBounds(PixelRect window, PixelRect work)
+    {
+        int inset = Math.Max(0, work.Left - window.Left);
+        return new PixelRect(work.Left - inset, work.Top - inset, work.Right + inset, work.Bottom + inset);
+    }
+
     /// <summary>Converts device-independent pixels to physical pixels for a monitor DPI (96 = 100%).</summary>
     public static int ToPhysical(double dips, uint dpi) => (int)Math.Round(dips * dpi / 96.0, MidpointRounding.AwayFromZero);
 }

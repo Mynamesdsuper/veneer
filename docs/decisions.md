@@ -30,6 +30,11 @@ C# + WPF on .NET 10 (LTS), Windows 11 only. .NET 8 reached end of support on 202
 - **Variant choice:** dark mode loads the `dark` variant, light mode `light` (or the base). The app reloads the theme
   with the right variant before building the surfaces, and listens for `ImmersiveColorSet` to switch when Windows
   changes mode. `--variant` on the command line wins.
+- **Maximized windows follow the restored work area.** After a crash the author's maximized browser (Zen) kept
+  the size it had under Veneer's bars (top at y=20, bottom past the returning taskbar): Windows does not always
+  resize maximized windows when app bars disappear. Every taskbar restore now moves maximized windows whose
+  bounds do not match their monitor's work area back onto it (keeping the frame overhang and the maximized state,
+  `SetWindowPos` async). Restore-then-maximize was tried first; Zen ignored it.
 - **Emergency exit in the watchdog:** Ctrl+Alt+Shift+F12, registered on the watchdog's thread. The watchdog sleeps
   in `MsgWaitForMultipleObjects` on the main process handle and its message queue (no polling), ends the main
   process on the hotkey, then restores the taskbar as after any crash.

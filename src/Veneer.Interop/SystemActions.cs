@@ -134,6 +134,40 @@ public static class WindowTools
     }
 
     /// <summary>
+    /// Re-maximizes maximized windows whose size is from an old work area (Windows does not always resize them when
+    /// app bars go away or the taskbar comes back, e.g. after a crash). The window is moved onto the work area and
+    /// stays maximized; async, so a hung app cannot block us. (Restore-then-maximize was tried first: Zen ignored it.)
+    /// </summary>
+    public static unsafe int RefitMaximizedWindows()
+    {
+        var targets = new List<(HWND Handle, Veneer.Core.Layout.PixelRect Bounds)>();
+        PInvoke.EnumWindows((h, _) =>
+        {
+            if (PInvoke.IsWindowVisible(h) && PInvoke.IsZoomed(h) && PInvoke.GetWindowRect(h, out RECT r))
+            {
+                var info = new Windows.Win32.Graphics.Gdi.MONITORINFO { cbSize = (uint)sizeof(Windows.Win32.Graphics.Gdi.MONITORINFO) };
+                var monitor = PInvoke.MonitorFromWindow(h, Windows.Win32.Graphics.Gdi.MONITOR_FROM_FLAGS.MONITOR_DEFAULTTONEAREST);
+                if (PInvoke.GetMonitorInfo(monitor, &info))
+                {
+                    var window = new Veneer.Core.Layout.PixelRect(r.left, r.top, r.right, r.bottom);
+                    var work = new Veneer.Core.Layout.PixelRect(info.rcWork.left, info.rcWork.top, info.rcWork.right, info.rcWork.bottom);
+                    if (Veneer.Core.Layout.SurfaceLayout.NeedsRefit(window, work))
+                        targets.Add((h, Veneer.Core.Layout.SurfaceLayout.MaximizedBounds(window, work)));
+                }
+            }
+
+            return true;
+        }, 0);
+        foreach (var (h, b) in targets)
+        {
+            PInvoke.SetWindowPos(h, default, b.Left, b.Top, b.Width, b.Height,
+                SET_WINDOW_POS_FLAGS.SWP_NOZORDER | SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE | SET_WINDOW_POS_FLAGS.SWP_ASYNCWINDOWPOS);
+        }
+
+        return targets.Count;
+    }
+
+    /// <summary>
     /// Asks every visible top-level window of the process to close. Never kills the process: the app decides
     /// (and can ask to save), like closing it by hand.
     /// </summary>

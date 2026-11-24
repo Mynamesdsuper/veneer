@@ -45,6 +45,25 @@ public class SurfaceLayoutTests
         Assert.Equal(new PixelRect(-2560, 30, -2500, 1440), r["left"]);
     }
 
+    static readonly PixelRect Work = new(0, 0, 1920, 1032);
+
+    [Fact]
+    public void A_maximized_window_that_fits_the_work_area_is_left_alone()
+    {
+        Assert.False(SurfaceLayout.NeedsRefit(new PixelRect(-4, -4, 1924, 1036), Work)); // 4 px frame overhang
+        Assert.False(SurfaceLayout.NeedsRefit(new PixelRect(0, 0, 1920, 1032), Work));   // no overhang
+    }
+
+    [Fact]
+    public void A_maximized_window_sized_for_old_bars_is_moved_back()
+    {
+        // Zen after a crash: still sized for a 24 px top bar and a hidden taskbar.
+        var stale = new PixelRect(-4, 20, 1924, 1108);
+
+        Assert.True(SurfaceLayout.NeedsRefit(stale, Work));
+        Assert.Equal(new PixelRect(-4, -4, 1924, 1036), SurfaceLayout.MaximizedBounds(stale, Work));
+    }
+
     [Theory]
     [InlineData(24, 96u, 24)]
     [InlineData(24, 144u, 36)]

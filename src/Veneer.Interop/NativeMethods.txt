@@ -67,3 +67,6 @@ GetDesktopWindow
 ShowWindowAsync
 MsgWaitForMultipleObjects
 PeekMessage
+IsZoomed
+GetWindowRect
+MonitorFromWindow

@@ -85,6 +85,7 @@ public sealed class Taskbar : ITaskbar
             // manual restore) may have reset the state while our show hook kept hiding the taskbar.
             foreach (var w in Windows())
                 PInvoke.ShowWindow(w, SHOW_WINDOW_CMD.SW_SHOW);
+            Refit();
             return true;
         }
         try
@@ -123,6 +124,7 @@ public sealed class Taskbar : ITaskbar
             File.Delete(statePath);
             SetRunOnce(false);
             Log.Write($"taskbar restored ({reason})");
+            Refit();
             return true;
         }
         catch (Exception e)
@@ -130,6 +132,14 @@ public sealed class Taskbar : ITaskbar
             Log.Write($"taskbar restore ({reason}) FAILED: {e}");
             return false;
         }
+    }
+
+    // The work area just grew or shrank back: maximized windows sized for Veneer's bars must follow it.
+    static void Refit()
+    {
+        int n = WindowTools.RefitMaximizedWindows();
+        if (n > 0)
+            Log.Write($"re-maximized {n} window(s) to the restored work area");
     }
 
     /// <summary>
