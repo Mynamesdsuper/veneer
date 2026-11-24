@@ -70,6 +70,7 @@ static class Program
             Value(args, "--overrides"),
             KeepTaskbar: args.Contains("--keep-taskbar"),
             SelfTest: Value(args, "--self-test"));
+        DockWindow.Demo = args.Contains("--demo"); // screenshots for the public repository: no personal apps shown
         Log.Write($"start: {string.Join(' ', args)}");
         int code = new App(options, taskbar).Run();
         Log.Write("main returned");

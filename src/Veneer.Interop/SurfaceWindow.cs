@@ -31,8 +31,14 @@ public static class SurfaceWindow
         var margins = new MARGINS { cxLeftWidth = -1, cxRightWidth = -1, cyTopHeight = -1, cyBottomHeight = -1 };
         PInvoke.DwmExtendFrameIntoClientArea(h, &margins);
 
-        var backdrop = blur ? DWM_SYSTEMBACKDROP_TYPE.DWMSBT_TRANSIENTWINDOW : DWM_SYSTEMBACKDROP_TYPE.DWMSBT_NONE;
+        // The system backdrop ignores a window region: above the native radius it fills the whole rectangle, leaving
+        // solid corners. A plain composition-attribute blur also ignores it, but outside the rounded plate it shows
+        // only the blurred wallpaper, which is close to invisible; the theme's glass color tints the inside.
+        bool regionBlur = blur && cornerRadiusPx > MaxNativeCornerRadius;
+        var backdrop = blur && !regionBlur ? DWM_SYSTEMBACKDROP_TYPE.DWMSBT_TRANSIENTWINDOW : DWM_SYSTEMBACKDROP_TYPE.DWMSBT_NONE;
         PInvoke.DwmSetWindowAttribute(h, DWMWINDOWATTRIBUTE.DWMWA_SYSTEMBACKDROP_TYPE, &backdrop, sizeof(DWM_SYSTEMBACKDROP_TYPE));
+        if (regionBlur)
+            ApplyPopupBlur(hwnd, 0, round: false, acrylic: false);
 
         var corner = cornerRadiusPx switch
         {
@@ -55,9 +61,9 @@ public static class SurfaceWindow
     /// this uses the undocumented <c>SetWindowCompositionAttribute</c> acrylic (the Phase 0 fallback), plus Windows
     /// 11 rounding. <paramref name="tintAbgr"/> is a faint base tint; the theme's color is painted by WPF on top.
     /// </summary>
-    public static unsafe void ApplyPopupBlur(nint hwnd, uint tintAbgr, bool round)
+    public static unsafe void ApplyPopupBlur(nint hwnd, uint tintAbgr, bool round, bool acrylic = true)
     {
-        var accent = new AccentPolicy { AccentState = 4 /* ACCENT_ENABLE_ACRYLICBLURBEHIND */, GradientColor = tintAbgr };
+        var accent = new AccentPolicy { AccentState = acrylic ? 4 /* ACCENT_ENABLE_ACRYLICBLURBEHIND */ : 3 /* ACCENT_ENABLE_BLURBEHIND */, GradientColor = tintAbgr };
         var data = new CompositionData { Attribute = 19 /* WCA_ACCENT_POLICY */, Data = (nint)(&accent), SizeOfData = sizeof(AccentPolicy) };
         SetWindowCompositionAttribute(hwnd, ref data);
         var corner = round ? DWM_WINDOW_CORNER_PREFERENCE.DWMWCP_ROUND : DWM_WINDOW_CORNER_PREFERENCE.DWMWCP_DONOTROUND;

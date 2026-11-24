@@ -307,6 +307,12 @@ sealed class ActiveAppModule : ClickableModule
     {
         if (hwnd == 0)
             return;
+        if (DockWindow.Demo)
+        {
+            text.Text = desktopName; // public screenshots: never show the user's apps
+            return;
+        }
+
         var details = WindowTools.Describe(hwnd);
         if (details.ProcessId == Environment.ProcessId)
             return; // our own menus and dialogs: keep showing the app the user was in

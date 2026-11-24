@@ -15,6 +15,18 @@
 Veneer replaces the Windows taskbar with its own bars and dock, and lets *themes* decide everything about them:
 which components exist, which screen edge they sit on, which modules they show and how they look.
 
+## Screenshots
+
+The default theme, **Aqua**, on a clean desktop (dark and light):
+
+![Aqua, dark](docs/screenshots/aqua-dark.png)
+
+![Aqua, light](docs/screenshots/aqua-light.png)
+
+The logo menu and the magnifying dock with its label:
+
+![Aqua details](docs/screenshots/aqua-details.png)
+
 ## Project status
 
 **Early. Not usable day to day yet.** The theme engine works and is tested. The app already draws blurred bars

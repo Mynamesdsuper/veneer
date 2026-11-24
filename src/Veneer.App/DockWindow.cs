@@ -144,9 +144,14 @@ sealed class DockWindow : Window
         icons.Rebuild();
     }
 
+    /// <summary>Debug self-test "demo": ignore running apps, so public screenshots show only the theme's pinned apps.</summary>
+    public static bool Demo { get; set; }
+
     // Running apps grouped by AUMID (or exe), in the order their first window appears; windows most recent first.
     List<RunningApp> Running()
     {
+        if (Demo)
+            return [];
         var groups = new List<(string Key, string? Aumid, string? Exe, List<nint> Windows)>();
         foreach (var w in tracker.Enumerate())
         {
