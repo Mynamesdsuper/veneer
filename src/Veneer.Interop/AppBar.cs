@@ -137,7 +137,9 @@ public sealed class AppBar(nint hwnd)
                 pos->cy = Bounds.Height;
             }
 
-            return false;
+            // Handled: WPF would otherwise apply the minimum size of a captioned window (SM_CYMINTRACK, 34 px here)
+            // and make a thin bar taller than its theme says.
+            return true;
         }
 
         if (!registered)

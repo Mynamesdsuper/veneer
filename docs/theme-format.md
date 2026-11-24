@@ -172,7 +172,7 @@ state names are ignored with a warning; missing states keep the glyph.
 | `magnification.enabled` | boolean (`true` when the object is present) | Icons grow under the mouse and spill out of the dock. |
 | `magnification.maxScale` | number 1–3 (`1.5`) | Scale of the icon right under the mouse. |
 | `magnification.radius` | integer 0–10 (`3`) | How many icons on each side grow (cosine falloff). |
-| `cornerRadius` | number 0–100 (`0`) | Up to 8 uses native Windows rounding; larger values clip the window (sharper edge, no shadow). |
+| `cornerRadius` | number 0–100 (`0`) | Up to 8 uses native Windows rounding. Larger values draw the plate with smooth rounded corners of that radius, blur included (no shadow). |
 | `padding` | number 0–100 (`0`) | Space around the icons. The running indicator sits in the padding on the screen-edge side. |
 | `margin` | number 0–200 (`0`) | Distance from the screen edge. |
 | `reserveSpace` | boolean (`true`) | Maximized windows stay clear of the dock. |

@@ -6,6 +6,36 @@ Record each decision with its date, context, the options considered and the outc
 
 C# + WPF on .NET 10 (LTS), Windows 11 only. .NET 8 reached end of support on 2026-11-10.
 
+## 2026-11-24: Bar shadow and rounded dock glass (Phase 6 fixes)
+
+Two defects the author saw in the Aqua screenshots, measured with pixel samples over a plain white (and a striped)
+window with Veneer off and on.
+
+- **The dark band under the top bar was DWM's window shadow**: about 60 px deep (`#6F6F6F` fading to white), as
+  large as an active window's, because the bar is kept "active" for its blur. Fix: give the bar a window region.
+  DWM draws no shadow around a window with a region. The region is larger than any window, so it clips nothing and
+  never needs updating.
+- **The bar was 34 px tall, not 28**: Windows' minimum height for a captioned window (`SM_CYMINTRACK`) is 34 px.
+  The app-bar position pin now marks `WM_WINDOWPOSCHANGING` handled, so no later handler enlarges the window. WPF
+  also lays the content out at the minimum it saw at creation, so the bar's content is pinned to the bar's
+  thickness. Before, 6 px of bare backdrop sat under the bar's edge line, and the modules sat 3 px low.
+- **The dock's square corners: no DWM backdrop can be rounded above 8 px.** Measured: the system backdrop, the
+  composition-attribute blur (also with a `DwmEnableBlurBehindWindow` blur region) and even the bare extended frame
+  without blur all fill the whole window rectangle, whatever the window region or the per-pixel alpha.
+  - Options: native rounding (certain, but only ~8 px), no blur on the dock, or drawing the glass ourselves. The
+    author chose the last.
+  - Outcome: above 8 px the dock window is per-pixel transparent, and its plate is drawn by the composition engine
+    (`GlassPlate`, through `ICompositorDesktopInterop.CreateDesktopWindowTarget`). It has a host-backdrop blur
+    clipped to a rounded rectangle, with the theme's tint and gradient edge as composition shapes on top. The
+    blur needs the window's undocumented accent state 5 (`ACCENT_ENABLE_HOSTBACKDROP`); without it the brush is
+    black. The composition tree hides the window's WPF content, so the plate is drawn entirely in composition; an
+    almost invisible WPF shape keeps the plate clickable.
+  - If composition fails, the dock falls back to the old plain blur, with square blurred corners and a log line.
+  - Without blur, a dock above 8 px is a per-pixel transparent WPF plate: the bare DWM frame used to show a
+    dark square there too.
+- **Found, not fixed:** quitting while a bar menu is open hangs the process after its cleanup (the taskbar is
+  already back). It also happens on the previous commit.
+
 ## 2026-11-25: The default theme, Aqua (Phase 6b)
 
 - **Style A** (author's choice): macOS-like, a glass menu bar on top and a magnifying dock at the bottom, but every
@@ -25,7 +55,8 @@ C# + WPF on .NET 10 (LTS), Windows 11 only. .NET 8 reached end of support on 202
   were left out: a shadow outside a DWM window needs an extra window under it, for a small gain.
 - **Large radii use a plain blur.** The DWM system backdrop ignores a window region, so a dock rounder than 8 px
   showed solid square corners (visible on a light wallpaper). Above that radius the surface now uses the
-  composition-attribute blur without tint: outside the region it shows only the blurred wallpaper.
+  composition-attribute blur without tint: outside the region it shows only the blurred wallpaper. (Replaced on
+  2026-11-24: see "Bar shadow and rounded dock glass".)
 - **Repository screenshots** are taken with `--demo` (Debug and release): the bar shows "Desktop" and the dock
   only the theme's pinned apps, so no personal app appears in a public image.
 

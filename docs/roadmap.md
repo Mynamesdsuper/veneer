@@ -264,6 +264,11 @@ polished, macOS-like interface; **6b** ships a real default theme built on it.
       slate glass, light-catching gradient edges (`borderHighlight`), larger radii, monochrome highlights, new
       silky slate / ice wallpapers. The widgets in that image stay in "After the first release".
 
+**Fixes before Phase 7** (2026-11-24)
+- [x] No shadow band under the top bar, and the bar exactly as thick as the theme says.
+- [x] Truly rounded dock glass at any radius (composition), with or without blur; no square corners.
+- [ ] Quitting while a bar menu is open hangs the process after its cleanup (the taskbar is already restored).
+
 ## Phase 7: profiles, settings, tray, install, autostart
 
 **Profiles**

@@ -17,7 +17,10 @@ public static class SurfaceWindow
     const int WM_NCACTIVATE = 0x0086;
     const uint DWMWA_COLOR_NONE = 0xFFFFFFFE;
 
-    /// <summary>Above this radius DWM cannot round the window; a window region is used instead (aliased edge, no shadow).</summary>
+    /// <summary>
+    /// Above this radius DWM cannot round the window, and its backdrop and frame fill the whole rectangle whatever
+    /// the window region or alpha: such surfaces must be per-pixel transparent (see <see cref="GlassPlate"/>).
+    /// </summary>
     public const int MaxNativeCornerRadius = 8;
 
     public static unsafe void Apply(nint hwnd, bool blur, int cornerRadiusPx)
@@ -31,14 +34,8 @@ public static class SurfaceWindow
         var margins = new MARGINS { cxLeftWidth = -1, cxRightWidth = -1, cyTopHeight = -1, cyBottomHeight = -1 };
         PInvoke.DwmExtendFrameIntoClientArea(h, &margins);
 
-        // The system backdrop ignores a window region: above the native radius it fills the whole rectangle, leaving
-        // solid corners. A plain composition-attribute blur also ignores it, but outside the rounded plate it shows
-        // only the blurred wallpaper, which is close to invisible; the theme's glass color tints the inside.
-        bool regionBlur = blur && cornerRadiusPx > MaxNativeCornerRadius;
-        var backdrop = blur && !regionBlur ? DWM_SYSTEMBACKDROP_TYPE.DWMSBT_TRANSIENTWINDOW : DWM_SYSTEMBACKDROP_TYPE.DWMSBT_NONE;
+        var backdrop = blur ? DWM_SYSTEMBACKDROP_TYPE.DWMSBT_TRANSIENTWINDOW : DWM_SYSTEMBACKDROP_TYPE.DWMSBT_NONE;
         PInvoke.DwmSetWindowAttribute(h, DWMWINDOWATTRIBUTE.DWMWA_SYSTEMBACKDROP_TYPE, &backdrop, sizeof(DWM_SYSTEMBACKDROP_TYPE));
-        if (regionBlur)
-            ApplyPopupBlur(hwnd, 0, round: false, acrylic: false);
 
         var corner = cornerRadiusPx switch
         {
@@ -63,11 +60,17 @@ public static class SurfaceWindow
     /// </summary>
     public static unsafe void ApplyPopupBlur(nint hwnd, uint tintAbgr, bool round, bool acrylic = true)
     {
-        var accent = new AccentPolicy { AccentState = acrylic ? 4 /* ACCENT_ENABLE_ACRYLICBLURBEHIND */ : 3 /* ACCENT_ENABLE_BLURBEHIND */, GradientColor = tintAbgr };
-        var data = new CompositionData { Attribute = 19 /* WCA_ACCENT_POLICY */, Data = (nint)(&accent), SizeOfData = sizeof(AccentPolicy) };
-        SetWindowCompositionAttribute(hwnd, ref data);
+        SetAccent(hwnd, acrylic ? 4 /* ACCENT_ENABLE_ACRYLICBLURBEHIND */ : 3 /* ACCENT_ENABLE_BLURBEHIND */, tintAbgr);
         var corner = round ? DWM_WINDOW_CORNER_PREFERENCE.DWMWCP_ROUND : DWM_WINDOW_CORNER_PREFERENCE.DWMWCP_DONOTROUND;
         PInvoke.DwmSetWindowAttribute((HWND)hwnd, DWMWINDOWATTRIBUTE.DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(DWM_WINDOW_CORNER_PREFERENCE));
+    }
+
+    /// <summary>Sets the undocumented <c>SetWindowCompositionAttribute</c> accent state of a window.</summary>
+    internal static unsafe void SetAccent(nint hwnd, int state, uint tintAbgr)
+    {
+        var accent = new AccentPolicy { AccentState = state, GradientColor = tintAbgr };
+        var data = new CompositionData { Attribute = 19 /* WCA_ACCENT_POLICY */, Data = (nint)(&accent), SizeOfData = sizeof(AccentPolicy) };
+        SetWindowCompositionAttribute(hwnd, ref data);
     }
 
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
@@ -103,14 +106,13 @@ public static class SurfaceWindow
     public static void PlaceTopmost(nint hwnd, PixelRect bounds) =>
         PInvoke.SetWindowPos((HWND)hwnd, (HWND)(nint)(-1) /* HWND_TOPMOST */, bounds.Left, bounds.Top, bounds.Width, bounds.Height, SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE);
 
-    /// <summary>Clips the window to a rounded rectangle when the radius is larger than DWM can draw. Call after every resize.</summary>
-    public static void UpdateRegion(nint hwnd, PixelRect bounds, int cornerRadiusPx)
-    {
-        if (cornerRadiusPx <= MaxNativeCornerRadius)
-            return;
-        var region = PInvoke.CreateRoundRectRgn(0, 0, bounds.Width + 1, bounds.Height + 1, cornerRadiusPx * 2, cornerRadiusPx * 2);
-        PInvoke.SetWindowRgn((HWND)hwnd, region, true); // the system owns the region from now on
-    }
+    /// <summary>
+    /// Turns off DWM's window shadow: a forced-active bar would otherwise cast a dark band about 60 px deep onto the
+    /// desktop. DWM draws no shadow around a window that has a region; this one is larger than any window, so it clips
+    /// nothing and never needs updating when the window is resized.
+    /// </summary>
+    public static void RemoveShadow(nint hwnd) =>
+        PInvoke.SetWindowRgn((HWND)hwnd, PInvoke.CreateRectRgn(0, 0, short.MaxValue, short.MaxValue), true); // the system owns the region
 
     /// <summary>Call for every window message. Returns true (with <paramref name="result"/>) when handled.</summary>
     public static bool WndProc(nint hwnd, int msg, nint wParam, nint lParam, out nint result)

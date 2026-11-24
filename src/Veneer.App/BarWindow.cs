@@ -44,7 +44,22 @@ sealed class BarWindow : Window
         Width = rect.Width / scale;
         Height = rect.Height / scale;
 
-        Content = BuildContent(theme, bar);
+        // WPF lays out a captioned window at least as large as the system minimum it saw at creation (SM_CYMINTRACK,
+        // 34 px here), whatever the real window size: pin the content to the bar's thickness, or a thin bar's modules
+        // sit off-center and its edge line falls outside the window. The length still follows the window.
+        var content = BuildContent(theme, bar);
+        if (bar.Edge is Edge.Top or Edge.Bottom)
+        {
+            content.Height = Height;
+            content.VerticalAlignment = VerticalAlignment.Top;
+        }
+        else
+        {
+            content.Width = Width;
+            content.HorizontalAlignment = HorizontalAlignment.Left;
+        }
+
+        Content = content;
         SourceInitialized += (_, _) =>
         {
             var hwnd = new WindowInteropHelper(this).Handle;
@@ -52,6 +67,7 @@ sealed class BarWindow : Window
             source.CompositionTarget.BackgroundColor = Colors.Transparent;
             source.AddHook(Hook);
             SurfaceWindow.Apply(hwnd, bar.Style.Blur, cornerRadiusPx: 0);
+            SurfaceWindow.RemoveShadow(hwnd);
             appBar = new AppBar(hwnd);
             appBar.FullScreenChanged += full => FullScreenChanged?.Invoke(full);
         };

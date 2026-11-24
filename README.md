@@ -38,7 +38,7 @@ polished macOS-like desktop out of the box. Profiles, the settings window and th
 |---|---|
 | Repository, CI (build + tests on `windows-latest`) | ✅ Done |
 | Code review of the theme engine, bars and dock (2026-11-24) | ✅ Done: findings fixed and tested ([details](docs/decisions.md#2026-11-24-code-review-of-phases-24)) |
-| Real blur behind bars | ✅ In the app: DWM acrylic on a non-activating window ([details](docs/decisions.md#blurred-overlay-windows-spikesoverlayblur)). Rounded corners above 8 px (dock) wait for Phase 4 |
+| Real blur behind bars | ✅ In the app: DWM acrylic on a non-activating window ([details](docs/decisions.md#blurred-overlay-windows-spikesoverlayblur)). Rounded dock glass at any radius |
 | Bars on any edge, several at once, with reserved screen space | ✅ In the app, built from the theme and rebuilt on hot reload |
 | Hide the taskbar, always bring it back | ✅ In the app: normal exit, unhandled exception, crash or kill (a watchdog outside Veneer's process tree, so "End process tree" is covered too), next start, Explorer restart, and a RunOnce entry for power loss. One Veneer at a time. Logoff is wired but untested |
 | Theme engine: parse, validate, tokens, light/dark variants | ✅ Done, unit-tested |

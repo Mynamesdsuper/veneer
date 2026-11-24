@@ -29,6 +29,7 @@ sealed class DockWindow : Window
     readonly DockIconsWindow icons;
     EdgeTrigger? trigger;
     AppBar? appBar;
+    GlassPlate? plate;
     nint hwnd;
     string signature = "";
     bool revealed = true;
@@ -46,27 +47,32 @@ sealed class DockWindow : Window
         this.overridesPath = overridesPath;
         Pinned = dock.DefaultPinned.ToList();
         Title = $"Veneer {dock.Id}";
-        WindowStyle = WindowStyle.SingleBorderWindow; // WS_CAPTION for the blurred backdrop, see SurfaceWindow
         ResizeMode = ResizeMode.NoResize;
         ShowInTaskbar = false;
         ShowActivated = false;
         Topmost = true;
         Background = Brushes.Transparent;
-        WindowChrome.SetWindowChrome(this, new WindowChrome
+        if (Layered)
         {
-            GlassFrameThickness = new Thickness(-1),
-            CaptionHeight = 0,
-            ResizeBorderThickness = new Thickness(0),
-            UseAeroCaptionButtons = false,
-        });
+            // Per-pixel transparent, so the corners outside the rounded plate stay empty.
+            WindowStyle = WindowStyle.None;
+            AllowsTransparency = true;
+        }
+        else
+        {
+            WindowStyle = WindowStyle.SingleBorderWindow; // WS_CAPTION for the blurred backdrop, see SurfaceWindow
+            WindowChrome.SetWindowChrome(this, new WindowChrome
+            {
+                GlassFrameThickness = new Thickness(-1),
+                CaptionHeight = 0,
+                ResizeBorderThickness = new Thickness(0),
+                UseAeroCaptionButtons = false,
+            });
+        }
 
-        Content = new System.Windows.Controls.Border
-        {
-            Background = ThemeVisuals.Brush(dock.Style.Background),
-            BorderBrush = ThemeVisuals.BorderBrush(dock.Style.Border, dock.Style.BorderHighlight),
-            BorderThickness = new Thickness(dock.Style.Border is null && dock.Style.BorderHighlight is null ? 0 : 1),
-            CornerRadius = new CornerRadius(dock.CornerRadius),
-        };
+        // With a GlassPlate the plate is drawn by composition; this almost invisible shape only keeps the plate
+        // clickable (a per-pixel transparent window lets clicks through where it is fully transparent).
+        Content = Layered && dock.Style.Blur ? HitShape() : Plate();
         icons = new DockIconsWindow(this);
 
         debounce.Tick += (_, _) =>
@@ -80,7 +86,27 @@ sealed class DockWindow : Window
             var source = HwndSource.FromHwnd(hwnd);
             source.CompositionTarget.BackgroundColor = Colors.Transparent;
             source.AddHook(Hook);
-            SurfaceWindow.Apply(hwnd, dock.Style.Blur, CornerRadiusPx);
+            if (Layered)
+                SurfaceWindow.MakeOverlay(hwnd);
+            else
+                SurfaceWindow.Apply(hwnd, dock.Style.Blur, CornerRadiusPx);
+
+            if (Layered && dock.Style.Blur)
+            {
+                try
+                {
+                    var style = dock.Style;
+                    plate = new GlassPlate(hwnd, CornerRadiusPx, style.Background, style.Border, style.BorderHighlight, SurfaceLayout.ToPhysical(1, dpi));
+                }
+                catch (Exception e)
+                {
+                    // Keep a working dock: the WPF plate over a plain blur, with square blurred corners.
+                    Log.Write($"dock: rounded glass not available, using the plain blur: {e.Message}");
+                    Content = Plate();
+                    SurfaceWindow.ApplyPopupBlur(hwnd, 0, round: false, acrylic: false);
+                }
+            }
+
             appBar = new AppBar(hwnd);
             appBar.FullScreenChanged += full => FullScreenChanged?.Invoke(full);
             // An owned window always stays above its owner: the icons can never fall behind the plate, even when
@@ -114,6 +140,24 @@ sealed class DockWindow : Window
     public event Action<bool>? FullScreenChanged;
 
     int CornerRadiusPx => SurfaceLayout.ToPhysical(dock.CornerRadius, dpi);
+
+    // Above the radius DWM can round, DWM's backdrop and frame would fill the square corners: the window is per-pixel
+    // transparent instead, and the plate is drawn by WPF, or by a GlassPlate when it is blurred.
+    bool Layered => CornerRadiusPx > SurfaceWindow.MaxNativeCornerRadius;
+
+    System.Windows.Controls.Border Plate() => new()
+    {
+        Background = ThemeVisuals.Brush(dock.Style.Background),
+        BorderBrush = ThemeVisuals.BorderBrush(dock.Style.Border, dock.Style.BorderHighlight),
+        BorderThickness = new Thickness(dock.Style.Border is null && dock.Style.BorderHighlight is null ? 0 : 1),
+        CornerRadius = new CornerRadius(dock.CornerRadius),
+    };
+
+    System.Windows.Controls.Border HitShape() => new()
+    {
+        Background = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0)),
+        CornerRadius = new CornerRadius(dock.CornerRadius),
+    };
 
     int Thickness => SurfaceLayout.ToPhysical(dock.IconSize + 2 * dock.Padding, dpi);
 
@@ -184,7 +228,7 @@ sealed class DockWindow : Window
         };
         // An auto-hidden dock never reserves space: it covers windows only while shown.
         appBar.Place(dock.Edge, desired, dock.ReserveSpace && !dock.AutoHide, granted => DockModel.Place(granted, dock.Edge, length, Thickness, margin));
-        SurfaceWindow.UpdateRegion(hwnd, appBar.Bounds, CornerRadiusPx);
+        plate?.Resize(appBar.Bounds.Width, appBar.Bounds.Height);
         basePlate = appBar.Bounds;
         icons.Place(appBar.Bounds, area);
         if (dock.AutoHide)
@@ -211,7 +255,7 @@ sealed class DockWindow : Window
         if (rect == appBar.Bounds)
             return;
         appBar.MoveWindow(rect);
-        SurfaceWindow.UpdateRegion(hwnd, rect, CornerRadiusPx);
+        plate?.Resize(rect.Width, rect.Height);
     }
 
     /// <summary>Plate and icons are shown unless a full-screen app is in front or the auto-hidden dock is tucked away.</summary>

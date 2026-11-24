@@ -15,7 +15,7 @@ SendMessage
 DwmSetWindowAttribute
 DwmExtendFrameIntoClientArea
 SetWindowRgn
-CreateRoundRectRgn
+CreateRectRgn
 MonitorFromPoint
 GetMonitorInfo
 GetDpiForMonitor
