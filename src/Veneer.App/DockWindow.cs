@@ -1,9 +1,7 @@
+using System.Text.Json.Nodes;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 using System.Windows.Shell;
 using System.Windows.Threading;
 using Veneer.Core;
@@ -15,8 +13,9 @@ using Veneer.Interop;
 namespace Veneer.App;
 
 /// <summary>
-/// The dock: pinned and running apps on a blurred plate, centered on its edge. The item list is rebuilt
-/// (debounced) when app windows change; the window resizes to fit and keeps its reserved strip.
+/// The dock, as two windows: this one is the blurred plate (it also reserves the screen strip), and a transparent
+/// <see cref="DockIconsWindow"/> on top draws the icons. Magnified icons grow out of the plate, and the empty parts
+/// of the icons window let clicks through to whatever is behind.
 /// </summary>
 sealed class DockWindow : Window
 {
@@ -25,20 +24,24 @@ sealed class DockWindow : Window
     readonly PixelRect area;
     readonly uint dpi;
     readonly AppWindowTracker tracker;
-    readonly StackPanel items;
+    readonly string? overridesPath;
     readonly DispatcherTimer debounce = new() { Interval = TimeSpan.FromMilliseconds(150) };
+    readonly DockIconsWindow icons;
+    EdgeTrigger? trigger;
     AppBar? appBar;
     nint hwnd;
     string signature = "";
-    List<DockItem> current = [];
+    bool revealed = true;
 
-    public DockWindow(Theme theme, DockSurface dock, PixelRect area, uint dpi, AppWindowTracker tracker)
+    public DockWindow(Theme theme, DockSurface dock, PixelRect area, uint dpi, AppWindowTracker tracker, string? overridesPath)
     {
         this.theme = theme;
         this.dock = dock;
         this.area = area;
         this.dpi = dpi;
         this.tracker = tracker;
+        this.overridesPath = overridesPath;
+        Pinned = dock.DefaultPinned.ToList();
         Title = $"Veneer {dock.Id}";
         WindowStyle = WindowStyle.SingleBorderWindow; // WS_CAPTION for the blurred backdrop, see SurfaceWindow
         ResizeMode = ResizeMode.NoResize;
@@ -54,24 +57,14 @@ sealed class DockWindow : Window
             UseAeroCaptionButtons = false,
         });
 
-        bool horizontal = dock.Edge == Edge.Bottom;
-        items = new StackPanel { Orientation = horizontal ? Orientation.Horizontal : Orientation.Vertical };
-        var plate = new Border
+        Content = new System.Windows.Controls.Border
         {
             Background = ThemeVisuals.Brush(dock.Style.Background),
             BorderBrush = ThemeVisuals.Brush(dock.Style.Border),
             BorderThickness = new Thickness(dock.Style.Border is null ? 0 : 1),
             CornerRadius = new CornerRadius(dock.CornerRadius),
-            // No padding on the screen-edge side: each icon cell includes that strip and draws its indicator there.
-            Padding = dock.Edge switch
-            {
-                Edge.Left => new Thickness(0, dock.Padding, dock.Padding, dock.Padding),
-                Edge.Right => new Thickness(dock.Padding, dock.Padding, 0, dock.Padding),
-                _ => new Thickness(dock.Padding, dock.Padding, dock.Padding, 0),
-            },
-            Child = items,
         };
-        Content = plate;
+        icons = new DockIconsWindow(this);
 
         debounce.Tick += (_, _) =>
         {
@@ -86,34 +79,60 @@ sealed class DockWindow : Window
             source.AddHook(Hook);
             SurfaceWindow.Apply(hwnd, dock.Style.Blur, CornerRadiusPx);
             appBar = new AppBar(hwnd);
+            appBar.FullScreenChanged += full => FullScreenChanged?.Invoke(full);
+            // An owned window always stays above its owner: the icons can never fall behind the plate, even when
+            // the shell moves the plate (which puts it back on top of the topmost band).
+            icons.Owner = this;
         };
         tracker.Changed += OnWindowsChanged;
-        Closed += (_, _) => tracker.Changed -= OnWindowsChanged;
+        Closed += (_, _) =>
+        {
+            tracker.Changed -= OnWindowsChanged;
+            icons.Close();
+            trigger?.Close();
+        };
     }
+
+    public Theme Theme => theme;
+
+    public DockSurface Dock => dock;
+
+    public uint Dpi => dpi;
+
+    /// <summary>The pinned list in use: the theme's, with the user's changes from the overrides file.</summary>
+    public List<string> Pinned { get; private set; }
+
+    public List<DockItem> Items { get; private set; } = [];
+
+    public event Action<bool>? FullScreenChanged;
 
     int CornerRadiusPx => SurfaceLayout.ToPhysical(dock.CornerRadius, dpi);
 
     int Thickness => SurfaceLayout.ToPhysical(dock.IconSize + 2 * dock.Padding, dpi);
 
+    /// <summary>Length of a separator cell along the dock, in DIPs.</summary>
+    public double SeparatorLength => 2 * dock.Style.Spacing + 1;
+
+    /// <summary>Base (unmagnified) cell sizes along the dock, in DIPs.</summary>
+    public List<(double Size, bool Scales)> Cells(IEnumerable<DockItem> items) =>
+        items.Select(i => i.IsSeparator ? (SeparatorLength, false) : ((double)dock.IconSize, true)).ToList();
+
     void OnWindowsChanged() => debounce.Start(); // restarts the countdown on every event of a burst
 
     /// <summary>Builds the items for the current windows and places the dock. Call once after Show().</summary>
-    public void Refresh()
+    public void Refresh(bool force = false)
     {
-        var running = Running();
-        var list = DockModel.Build(dock.DefaultPinned, running);
+        var list = DockModel.Build(Pinned, Running(), dock.SeparateRunning);
         string sig = string.Join('|', list.Select(i => $"{i.Key}:{i.IsRunning}"));
-        current = list;
-        if (sig == signature)
-            return; // same icons, only window handles changed
+        Items = list;
+        if (sig == signature && !force)
+            return; // same icons; the items now carry the new window handles
         signature = sig;
 #if DEBUG
         Log.Write($"dock: {sig}");
 #endif
-        items.Children.Clear();
-        foreach (var item in list)
-            items.Children.Add(new DockIcon(this, item));
         Place();
+        icons.Rebuild();
     }
 
     // Running apps grouped by AUMID (or exe), in the order their first window appears; windows most recent first.
@@ -138,9 +157,9 @@ sealed class DockWindow : Window
     {
         if (appBar is null)
             return;
-        int count = items.Children.Count;
-        double lengthDips = count * dock.IconSize + Math.Max(0, count - 1) * dock.Style.Spacing + 2 * dock.Padding;
-        int length = SurfaceLayout.ToPhysical(Math.Max(lengthDips, dock.IconSize + 2 * dock.Padding), dpi);
+        var cells = Cells(Items);
+        double row = cells.Sum(c => c.Size) + Math.Max(0, cells.Count - 1) * dock.Style.Spacing;
+        int length = SurfaceLayout.ToPhysical(Math.Max(row, dock.IconSize) + 2 * dock.Padding, dpi);
         int margin = SurfaceLayout.ToPhysical(dock.Margin, dpi);
         int strip = Thickness + margin;
         var desired = dock.Edge switch
@@ -149,8 +168,42 @@ sealed class DockWindow : Window
             Edge.Right => area with { Left = area.Right - strip },
             _ => area with { Top = area.Bottom - strip },
         };
-        appBar.Place(dock.Edge, desired, dock.ReserveSpace, granted => DockModel.Place(granted, dock.Edge, length, Thickness, margin));
+        // An auto-hidden dock never reserves space: it covers windows only while shown.
+        appBar.Place(dock.Edge, desired, dock.ReserveSpace && !dock.AutoHide, granted => DockModel.Place(granted, dock.Edge, length, Thickness, margin));
         SurfaceWindow.UpdateRegion(hwnd, appBar.Bounds, CornerRadiusPx);
+        icons.Place(appBar.Bounds, area);
+        if (dock.AutoHide)
+        {
+            trigger ??= new EdgeTrigger(this);
+            trigger.Place(appBar.Bounds, area, dock.Edge);
+        }
+    }
+
+    /// <summary>Auto-hide: shows or hides the plate and the icons. The edge trigger stays.</summary>
+    public void SetRevealed(bool show)
+    {
+        if (show == revealed || !dock.AutoHide)
+            return;
+        revealed = show;
+        if (show)
+        {
+            Show();
+            icons.Show();
+            Place();
+        }
+        else
+        {
+            Hide();
+            icons.Hide();
+        }
+    }
+
+    /// <summary>Called once the dock is shown: an auto-hidden dock starts hidden.</summary>
+    public void Start()
+    {
+        Refresh(force: true);
+        if (dock.AutoHide)
+            SetRevealed(false);
     }
 
     public void RemoveAppBar() => appBar?.Remove();
@@ -170,201 +223,134 @@ sealed class DockWindow : Window
         return 0;
     }
 
-    /// <summary>Debug self-test: the first icon whose key contains <paramref name="text"/>.</summary>
-    DockIcon? Find(string text) =>
-        items.Children.OfType<DockIcon>().FirstOrDefault(i => i.Item.Key.Contains(text, StringComparison.OrdinalIgnoreCase));
+    // ----- actions on items -----
 
-    public void ClickItem(string text) => Find(text)?.Click();
-
-    /// <summary>Debug self-test: closes the windows of the app behind an icon (WM_CLOSE, one window at a time).</summary>
-    public void CloseItem(string text)
+    public void Activate(DockItem item)
     {
-        foreach (nint w in Find(text)?.Item.Running?.Windows ?? [])
+        if (item.Running is { Windows.Count: > 0 } app)
+        {
+            Log.Write($"dock: activate {item.Key}");
+            WindowTools.Activate(app.Windows[0]);
+        }
+        else if (item.Pinned is { } entry && !item.IsSeparator)
+        {
+            Log.Write($"dock: launch {entry}");
+            SystemActions.Launch(entry, DockModel.IsAumid(entry));
+        }
+    }
+
+    public void CloseWindows(DockItem item)
+    {
+        foreach (nint w in item.Running?.Windows ?? [])
             WindowTools.Close(w);
     }
 
-    /// <summary>One app in the dock: icon plus running indicator. Click activates or launches.</summary>
-    sealed class DockIcon : Grid
+    public void KeepInDock(DockItem item)
     {
-        readonly DockWindow owner;
-        readonly DockItem item;
-
-        public DockItem Item => item;
-
-        public DockIcon(DockWindow owner, DockItem item)
-        {
-            this.owner = owner;
-            this.item = item;
-            var dock = owner.dock;
-            bool bottom = dock.Edge == Edge.Bottom;
-            Width = dock.IconSize + (bottom ? 0 : dock.Padding);
-            Height = dock.IconSize + (bottom ? dock.Padding : 0);
-            Background = Brushes.Transparent;
-            if (owner.items.Children.Count > 0)
-            {
-                Margin = dock.Edge == Edge.Bottom ? new Thickness(dock.Style.Spacing, 0, 0, 0) : new Thickness(0, dock.Style.Spacing, 0, 0);
-            }
-
-            Children.Add(new Image
-            {
-                Source = Icons.For(owner.theme, item, owner.dpi),
-                Stretch = Stretch.Uniform,
-                Width = dock.IconSize,
-                Height = dock.IconSize,
-                HorizontalAlignment = dock.Edge switch { Edge.Left => HorizontalAlignment.Right, Edge.Right => HorizontalAlignment.Left, _ => HorizontalAlignment.Center },
-                VerticalAlignment = bottom ? VerticalAlignment.Top : VerticalAlignment.Center,
-            });
-            // 256 px icons shown at 48: the default bilinear filter makes jagged edges.
-            RenderOptions.SetBitmapScalingMode(this, BitmapScalingMode.HighQuality);
-            if (item.IsRunning)
-                Children.Add(Indicator(dock));
-            ToolTip = Icons.Name(item);
-            MouseLeftButtonUp += (_, e) =>
-            {
-                e.Handled = true;
-                Click();
-            };
-        }
-
-        // Centered in the cell's strip between the icon and the screen edge.
-        static FrameworkElement Indicator(DockSurface dock)
-        {
-            var ind = dock.RunningIndicator;
-            var brush = ThemeVisuals.Brush(ind.Color ?? dock.Style.Foreground) ?? Brushes.Black;
-            FrameworkElement shape = ind.Shape == IndicatorShape.Line
-                ? new Rectangle { Fill = brush, Width = dock.Edge == Edge.Bottom ? dock.IconSize * 0.4 : ind.Size, Height = dock.Edge == Edge.Bottom ? ind.Size : dock.IconSize * 0.4, RadiusX = ind.Size / 2, RadiusY = ind.Size / 2 }
-                : new Ellipse { Fill = brush, Width = ind.Size, Height = ind.Size };
-            double gap = Math.Max(0, (dock.Padding - (dock.Edge == Edge.Bottom ? shape.Height : shape.Width)) / 2);
-            (shape.HorizontalAlignment, shape.VerticalAlignment, shape.Margin) = dock.Edge switch
-            {
-                Edge.Left => (HorizontalAlignment.Left, VerticalAlignment.Center, new Thickness(gap, 0, 0, 0)),
-                Edge.Right => (HorizontalAlignment.Right, VerticalAlignment.Center, new Thickness(0, 0, gap, 0)),
-                _ => (HorizontalAlignment.Center, VerticalAlignment.Bottom, new Thickness(0, 0, 0, gap)),
-            };
-            shape.IsHitTestVisible = false;
-            return shape;
-        }
-
-        public void Click()
-        {
-            if (item.Running is { Windows.Count: > 0 } app)
-            {
-                Log.Write($"dock: activate {item.Key}");
-                WindowTools.Activate(app.Windows[0]);
-            }
-            else if (item.Pinned is { } entry)
-            {
-                Log.Write($"dock: launch {entry}");
-                SystemActions.Launch(entry, DockModel.IsAumid(entry));
-            }
-        }
+        if (item.Running is { } app && DockModel.EntryFor(app) is { } entry)
+            SavePinned(DockModel.Pin(Pinned, entry));
     }
+
+    public void RemoveFromDock(DockItem item)
+    {
+        if (item.Pinned is { } entry)
+            SavePinned(DockModel.Unpin(Pinned, entry));
+    }
+
+    public void MovePinned(int from, int to) => SavePinned(DockModel.Move(Pinned, from, to));
+
+    /// <summary>
+    /// Shows the new list at once and writes it to the user's overrides, so it survives theme switches. The theme
+    /// then reloads from the overrides file by itself.
+    /// </summary>
+    void SavePinned(List<string> list)
+    {
+        Pinned = list;
+        Refresh(force: true);
+        if (overridesPath is null)
+        {
+            Log.Write("dock: pinned apps not saved (no theme folder in use)");
+            return;
+        }
+
+        var json = new JsonArray(list.Select(p => (JsonNode?)JsonValue.Create(p)).ToArray());
+        if (!OverridesFile.TrySetSurfaceValue(overridesPath, dock.Id, "defaultPinned", json, out string? error))
+            Log.Write($"dock: pinned apps not saved: {error}");
+    }
+
+    // ----- debug self-test hooks -----
+
+    int Find(string text) => Items.FindIndex(i => i.Key.Contains(text, StringComparison.OrdinalIgnoreCase));
+
+    public void ClickItem(string text)
+    {
+        if (Find(text) is >= 0 and var i)
+            Activate(Items[i]);
+    }
+
+    public void CloseItem(string text)
+    {
+        if (Find(text) is >= 0 and var i)
+            CloseWindows(Items[i]);
+    }
+
+    public void PinItem(string text)
+    {
+        if (Find(text) is >= 0 and var i)
+            KeepInDock(Items[i]);
+    }
+
+    public void UnpinItem(string text)
+    {
+        if (Find(text) is >= 0 and var i)
+            RemoveFromDock(Items[i]);
+    }
+
+    public void OpenMenu(string text)
+    {
+        if (Find(text) is >= 0 and var i)
+            icons.OpenMenu(i);
+    }
+
+    public void Sweep() => icons.Sweep();
+
+    public void Hover(double? fraction) => icons.Hover(fraction);
+
+    public bool Revealed => revealed;
 }
 
-/// <summary>Dock icons: theme images first (iconOverrides, then iconFolder), then the shell's icon. Cached per run.</summary>
-static class Icons
+/// <summary>Auto-hide: a thin, almost invisible strip on the screen edge that brings the dock back on hover.</summary>
+sealed class EdgeTrigger : Window
 {
-    static readonly Dictionary<string, ImageSource?> Cache = [];
-    static readonly Dictionary<string, string> Names = [];
+    nint hwnd;
 
-    public static ImageSource? For(Theme theme, DockItem item, uint dpi)
+    public EdgeTrigger(DockWindow dock)
     {
-        string key = $"{theme.Id}|{item.Key}";
-        if (Cache.TryGetValue(key, out var cached))
-            return cached;
-        var image = FromTheme(theme, item)
-            ?? (Aumid(item) is { } aumid && ShellItems.PackagedIcon(aumid) is { } packaged ? Load(packaged) : null)
-            ?? FromShell(item, SurfaceLayout.ToPhysical(256, Math.Max(dpi, 96u)));
-        Cache[key] = image;
-        return image;
-    }
-
-    static string? Exe(DockItem item) =>
-        item.Running?.ExePath is { } path ? System.IO.Path.GetFileName(path)
-        : item.Pinned is { } p && p.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? System.IO.Path.GetFileName(p)
-        : null;
-
-    static string? Aumid(DockItem item) =>
-        item.Running?.Aumid ?? (item.Pinned is { } p ? (DockModel.IsAumid(p) ? p : DockModel.AumidForUri(p)) : null);
-
-    static ImageSource? FromTheme(Theme theme, DockItem item)
-    {
-        string? exe = Exe(item)?.ToLowerInvariant();
-        string? aumid = Aumid(item);
-        string? path = null;
-        if (aumid is not null)
-            path = theme.IconOverrides.FirstOrDefault(kv => string.Equals(kv.Key, "aumid:" + aumid, StringComparison.OrdinalIgnoreCase)).Value;
-        if (path is null && exe is not null)
-            path = theme.IconOverrides.FirstOrDefault(kv => string.Equals(kv.Key, "exe:" + exe, StringComparison.OrdinalIgnoreCase)).Value;
-        if (path is null && exe is not null && theme.IconFolder is { } folder)
+        WindowStyle = WindowStyle.None;
+        AllowsTransparency = true;
+        Background = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0)); // alpha 1: invisible but receives the mouse
+        ShowInTaskbar = false;
+        ShowActivated = false;
+        Topmost = true;
+        SourceInitialized += (_, _) =>
         {
-            string candidate = System.IO.Path.Combine(folder, System.IO.Path.GetFileNameWithoutExtension(exe) + ".png");
-            // The folder was checked when the theme loaded; still refuse links that appeared since.
-            if (System.IO.File.Exists(candidate) && !AssetPaths.IsLink(candidate))
-                path = candidate;
-        }
-
-        return path is null ? null : Load(path);
+            hwnd = new WindowInteropHelper(this).Handle;
+            SurfaceWindow.MakeOverlay(hwnd);
+        };
+        MouseEnter += (_, _) => dock.SetRevealed(true);
+        Show();
     }
 
-    static ImageSource? Load(string path)
+    /// <summary>A 2 px strip on the screen edge, as long as the dock.</summary>
+    public void Place(PixelRect plate, PixelRect area, Edge edge)
     {
-        try
+        const int Px = 2;
+        var r = edge switch
         {
-            var bitmap = new BitmapImage();
-            bitmap.BeginInit();
-            bitmap.CacheOption = BitmapCacheOption.OnLoad; // do not keep the theme file open
-            bitmap.UriSource = new Uri(path);
-            bitmap.EndInit();
-            bitmap.Freeze();
-            return bitmap;
-        }
-        catch (Exception e) when (e is System.IO.IOException or NotSupportedException or System.IO.FileFormatException)
-        {
-            Log.Write($"dock icon {path}: {e.Message}");
-            return null;
-        }
-    }
-
-    static string? ParsingName(DockItem item) =>
-        Aumid(item) is { } aumid ? ShellItems.ParsingName(aumid, isAumid: true)
-        : item.Running?.ExePath ?? (item.Pinned is { } p ? ShellItems.ParsingName(p, isAumid: false) : null);
-
-    static ImageSource? FromShell(DockItem item, int size)
-    {
-        // Some apps set an AppUserModelID that is not in the Apps folder (Steam): fall back to the exe.
-        var icon = (ParsingName(item) is { } name ? ShellItems.Icon(name, size) : null)
-            ?? (item.Running?.ExePath is { } exe ? ShellItems.Icon(exe, size) : null);
-        if (icon is null)
-            return null;
-        var (pixels, width, height) = icon.Value;
-        var format = IsPremultiplied(pixels) ? PixelFormats.Pbgra32 : PixelFormats.Bgra32;
-        var bitmap = BitmapSource.Create(width, height, 96, 96, format, null, pixels, width * 4);
-        bitmap.Freeze();
-        return bitmap;
-    }
-
-    // The shell returns some icons premultiplied and some with straight alpha. In premultiplied data no color
-    // channel can exceed its alpha; one that does means straight alpha. Guessing wrong gives light fringes.
-    static bool IsPremultiplied(byte[] bgra)
-    {
-        for (int i = 0; i < bgra.Length; i += 4)
-        {
-            byte a = bgra[i + 3];
-            if (bgra[i] > a || bgra[i + 1] > a || bgra[i + 2] > a)
-                return false;
-        }
-
-        return true;
-    }
-
-    public static string Name(DockItem item)
-    {
-        if (Names.TryGetValue(item.Key, out string? name))
-            return name;
-        name = (ParsingName(item) is { } parsing ? ShellItems.DisplayName(parsing) : null)
-            ?? (item.Running?.ExePath is { } exe ? System.IO.Path.GetFileNameWithoutExtension(exe) : item.Pinned) ?? "";
-        Names[item.Key] = name;
-        return name;
+            Edge.Left => new PixelRect(area.Left, plate.Top, area.Left + Px, plate.Bottom),
+            Edge.Right => new PixelRect(area.Right - Px, plate.Top, area.Right, plate.Bottom),
+            _ => new PixelRect(plate.Left, area.Bottom - Px, plate.Right, area.Bottom),
+        };
+        SurfaceWindow.PlaceTopmost(hwnd, r);
     }
 }

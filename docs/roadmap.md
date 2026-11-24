@@ -19,8 +19,8 @@ Every phase ends with `dotnet build` and `dotnet test` green and one commit.
 - [Phase 0: technical spikes](#phase-0-technical-spikes): ✅ done
 - [Phase 2: theme engine and personalization layers](#phase-2-theme-engine-and-personalization-layers): ✅ done
 - [Phase 3: layout engine and bars](#phase-3-layout-engine-and-bars): ✅ done
-- [Phase 4: dock](#phase-4-dock): 🚧 4a done, 4b next
-- [Phase 5: Windows settings from themes](#phase-5-windows-settings-from-themes)
+- [Phase 4: dock](#phase-4-dock): ✅ done
+- [Phase 5: Windows settings from themes](#phase-5-windows-settings-from-themes): ⏳ next
 - [Phase 6: profiles, settings, tray, install, autostart](#phase-6-profiles-settings-tray-install-autostart)
 - [Phase 7: bundled themes](#phase-7-bundled-themes)
 - [Phase 8: polish and first release](#phase-8-polish-and-first-release)
@@ -156,15 +156,17 @@ Split in two steps: **3a** (foundations and the first visible bars) and **3b** (
 
 ## Phase 4: dock
 
-Split like Phase 3: **4a** (a working dock) is done; **4b** (magnification, menus, drag, persistence) is next.
+Split like Phase 3: **4a** (a working dock) and **4b** (magnification, menus, drag, persistence). Both are done.
 
 **Placement and look**
 - [x] Dock on the bottom, left or right edge, centered, with a margin from the edge; blurred plate, border,
       corner radius (window region above 8 px), padding, spacing. (4a)
 - [x] Reserved space, so maximized windows stay clear; the window resizes as apps open and close. (4a)
 - [x] Placed after the bars (a bottom bar and a bottom dock stack). (4a)
-- [ ] Separators. (4b)
-- [ ] Optional auto-hide. (4b)
+- [x] Separators: `"---"` in the pinned list, and one before the running apps (`separateRunning`). (4b)
+- [x] Optional auto-hide: an edge strip brings it back, it hides 0.6 s after the mouse leaves; no reserved space. (4b)
+- [x] Bars and dock step aside while a full-screen app is in front (`ABN_FULLSCREENAPP`; needs a surface that
+      reserves space). Not tested with a real full-screen app yet. (4b)
 
 **Apps and windows**
 - [x] Pinned apps: exe names (resolved like the Run dialog), full paths, AppUserModelIDs, `ms-settings:`. (4a)
@@ -184,13 +186,18 @@ Split like Phase 3: **4a** (a working dock) is done; **4b** (magnification, menu
 - [x] Theme `iconOverrides` and `iconFolder` take priority over system icons. (4a)
 
 **Interaction** (4b)
-- [ ] Hover magnification: intensity and radius from the theme; the math lives in `Veneer.Core` with tests.
-- [ ] Context menu: Keep in Dock, Remove, Close.
-- [ ] Drag to reorder.
-- [ ] Pinned apps and their order saved as user overrides, so they survive theme switches.
+- [x] Hover magnification: intensity and radius from the theme, cosine falloff, the point under the cursor stays
+      put; the math is in `Veneer.Core.Dock.Magnifier` with tests. Icons are drawn in a transparent window owned by
+      the plate, so they grow out of the dock and empty pixels let clicks through.
+- [x] Context menu: app name, Keep in Dock / Remove from Dock, Close (Close All Windows).
+- [x] Drag to reorder pinned apps. Logic tested in Core; the mouse gesture itself still needs a hand test.
+- [x] Pinned apps and their order saved to the user's overrides (`defaultPinned`), written safely (temp file and
+      swap, never over a file it cannot read); the theme hot-reloads from it.
 
 **Performance** (4b)
-- [ ] Smooth at 60 fps during magnification, measured.
+- [x] Magnification measured with a scripted sweep: 63 fps over 2 s, one 33 ms frame. Rendering work capped at
+      about 120 updates per second; no work at all while idle.
+- [ ] The plate keeps its size while icons grow (macOS widens it). Later, with the Phase 7 fidelity pass.
 
 ## Phase 5: Windows settings from themes
 

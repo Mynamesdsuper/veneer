@@ -50,6 +50,18 @@ public static class SurfaceWindow
         PInvoke.SendMessage(h, WM_NCACTIVATE, 1, 0);
     }
 
+    /// <summary>For a plain overlay window (no blur): hidden from Alt+Tab, never activated.</summary>
+    public static void MakeOverlay(nint hwnd)
+    {
+        var h = (HWND)hwnd;
+        PInvoke.SetWindowLongPtr(h, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE,
+            PInvoke.GetWindowLongPtr(h, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE) | (nint)(WINDOW_EX_STYLE.WS_EX_TOOLWINDOW | WINDOW_EX_STYLE.WS_EX_NOACTIVATE));
+    }
+
+    /// <summary>Moves a window and puts it at the top of the topmost band, without activating it.</summary>
+    public static void PlaceTopmost(nint hwnd, PixelRect bounds) =>
+        PInvoke.SetWindowPos((HWND)hwnd, (HWND)(nint)(-1) /* HWND_TOPMOST */, bounds.Left, bounds.Top, bounds.Width, bounds.Height, SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE);
+
     /// <summary>Clips the window to a rounded rectangle when the radius is larger than DWM can draw. Call after every resize.</summary>
     public static void UpdateRegion(nint hwnd, PixelRect bounds, int cornerRadiusPx)
     {

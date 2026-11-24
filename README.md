@@ -18,8 +18,8 @@ which components exist, which screen edge they sit on, which modules they show a
 ## Project status
 
 **Early. Not usable day to day yet.** The theme engine works and is tested. The app already draws blurred bars
-from a theme with all their modules and a working dock, hides the taskbar and always gives it back. Dock
-magnification and drag to reorder are next. The checklist of every feature is in [docs/roadmap.md](docs/roadmap.md).
+from a theme with all their modules and a dock with magnification, hides the taskbar and always gives it back.
+Applying wallpaper, accent color and light/dark from themes is next. The checklist of every feature is in [docs/roadmap.md](docs/roadmap.md).
 
 | What | Status |
 |---|---|
@@ -34,8 +34,8 @@ magnification and drag to reorder are next. The checklist of every feature is in
 | Hot reload, fallback to the previous theme on errors | ✅ Done, unit-tested |
 | Bar modules: logo menu, active app, clock, volume, network, battery, spacer | ✅ Done. Status icons use Windows glyphs unless the theme gives its own images |
 | Dock: pinned and running apps, live updates, system or theme icons, click to open or switch | ✅ Done |
-| Dock: hover magnification, context menu, drag to reorder, saved pinned apps | ⏳ Next (Phase 4b) |
-| Wallpaper, accent color, light/dark from the theme, with restore | ⏳ Planned (Phase 5) |
+| Dock: hover magnification, context menu, drag to reorder, separators, auto-hide, saved pinned apps | ✅ Done (drag still to be tried by hand) |
+| Wallpaper, accent color, light/dark from the theme, with restore | ⏳ Next (Phase 5) |
 | Profiles, settings window, tray icon, start with Windows | ⏳ Planned (Phase 6) |
 | Two bundled themes with very different layouts | ⏳ Planned (Phase 7) |
 | First release | ⏳ Planned (Phase 8) |
@@ -87,8 +87,8 @@ full multi-monitor support.
 | 0 | Technical spikes: blur, app bars, taskbar safety, accent API | ✅ |
 | 2 | Theme engine and personalization layers | ✅ |
 | 3 | Layout engine, bars and their modules | ✅ |
-| 4 | Dock | ⚠️ 4a done, 4b next |
-| 5 | Windows settings from themes (wallpaper, accent, light/dark) with restore | ⏳ |
+| 4 | Dock | ✅ |
+| 5 | Windows settings from themes (wallpaper, accent, light/dark) with restore | ⏳ next |
 | 6 | Profiles, settings window, tray, theme install, start with Windows | ⏳ |
 | 7 | Bundled themes | ⏳ |
 | 8 | Polish, documentation, first release | ⏳ |

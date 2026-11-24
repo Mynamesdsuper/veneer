@@ -15,7 +15,7 @@ namespace Veneer.Interop;
 public sealed class AppBar(nint hwnd)
 {
     const uint ABM_NEW = 0, ABM_REMOVE = 1, ABM_QUERYPOS = 2, ABM_SETPOS = 3, ABM_ACTIVATE = 6, ABM_WINDOWPOSCHANGED = 9;
-    const uint ABN_POSCHANGED = 1;
+    const uint ABN_POSCHANGED = 1, ABN_FULLSCREENAPP = 2;
     const int WM_ACTIVATE = 0x0006, WM_WINDOWPOSCHANGING = 0x0046, WM_WINDOWPOSCHANGED = 0x0047;
     static readonly uint CallbackMessage = PInvoke.RegisterWindowMessage("Veneer.AppBar");
 
@@ -31,6 +31,9 @@ public sealed class AppBar(nint hwnd)
 
     /// <summary>Raised when the shell moved the bar (another app bar appeared, the taskbar changed...).</summary>
     public event Action? Moved;
+
+    /// <summary>A full-screen app (game, video) opened (true) or closed (false). Only sent to registered app bars.</summary>
+    public event Action<bool>? FullScreenChanged;
 
     /// <param name="desired">The strip to reserve (or to occupy, without <paramref name="reserveSpace"/>).</param>
     /// <param name="fit">
@@ -132,6 +135,10 @@ public sealed class AppBar(nint hwnd)
             {
                 Reposition();
                 Moved?.Invoke();
+            }
+            else if ((uint)wParam == ABN_FULLSCREENAPP)
+            {
+                FullScreenChanged?.Invoke(lParam != 0);
             }
 
             return true;

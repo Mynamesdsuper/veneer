@@ -157,9 +157,9 @@ state names are ignored with a warning; missing states keep the glyph.
 | Field | Type | Notes |
 |-------|------|-------|
 | `iconSize` | integer 16–256 (`48`) | |
-| `magnification.enabled` | boolean (`true` when the object is present) | |
-| `magnification.maxScale` | number 1–3 (`1.5`) | |
-| `magnification.radius` | integer 0–10 (`3`) | How many neighbor icons grow. |
+| `magnification.enabled` | boolean (`true` when the object is present) | Icons grow under the mouse and spill out of the dock. |
+| `magnification.maxScale` | number 1–3 (`1.5`) | Scale of the icon right under the mouse. |
+| `magnification.radius` | integer 0–10 (`3`) | How many icons on each side grow (cosine falloff). |
 | `cornerRadius` | number 0–100 (`0`) | Up to 8 uses native Windows rounding; larger values clip the window (sharper edge, no shadow). |
 | `padding` | number 0–100 (`0`) | Space around the icons. The running indicator sits in the padding on the screen-edge side. |
 | `margin` | number 0–200 (`0`) | Distance from the screen edge. |
@@ -168,7 +168,8 @@ state names are ignored with a warning; missing states keep the glyph.
 | `runningIndicator.shape` | `dot` \| `line` (`dot`) | |
 | `runningIndicator.color` | color | |
 | `runningIndicator.size` | number 1–20 (`4`) | |
-| `autoHide` | boolean (`false`) | |
+| `autoHide` | boolean (`false`) | Hidden until the mouse touches the screen edge; hides again 0.6 s after it leaves. An auto-hidden dock never reserves space. |
+| `separateRunning` | boolean (`true`) | A separator between the pinned apps and the other running apps. |
 | `defaultPinned` | array of strings | See below. |
 
 Pinned entries can be:
@@ -177,7 +178,12 @@ Pinned entries can be:
 - an AppUserModelID for Store and packaged apps (`"Microsoft.WindowsTerminal_8wekyb3d8bbwe!App"`). Pin
   Store apps this way: a Store app's exe name does not match its running windows (`calc.exe` starts the
   Calculator app, which runs as `Microsoft.WindowsCalculator_8wekyb3d8bbwe!App`);
-- `ms-settings:`, for Settings.
+- `ms-settings:`, for Settings;
+- `"---"`, a separator line.
+
+The user can change the pinned apps from the dock (right click: Keep in Dock, Remove from Dock; drag to
+reorder). The new list goes to the user's overrides as `surfaces[id=<dock id>].defaultPinned`, so it survives
+theme updates, and other themes with a dock of the same `id` use it too.
 
 Running apps that are not pinned follow the pinned ones, in the order they were opened. Windows of the same
 app are grouped by AppUserModelID, or by exe when the app has none.

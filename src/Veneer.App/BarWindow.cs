@@ -53,6 +53,7 @@ sealed class BarWindow : Window
             source.AddHook(Hook);
             SurfaceWindow.Apply(hwnd, bar.Style.Blur, cornerRadiusPx: 0);
             appBar = new AppBar(hwnd);
+            appBar.FullScreenChanged += full => FullScreenChanged?.Invoke(full);
         };
     }
 
@@ -70,6 +71,8 @@ sealed class BarWindow : Window
 
         return null;
     }
+
+    public event Action<bool>? FullScreenChanged;
 
     public void Place() => appBar?.Place(bar.Edge, rect, bar.ReserveSpace);
 

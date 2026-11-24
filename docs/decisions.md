@@ -6,6 +6,25 @@ Record each decision with its date, context, the options considered and the outc
 
 C# + WPF on .NET 10 (LTS), Windows 11 only. .NET 8 reached end of support on 2026-11-10.
 
+## 2026-11-24: Dock magnification and editing (Phase 4b)
+
+- **Two windows.** The plate is the blurred DWM window (it reserves the strip). The icons live in a per-pixel
+  transparent window (`AllowsTransparency`) that is larger than the plate, so magnified icons can grow out of
+  it. Fully transparent pixels let clicks through to the windows behind. Over the plate the icons window has an
+  alpha-1 fill, so the gaps between icons still count as "inside the dock".
+- **The icons window is owned by the plate** (`Owner`). Windows keeps an owned window above its owner, even when
+  the shell moves the plate to the top of the topmost band. Without it the icons ended up behind the plate.
+- **Frame cap.** A per-pixel transparent WPF window gets `CompositionTarget.Rendering` callbacks far above the
+  display rate (over 1000 per second measured). The hover animation caps its work at about 120 updates per
+  second, and unsubscribes when it ends, so an idle dock costs nothing. Scripted sweep: 63 fps, slowest frame
+  33 ms.
+- **Pinned apps are user overrides** (`surfaces[id=<dock>].defaultPinned`), written with `OverridesFile`: it keeps
+  the rest of the file, writes a temporary file and swaps it in, and never overwrites a file it cannot parse.
+  The theme then hot-reloads.
+- **A pinned running app is stored by AppUserModelID when it has one**, otherwise by full exe path.
+- **Full screen:** bars and dock hide on `ABN_FULLSCREENAPP`. The shell only sends it to registered app bars, so
+  at least one surface must reserve space.
+
 ## 2026-11-24: Dock (Phase 4a)
 
 - **Grouping key:** AppUserModelID (window property first, then the packaged process), else the exe path. This

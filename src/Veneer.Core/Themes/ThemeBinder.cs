@@ -148,7 +148,8 @@ internal sealed partial class ThemeBinder(string root, List<Diagnostic> diagnost
             Bool(s, "autoHide", p) ?? false,
             StringList(s, "defaultPinned", p),
             Num(s, "margin", p, 0, 200) ?? 0,
-            Bool(s, "reserveSpace", p) ?? true);
+            Bool(s, "reserveSpace", p) ?? true,
+            Bool(s, "separateRunning", p) ?? true);
     }
 
     List<ModuleSpec> Modules(JsonObject s, string key, string p)

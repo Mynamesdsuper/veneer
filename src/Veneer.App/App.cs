@@ -46,7 +46,11 @@ sealed class App : Application
 
         themes.Loaded += r => Dispatcher.BeginInvoke(() => OnThemeLoaded(r));
         if (options.Theme is not null)
-            themes.Apply(options.Theme, options.Variant, options.Overrides);
+        {
+            // The folder must exist so the overrides file is watched even before it is first written.
+            Directory.CreateDirectory(Path.GetDirectoryName(OverridesPath)!);
+            themes.Apply(options.Theme, options.Variant, OverridesPath);
+        }
 
         if (!options.KeepTaskbar)
         {
@@ -102,6 +106,7 @@ sealed class App : Application
         foreach (var surface in barSurfaces)
         {
             var window = new BarWindow(theme, surface, rects[surface.Id], monitor.Dpi);
+            window.FullScreenChanged += OnFullScreenChanged;
             window.Show();
             window.Place();
             bars.Add(window);
@@ -111,9 +116,10 @@ sealed class App : Application
         foreach (var surface in theme.Surfaces.OfType<DockSurface>())
         {
             appWindows ??= new AppWindowTracker();
-            var window = new DockWindow(theme, surface, remaining, monitor.Dpi, appWindows);
+            var window = new DockWindow(theme, surface, remaining, monitor.Dpi, appWindows, options.Theme is null ? null : OverridesPath);
+            window.FullScreenChanged += OnFullScreenChanged;
             window.Show();
-            window.Refresh();
+            window.Start();
             docks.Add(window);
         }
 
@@ -187,9 +193,18 @@ sealed class App : Application
         }
     }
 
-    public void ClickDockItem(string key) => docks.FirstOrDefault()?.ClickItem(key);
+    public DockWindow? FirstDock => docks.FirstOrDefault();
 
-    public void CloseDockItem(string key) => docks.FirstOrDefault()?.CloseItem(key);
+    /// <summary>The user's overrides: --overrides, or the default profile's file until profiles exist (Phase 6).</summary>
+    string OverridesPath => options.Overrides ?? Path.Combine(AppPaths.Profiles, "default", "overrides.json");
+
+    // A full-screen app (game, video) is in front: get out of its way, and come back when it closes.
+    void OnFullScreenChanged(bool fullScreen)
+    {
+        Log.Write($"full-screen app: {fullScreen}");
+        foreach (Window w in bars.Cast<Window>().Concat(docks))
+            w.Visibility = fullScreen ? Visibility.Hidden : Visibility.Visible;
+    }
 
     public void OpenLogoMenu() => bars.Select(b => b.FindModule<LogoMenuModule>()).FirstOrDefault(m => m is not null)?.Open();
 

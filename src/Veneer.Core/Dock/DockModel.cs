@@ -6,14 +6,19 @@ namespace Veneer.Core.Dock;
 /// <summary>A running app as the dock sees it: its windows grouped by AppUserModelID, or by exe when it has none.</summary>
 public sealed record RunningApp(string Key, string? Aumid, string? ExePath, IReadOnlyList<nint> Windows);
 
-/// <summary>One dock icon: a pinned entry, a running app, or both.</summary>
+/// <summary>One dock cell: a pinned entry, a running app, both, or a separator.</summary>
 public sealed record DockItem(string Key, string? Pinned, RunningApp? Running)
 {
     public bool IsRunning => Running is not null;
+
+    public bool IsSeparator => Pinned == DockModel.Separator;
 }
 
 public static class DockModel
 {
+    /// <summary>A pinned-list entry that draws a separator line.</summary>
+    public const string Separator = "---";
+
     // URIs whose app is a known Store app, so a pinned "ms-settings:" lights up when Settings is open.
     static readonly Dictionary<string, string> UriApps = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -46,21 +51,61 @@ public static class DockModel
             : string.Equals(pinned, Path.GetFileName(app.ExePath), StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>Pinned entries first, in their order, each joined with its running app; then the other running apps in the order given.</summary>
-    public static List<DockItem> Build(IReadOnlyList<string> pinned, IReadOnlyList<RunningApp> running)
+    /// <summary>
+    /// Pinned entries first, in their order, each joined with its running app; then the other running apps in the
+    /// order given, after a separator when <paramref name="separateRunning"/> is set.
+    /// </summary>
+    public static List<DockItem> Build(IReadOnlyList<string> pinned, IReadOnlyList<RunningApp> running, bool separateRunning = false)
     {
         var items = new List<DockItem>();
         var used = new HashSet<string>();
-        foreach (string entry in pinned)
+        for (int i = 0; i < pinned.Count; i++)
         {
+            string entry = pinned[i];
+            if (entry == Separator)
+            {
+                items.Add(new DockItem($"sep:{i}", Separator, null));
+                continue;
+            }
+
             var app = running.FirstOrDefault(a => !used.Contains(a.Key) && Matches(entry, a));
             if (app is not null)
                 used.Add(app.Key);
             items.Add(new DockItem(app?.Key ?? "pin:" + entry.ToLowerInvariant(), entry, app));
         }
 
-        items.AddRange(running.Where(a => !used.Contains(a.Key)).Select(a => new DockItem(a.Key, null, a)));
+
+        var others = running.Where(a => !used.Contains(a.Key)).ToList();
+        if (separateRunning && others.Count > 0 && items.Count > 0 && !items[^1].IsSeparator)
+            items.Add(new DockItem("sep:running", Separator, null));
+        items.AddRange(others.Select(a => new DockItem(a.Key, null, a)));
         return items;
+    }
+
+    /// <summary>The pinned-list entry for a running app: its AppUserModelID when it has one, else its exe path.</summary>
+    public static string? EntryFor(RunningApp app) => app.Aumid ?? app.ExePath;
+
+    /// <summary>Pins <paramref name="entry"/> at <paramref name="index"/> (the end when out of range). No duplicates.</summary>
+    public static List<string> Pin(IReadOnlyList<string> pinned, string entry, int index = int.MaxValue)
+    {
+        var list = pinned.Where(p => !string.Equals(p, entry, StringComparison.OrdinalIgnoreCase)).ToList();
+        list.Insert(Math.Clamp(index, 0, list.Count), entry);
+        return list;
+    }
+
+    public static List<string> Unpin(IReadOnlyList<string> pinned, string entry) =>
+        pinned.Where(p => !string.Equals(p, entry, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    /// <summary>Moves the pinned entry at <paramref name="from"/> so it ends up at index <paramref name="to"/>.</summary>
+    public static List<string> Move(IReadOnlyList<string> pinned, int from, int to)
+    {
+        var list = pinned.ToList();
+        if (from < 0 || from >= list.Count)
+            return list;
+        string entry = list[from];
+        list.RemoveAt(from);
+        list.Insert(Math.Clamp(to, 0, list.Count), entry);
+        return list;
     }
 
     /// <summary>
