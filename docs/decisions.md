@@ -6,6 +6,70 @@ Record each decision with its date, context, the options considered and the outc
 
 C# + WPF on .NET 10 (LTS), Windows 11 only. .NET 8 reached end of support on 2026-11-10.
 
+## 2026-11-24: Code review of Phases 2–4
+
+Three read-only reviewers (one per phase); every finding was checked against the code before fixing. The real
+system tests were repeated afterwards (quit, second instance, crash, `taskkill /T /F`, Explorer restart, auto-hide).
+
+**Taskbar safety**
+- **The state file is written atomically** (temporary file, flush, swap) and read leniently: a damaged or empty
+  snapshot no longer blocks the restore forever; auto-hide is then turned off (the Windows default).
+  The logic is in `Veneer.Core.TaskbarState`, with tests.
+- **Restore keeps the state file unless it worked.** Without Explorer's taskbar (logoff, Explorer restarting) the
+  request would go nowhere, so the file stays for the next attempt. After the change, the shell is asked again
+  and the file is deleted only if auto-hide really is what we asked for.
+- **Restore always shows the taskbar windows**, even with no state file: an earlier run or a manual restore may
+  have reset the settings while our show hook kept hiding the windows.
+- **The watchdog is not a child of Veneer.** It is started by a short-lived launcher (`--launch-watchdog`), so
+  "End process tree" and `taskkill /T` leave it alive. It waits up to 30 s for Explorer, and does nothing if a
+  newer Veneer owns the state (single-instance mutex).
+- **RunOnce safety net:** `HKCU\...\RunOnce\VeneerRestoreTaskbar` runs `Veneer.App --restore-taskbar-at-signin`
+  at the next sign-in. It is set before the first change and removed after every successful restore.
+  **Explorer also runs RunOnce entries when it restarts.** The first version restored the taskbar under a running
+  Veneer, whose show hook then hid it again, and the exit left it hidden. Found by the restart test, fixed: the
+  sign-in argument does nothing while a Veneer runs except put the consumed entry back. `--restore-taskbar`
+  (manual) stays unconditional, as an emergency command.
+- **One Veneer at a time** (`Local\Veneer.App` mutex). Two instances fought over the state file and reserved the
+  bars twice.
+- **Logoff:** after cleaning up on `SessionEnding`, Veneer exits. If another app cancels the logoff, a half-cleaned
+  Veneer would have been worse than none.
+- **Cleanup** runs every step on its own, with the taskbar restore in `finally`.
+
+**Theme input**
+- **Duplicate JSON keys are parse errors** (`AllowDuplicateProperties = false`, .NET 10). Before, they slipped
+  through parsing and threw later, which rejected the whole theme because of a broken overrides file.
+- **Overrides that break a theme are skipped:** the theme loads without them and their errors become warnings.
+  The overrides file is shared by every theme, so a value valid for one can be invalid for another.
+- **Merging is linear.** Origin cleanup scanned every recorded path for every scalar key (minutes for a crafted
+  1 MB theme); now it scans only when an object or array is replaced, with ordinal comparisons, and surfaces are
+  indexed by id.
+- **Zip extraction never throws** (corrupt data, CRC errors, unsupported methods such as LZMA), and a zip larger
+  than the total limit is rejected before its directory is read.
+- **Numbers outside the double range** (`1e400`) are errors at their own path.
+- **Overrides writes** go through a flushed temporary file and `File.Replace`, retry on a sharing violation, and
+  copy a commented file to `.bak` first.
+
+**Dock and bars**
+- **The window tracker reacts only to app windows:** shown or uncloaked windows that pass the taskbar filter, and
+  hide, destroy or cloak events for windows of the last listing. Before, every tooltip and menu of every app
+  re-listed all windows, and windows closed in the background were missed. The most recently used window is
+  looked up at click time.
+- **Visibility is one rule** (`ShowsSurfaces`): the plate and the owned icons window hide together for full-screen
+  apps and auto-hide (an owned window does not hide with its owner); the auto-hide edge strip exists only while
+  the dock is tucked away; the dock tucks itself away again if the mouse leaves without reaching it.
+- **Pin, unpin and reorder no longer rebuild every surface.** `ThemeChanges.OnlyDockPinnedChanged` recognizes a
+  reload where only a dock's pinned list changed, and the dock updates in place (no strip released and reserved,
+  no resize of maximized windows).
+- **Closed docks stay closed:** timers stop, and a menu or drag that outlives a rebuild cannot write a stale list.
+- **Magnifier:** the cursor maps through each cell plus its gap, so the row no longer jumps when crossing a gap.
+- **Calls to other apps** use `ShowWindowAsync` and `PostMessage`; exe descriptions are cached; theme images
+  load through one guarded loader (`ThemeVisuals.LoadImage`), so a damaged image falls back instead of crashing.
+- **Moved to Core with tests:** taskbar snapshot rules, clock tick math, battery level, virtual adapter
+  detection, drag drop index and order.
+
+**Deferred:** loading dock icons in the background (Phase 8), checking files inside `iconFolder` for links at
+every read, and a log shared safely between Veneer and its watchdog.
+
 ## 2026-11-24: Dock magnification and editing (Phase 4b)
 
 - **Two windows.** The plate is the blurred DWM window (it reserves the strip). The icons live in a per-pixel

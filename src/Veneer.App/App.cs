@@ -21,6 +21,8 @@ sealed class App : Application
     readonly List<BarWindow> bars = [];
     readonly List<DockWindow> docks = [];
     AppWindowTracker? appWindows;
+    bool fullScreen;
+    Theme? applied; // the theme the surfaces were last built from
     HwndSource? messages;
     HotKeys? hotKeys;
     int cleanedUp;
@@ -35,7 +37,9 @@ sealed class App : Application
 #pragma warning restore WPF0001
         DispatcherUnhandledException += (_, e) => Crash("dispatcher", e.Exception);
         AppDomain.CurrentDomain.UnhandledException += (_, e) => Crash("appdomain", e.ExceptionObject as Exception);
-        SessionEnding += (_, e) => { Log.Write($"session ending: {e.ReasonSessionEnding}"); Cleanup(); };
+        // Give everything back, then really exit: if another app cancels the logoff, a half-cleaned Veneer (bars no
+        // longer reserved, hotkeys gone) would be worse than none. The user can start it again.
+        SessionEnding += (_, e) => { Log.Write($"session ending: {e.ReasonSessionEnding}"); Cleanup(); Shutdown(); };
         Exit += (_, _) => Cleanup();
     }
 
@@ -73,6 +77,20 @@ sealed class App : Application
             Log.Write($"theme: {d}");
         if (!result.Success)
             Log.Write($"theme not loaded, keeping \"{themes.Current.Id}\"");
+        else if (applied is not null && ThemeChanges.OnlyDockPinnedChanged(applied, result.Theme!))
+        {
+            // Pinning, unpinning or reordering in the dock reloads the theme through the overrides file. Rebuilding
+            // every surface would release and reserve the screen strips and resize every maximized window twice.
+            applied = result.Theme!;
+            foreach (var dock in docks)
+            {
+                if (applied.Surfaces.OfType<DockSurface>().FirstOrDefault(d => d.Id == dock.Dock.Id) is { } updated)
+                    dock.UpdatePinned(updated.DefaultPinned);
+            }
+
+            return;
+        }
+
         if (result.Success || bars.Count == 0)
             Rebuild();
     }
@@ -98,6 +116,9 @@ sealed class App : Application
         docks.Clear();
 
         var theme = themes.Current;
+        if (!ReferenceEquals(theme, applied))
+            DockIcons.Clear(); // a reloaded theme may have new icon files: no stale images
+        applied = theme;
         var monitor = Monitors.Primary();
         var barSurfaces = theme.Surfaces.OfType<BarSurface>().ToList();
         var edgeItems = barSurfaces.Select(b => new EdgeItem(b.Id, b.Edge, SurfaceLayout.ToPhysical(b.Thickness, monitor.Dpi))).ToList();
@@ -109,17 +130,28 @@ sealed class App : Application
             window.FullScreenChanged += OnFullScreenChanged;
             window.Show();
             window.Place();
+            if (fullScreen)
+                window.Visibility = Visibility.Hidden; // a resolution change during a game must not bring the bars back
             bars.Add(window);
         }
 
         var remaining = SurfaceLayout.Remaining(monitor.Bounds, edgeItems);
-        foreach (var surface in theme.Surfaces.OfType<DockSurface>())
+        var dockSurfaces = theme.Surfaces.OfType<DockSurface>().ToList();
+        if (dockSurfaces.Count == 0)
+        {
+            // No dock: drop the system-wide window hooks, they would only cost CPU.
+            appWindows?.Dispose();
+            appWindows = null;
+        }
+
+        foreach (var surface in dockSurfaces)
         {
             appWindows ??= new AppWindowTracker();
             var window = new DockWindow(theme, surface, remaining, monitor.Dpi, appWindows, options.Theme is null ? null : OverridesPath);
             window.FullScreenChanged += OnFullScreenChanged;
             window.Show();
             window.Start();
+            window.SetFullScreen(fullScreen);
             docks.Add(window);
         }
 
@@ -199,11 +231,16 @@ sealed class App : Application
     string OverridesPath => options.Overrides ?? Path.Combine(AppPaths.Profiles, "default", "overrides.json");
 
     // A full-screen app (game, video) is in front: get out of its way, and come back when it closes.
-    void OnFullScreenChanged(bool fullScreen)
+    void OnFullScreenChanged(bool isFullScreen)
     {
+        if (isFullScreen == fullScreen)
+            return; // every registered surface reports it: act once
+        fullScreen = isFullScreen;
         Log.Write($"full-screen app: {fullScreen}");
-        foreach (Window w in bars.Cast<Window>().Concat(docks))
-            w.Visibility = fullScreen ? Visibility.Hidden : Visibility.Visible;
+        foreach (var bar in bars)
+            bar.Visibility = fullScreen ? Visibility.Hidden : Visibility.Visible;
+        foreach (var dock in docks)
+            dock.SetFullScreen(fullScreen); // plate, icons and auto-hide strip together
     }
 
     public void OpenLogoMenu() => bars.Select(b => b.FindModule<LogoMenuModule>()).FirstOrDefault(m => m is not null)?.Open();
@@ -250,16 +287,36 @@ sealed class App : Application
     {
         if (Interlocked.Exchange(ref cleanedUp, 1) == 1)
             return;
-        SystemEvents.DisplaySettingsChanged -= OnDisplayChanged;
-        foreach (var bar in bars)
-            bar.RemoveAppBar();
-        foreach (var dock in docks)
-            dock.RemoveAppBar();
-        taskbar.Restore("exit");
-        appWindows?.Dispose();
-        Modules.Shutdown();
-        hotKeys?.Dispose();
-        themes.Dispose();
-        Log.Write("exit");
+        // Each step on its own: a failure in one (this can run from a crashing thread while the UI is mid-rebuild)
+        // must never skip the taskbar restore, which runs last, in finally.
+        try
+        {
+            Step(() => SystemEvents.DisplaySettingsChanged -= OnDisplayChanged);
+            foreach (var bar in bars.ToArray())
+                Step(bar.RemoveAppBar);
+            foreach (var dock in docks.ToArray())
+                Step(dock.RemoveAppBar);
+            Step(() => appWindows?.Dispose());
+            Step(Modules.Shutdown);
+            Step(() => hotKeys?.Dispose());
+            Step(themes.Dispose);
+        }
+        finally
+        {
+            taskbar.Restore("exit");
+            Log.Write("exit");
+        }
+
+        static void Step(Action action)
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception e)
+            {
+                Log.Write($"cleanup step failed: {e.Message}");
+            }
+        }
     }
 }

@@ -28,6 +28,37 @@ public class ThemeManagerTests
     }
 
     [Fact]
+    public void After_dispose_nothing_reloads_and_apply_refuses()
+    {
+        using var t = new TempTheme();
+        var m = new ThemeManager(TimeSpan.FromMilliseconds(10));
+        m.Apply(t.Root);
+        int loads = 0;
+        m.Loaded += _ => loads++;
+
+        m.Dispose();
+        m.Dispose(); // twice is fine
+        t.Write("theme.json", TempTheme.Sample); // a change after Dispose must not reload or throw
+
+        Thread.Sleep(200);
+        Assert.Null(m.Reload());
+        Assert.Equal(0, loads);
+        Assert.Throws<ObjectDisposedException>(() => m.Apply(t.Root));
+    }
+
+    [Fact]
+    public void An_empty_overrides_path_does_not_throw()
+    {
+        using var t = new TempTheme();
+        using var m = new ThemeManager();
+
+        var r = m.Apply(t.Root, overridesPath: "");
+
+        Assert.True(r.Success);
+        Assert.Contains(r.Warnings, w => w.Path == "overrides");
+    }
+
+    [Fact]
     public async Task Edited_theme_reloads_by_itself()
     {
         using var t = new TempTheme();

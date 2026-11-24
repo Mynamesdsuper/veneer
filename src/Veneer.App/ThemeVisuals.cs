@@ -21,6 +21,29 @@ static class ThemeVisuals
         return brush;
     }
 
+    /// <summary>
+    /// Loads a theme or system image without keeping the file open. A damaged or unreadable file gives null (and a
+    /// log line), never an exception: a bad theme image must not take the shell down.
+    /// </summary>
+    public static ImageSource? LoadImage(string path)
+    {
+        try
+        {
+            var bitmap = new System.Windows.Media.Imaging.BitmapImage();
+            bitmap.BeginInit();
+            bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad; // decodes now, file closed after
+            bitmap.UriSource = new Uri(path);
+            bitmap.EndInit();
+            bitmap.Freeze();
+            return bitmap;
+        }
+        catch (Exception e) when (e is IOException or NotSupportedException or FileFormatException or UriFormatException or ArgumentException or UnauthorizedAccessException)
+        {
+            Log.Write($"image {path}: {e.Message}");
+            return null;
+        }
+    }
+
     /// <summary>Sets the inheritable text properties on <paramref name="element"/>; null values keep the inherited ones.</summary>
     public static void ApplyText(DependencyObject element, Theme theme, TextStyle text, ThemeColor? foreground)
     {

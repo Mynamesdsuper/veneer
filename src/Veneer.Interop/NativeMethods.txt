@@ -64,3 +64,4 @@ IsIconic
 GetObject
 BITMAP
 GetDesktopWindow
+ShowWindowAsync

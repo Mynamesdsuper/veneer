@@ -134,7 +134,19 @@ public sealed class AudioEndpoint : IDisposable
         public void OnDefaultDeviceChanged(EDataFlow flow, ERole role, PCWSTR defaultDeviceId)
         {
             if (flow == EDataFlow.eRender && role == ERole.eMultimedia)
-                ThreadPool.QueueUserWorkItem(_ => owner.Bind()); // never call back into Core Audio from its own callback
+                ThreadPool.QueueUserWorkItem(_ =>
+                {
+                    // Never call back into Core Audio from its own callback. On a pool thread any exception would end
+                    // the process, so everything is caught here.
+                    try
+                    {
+                        owner.Bind();
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Write($"volume: rebind after device change failed: {e.Message}");
+                    }
+                });
         }
 
         public void OnDeviceStateChanged(PCWSTR deviceId, DEVICE_STATE newState)

@@ -31,6 +31,29 @@ public static class ModuleStates
         _ => "full",
     };
 
+    /// <summary>Battery icon level 0–10 (tenths), for icon sets with eleven steps.</summary>
+    public static int BatteryLevel(int percent) => Math.Clamp(percent, 0, 100) / 10;
+
+    /// <summary>Whether a .NET date/time format shows seconds (custom "s", or a standard format that includes them).</summary>
+    public static bool ShowsSeconds(string format) =>
+        format.Contains('s') || format is "T" or "G" or "F" or "o" or "O" or "r" or "R" or "U";
+
+    /// <summary>Time until the next second or minute boundary, plus a small margin so the tick lands after it.</summary>
+    public static TimeSpan UntilNextTick(DateTime now, bool seconds)
+    {
+        long unit = seconds ? TimeSpan.TicksPerSecond : TimeSpan.TicksPerMinute;
+        return TimeSpan.FromTicks(unit - now.Ticks % unit) + TimeSpan.FromMilliseconds(20);
+    }
+
+    static readonly string[] VirtualAdapterWords = ["virtual", "hyper-v", "vethernet", "vmware", "virtualbox", "wsl"];
+
+    /// <summary>
+    /// Virtual network adapters (Hyper-V, WSL, VM software) by name or description. They have gateways too, and would
+    /// otherwise make a Wi-Fi laptop look wired. shortcut: a name heuristic; refine if a real adapter is misread.
+    /// </summary>
+    public static bool IsVirtualAdapter(string name, string description) =>
+        VirtualAdapterWords.Any(w => name.Contains(w, StringComparison.OrdinalIgnoreCase) || description.Contains(w, StringComparison.OrdinalIgnoreCase));
+
     public readonly record struct Adapter(bool Up, bool Wireless, bool Loopback, bool HasGateway);
 
     /// <summary>Wired wins over wireless, as Windows routes traffic that way. Only adapters with a gateway count as connected.</summary>

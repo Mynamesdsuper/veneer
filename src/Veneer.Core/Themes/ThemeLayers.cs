@@ -55,8 +55,19 @@ internal static class ThemeLayers
                 continue;
             }
 
-            foreach (string stale in origins.Keys.Where(k => k == p || k.StartsWith(p + ".") || k.StartsWith(p + "[")).ToList())
-                origins.Remove(stale);
+            // Only a replaced object or array has origins below it. Scanning for every scalar key made a crafted
+            // theme quadratic (minutes for a 1 MB file).
+            if (target[key] is JsonObject or JsonArray)
+            {
+                string dot = p + ".", bracket = p + "[";
+                foreach (string stale in origins.Keys.Where(k => k == p || k.StartsWith(dot, StringComparison.Ordinal) || k.StartsWith(bracket, StringComparison.Ordinal)).ToList())
+                    origins.Remove(stale);
+            }
+            else
+            {
+                origins.Remove(p);
+            }
+
             target[key] = value?.DeepClone();
             if (value is not null)
                 Mark(target[key], p, layer, origins);
@@ -66,6 +77,13 @@ internal static class ThemeLayers
     static void MergeSurfaces(JsonArray existing, JsonArray items, ThemeLayer layer,
         Dictionary<string, ThemeLayer> origins, List<string> orphans, List<Diagnostic> diagnostics)
     {
+        var byId = new Dictionary<string, JsonObject>();
+        foreach (var s in existing.OfType<JsonObject>())
+        {
+            if (SurfaceId(s) is { } existingId)
+                byId.TryAdd(existingId, s);
+        }
+
         for (int i = 0; i < items.Count; i++)
         {
             if (SurfaceId(items[i]) is not { } id)
@@ -75,8 +93,7 @@ internal static class ThemeLayers
             }
 
             string sp = $"surfaces[id={id}]";
-            var match = existing.FirstOrDefault(s => SurfaceId(s) == id) as JsonObject;
-            if (match is not null)
+            if (byId.TryGetValue(id, out var match))
             {
                 Merge(match, (JsonObject)items[i]!, sp, layer, origins, orphans, diagnostics);
             }
@@ -89,6 +106,7 @@ internal static class ThemeLayers
             {
                 var copy = items[i]!.DeepClone();
                 existing.Add(copy);
+                byId[id] = (JsonObject)copy;
                 Mark(copy, sp, layer, origins);
             }
         }

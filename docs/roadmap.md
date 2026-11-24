@@ -26,6 +26,7 @@ Every phase ends with `dotnet build` and `dotnet test` green and one commit.
 - [Phase 8: polish and first release](#phase-8-polish-and-first-release)
 - [After the first release](#after-the-first-release)
 - [Not verified yet](#not-verified-yet)
+- [Ideas from FluidWin](#ideas-from-fluidwin)
 
 ---
 
@@ -215,6 +216,18 @@ Split like Phase 3: **4a** (a working dock) and **4b** (magnification, menus, dr
 - [ ] "Restore original Windows settings".
 - [ ] Changes stay after Veneer exits; the wallpaper does not jump back.
 
+**Hardening** (ideas from [FluidWin](#ideas-from-fluidwin))
+- [ ] Emergency exit hotkey registered by the **watchdog**: it kills a hung Veneer and restores Windows.
+- [x] "End process tree" from Task Manager: check that it does not take the watchdog down too, and fix it if it
+      does (the taskbar must come back).
+- [x] Calls to other apps' windows (close, titles, activation) never block: `SendMessageTimeout` or async, so a hung
+      app cannot freeze the bars or the dock.
+      Done in the code review of 2026-11-24: the watchdog is started through a short-lived launcher, so it is not
+      in Veneer's process tree (tested with `taskkill /T /F`); window close uses `PostMessage`, restore and minimize
+      use `ShowWindowAsync`, titles are read without sending messages to other processes.
+- [x] RunOnce safety net: a `HKCU\...\RunOnce` entry restores the taskbar at the next sign-in after a power loss
+      or a crash of both processes; removed after every restore. (Code review, 2026-11-24.)
+
 ## Phase 6: profiles, settings, tray, install, autostart
 
 **Profiles**
@@ -227,6 +240,14 @@ Split like Phase 3: **4a** (a working dock) and **4b** (magnification, menus, dr
 - [ ] Shows each value's origin (theme or you), with "reset to theme value".
 - [ ] Lists theme errors and warnings, and orphaned overrides.
 - [ ] Install a theme from a `.zip` (UI on top of the Phase 2 installer).
+- [ ] Diagnostics report: version, Windows build, monitors and DPI, active theme id, last theme-load diagnostics and
+      the last log lines, ready to paste in an issue. No personal paths. (FluidWin)
+- [ ] All UI strings in resource files from the start. English and Italian ship; more languages from the
+      community. (FluidWin)
+
+**First run**
+- [ ] Offer to import the Windows taskbar's pinned apps into the dock (user overrides), Store apps included,
+      deduplicated by AppUserModelID (Discord changes its exe folder on every update). (FluidWin)
 
 **Tray icon**
 - [ ] Open settings, switch profile, switch theme, restore taskbar, quit.
@@ -250,6 +271,12 @@ Split like Phase 3: **4a** (a working dock) and **4b** (magnification, menus, dr
 - [ ] Theme styling for menus (background, blur, text, corner radius); today they follow the Windows 11 look.
       Found in the Phase 3b comparison.
 
+**Dock items the reference themes need** (FluidWin)
+- [ ] One dot per window (up to 3, theme setting `runningIndicator.mode`) and the app's window list in the dock
+      menu.
+- [ ] Downloads stack: a dock item that shows the latest downloaded files on click.
+- [ ] Recycle Bin: a dock item that shows empty/full and accepts dropped files.
+
 ## Phase 8: polish and first release
 
 - [ ] Performance pass: idle CPU about 0%, no stutter.
@@ -263,8 +290,25 @@ Not built yet. The theme format already leaves room for these.
 
 **Desktop**
 - [ ] Desktop widgets: calendar, weather, battery, photos.
-- [ ] Launcher / search.
-- [ ] Full multi-monitor support.
+- [ ] Launcher / search: apps, files and folders (Windows Search index), settings, quick math. (FluidWin)
+- [ ] Full multi-monitor support; the dock can follow the mouse to another monitor. (FluidWin)
+
+**New surface types** (FluidWin)
+- [ ] Island (`"type": "island"`): a small pill that grows on events (volume, notifications, music, timer, file
+      shelf, microphone/camera in use). The theme decides whether there is one and how it looks.
+- [ ] Volume OSD drawn by the theme, replacing the Windows volume popup.
+- [ ] Control center panel, opened from a bar or dock module: Wi-Fi, Bluetooth, dark mode, keep awake, volume mixer,
+      clipboard history, calendar. Online services (weather, news) optional.
+
+**Dock** (FluidWin)
+- [ ] Live window previews on hover (`DwmRegisterThumbnail`), styled by the theme.
+- [ ] Jump lists (new window, recent files) in the dock menu. Needs a spike first: there is no simple public API to
+      read other apps' jump lists.
+- [ ] Notification badges on dock icons (`UserNotificationListener`; Windows asks the user for permission).
+
+**Updates**
+- [ ] Opt-in update check against GitHub releases: verify the downloaded file's hash, never update silently.
+      (FluidWin)
 
 **Themes**
 - [ ] Live theme editor with preview.
@@ -283,3 +327,38 @@ These need hardware or conditions the test PC lacks. They are checked as soon as
 - [ ] Display scaling other than 100%.
 - [ ] Logoff and shutdown while the taskbar is hidden.
 - [ ] ARM64 build.
+
+## Ideas from FluidWin
+
+Source: https://github.com/clooudfn/FluidWin (read on 2026-11-24, version 1.3.1). A single-person C++ project
+that sits on top of Windows 11: a dock instead of the taskbar, a "notch", a control center, window animations, its
+own snapping, right-click menu, search, Alt+Tab overview and custom cursors. It restores Windows when it quits,
+crashes or is killed.
+
+**License: MIT.** Ideas are free to use. If Veneer ever ports non-trivial logic from it (not just the idea or a
+documented Windows API call), its copyright notice goes into `THIRD-PARTY-NOTICES.md`.
+
+**Main difference:** FluidWin is one fixed design with settings. Veneer is an engine where themes decide layout and
+look, so every idea taken from it is shown by the theme and can be turned off by the user.
+
+**Picked by the author on 2026-11-24** (all candidates), tagged "FluidWin" in the phases above:
+
+| Where | Items |
+|-------|-------|
+| Phase 5 | Emergency exit in the watchdog, "End process tree" test, non-blocking calls to other apps' windows. |
+| Phase 6 | Diagnostics report, UI strings in resources (English + Italian), import of the taskbar's pinned apps. |
+| Phase 7 | One dot per window and window list, Downloads stack, Recycle Bin. |
+| After the first release | Island, volume OSD, control center, launcher/search, dock following the mouse across monitors, live window previews, jump lists, notification badges, update check. |
+
+**Design notes (not separate items):**
+- Load icons only for visible dock items; keep idle memory low (FluidWin loads its app list lazily).
+- Full-screen detection: `SHQueryUserNotificationState` (`QUNS_BUSY`, `QUNS_RUNNING_D3D_FULL_SCREEN`,
+  `QUNS_PRESENTATION_MODE`) as a second signal next to `ABN_FULLSCREENAPP`.
+- A code review at the end of every phase (FluidWin found more than 150 problems in one review). Already a rule in
+  `CLAUDE.md`.
+
+**Not for Veneer** (they conflict with settled decisions):
+- Window animations (genie, jelly, bounce), its own snapping, a replacement right-click menu in File Explorer: they
+  restyle or take over other apps' windows, which is a non-goal, and they break most easily with Windows updates.
+- Custom cursors: a theme may change only wallpaper, accent color and light/dark mode.
+- Turning off Windows notification banners: it stays off until the user signs out, so it cannot be undone at once.

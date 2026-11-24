@@ -87,7 +87,20 @@ sealed class DockIconsWindow : Window
             if (IndexAt(Along(e.GetPosition(canvas))) is >= 0 and var i)
                 OpenMenu(i);
         };
-        Closed += (_, _) => StopAnimation();
+        Closed += (_, _) =>
+        {
+            StopAnimation();
+            concealDelay.Stop();
+        };
+        LostMouseCapture += (_, _) =>
+        {
+            // Alt+Tab or a menu took the mouse mid-drag: drop the drag instead of staying stuck in it.
+            if (!dragging)
+                return;
+            dragging = false;
+            pressIndex = -1;
+            Relayout();
+        };
     }
 
     DockSurface Dock => owner.Dock;
@@ -113,8 +126,8 @@ sealed class DockIconsWindow : Window
         };
         r = new PixelRect(Math.Max(r.Left, area.Left), Math.Max(r.Top, area.Top), Math.Min(r.Right, area.Right), Math.Min(r.Bottom, area.Bottom));
 
-        if (!IsVisible)
-            Show();
+        // Create the window without showing it: the plate decides visibility (auto-hide, full screen).
+        new WindowInteropHelper(this).EnsureHandle();
         SurfaceWindow.PlaceTopmost(hwnd, r); // also lifts it above the plate, which just moved to the top too
         Width = r.Width / scale;
         Height = r.Height / scale;
@@ -330,31 +343,24 @@ sealed class DockIconsWindow : Window
     MagnifiedCell[] DragLayout(List<(double Size, bool Scales)> cells)
     {
         int from = pressIndex, to = DropIndex(cursor ?? 0, from);
-        var order = Enumerable.Range(0, cells.Count).ToList();
-        order.RemoveAt(from);
-        order.Insert(to, from);
+        var order = DockModel.DragOrder(cells.Count, from, to);
         var placed = Magnifier.Layout(order.Select(i => cells[i]).ToList(), Dock.Style.Spacing, null, 1, 0);
         var result = new MagnifiedCell[cells.Count];
-        for (int k = 0; k < order.Count; k++)
+        for (int k = 0; k < order.Length; k++)
             result[order[k]] = placed[k];
         result[from] = result[from] with { Start = (cursor ?? 0) - cells[from].Size / 2 };
         return result;
     }
 
     /// <summary>The pinned index the dragged icon would land on, from the cursor position in the base layout.</summary>
-    int DropIndex(double along, int from)
-    {
-        var cells = owner.Cells(owner.Items);
-        int pinnedCount = owner.Pinned.Count;
-        double pos = 0;
-        for (int i = 0; i < pinnedCount; i++)
-        {
-            if (along < pos + cells[i].Size / 2)
-                return Math.Clamp(i > from ? i - 1 : i, 0, pinnedCount - 1);
-            pos += cells[i].Size + Dock.Style.Spacing;
-        }
+    int DropIndex(double along, int from) =>
+        DockModel.DropIndex(owner.Cells(owner.Items).Select(c => c.Size).ToList(), Dock.Style.Spacing, owner.Pinned.Count, along, from);
 
-        return pinnedCount - 1;
+    /// <summary>Auto-hide: start (or restart) the countdown that tucks the dock away when the mouse is not on it.</summary>
+    public void StartConcealCountdown()
+    {
+        concealDelay.Stop();
+        concealDelay.Start();
     }
 
     public void OpenMenu(int index)

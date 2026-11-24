@@ -9,7 +9,7 @@ namespace Veneer.App;
 /// Debug builds only: drives the running app from the command line, without simulated input. Steps run in order:
 /// <c>wait:&lt;seconds&gt;</c>, <c>menu</c> (open the logo menu), <c>close-menu</c>, <c>screenshot</c>,
 /// <c>dock-click</c>, <c>dock-close</c>, <c>dock-pin</c>, <c>dock-unpin</c>, <c>dock-menu</c> with <c>:&lt;text&gt;</c>
-/// (the first dock icon whose key contains the text), <c>dock-hover:&lt;0..1|off&gt;</c>, <c>dock-reveal:on|off</c>, <c>dock-sweep</c> (magnification frame rate), <c>app</c> (start winver.exe so the foreground app changes; it holds no user data), <c>close-app</c>, <c>quit</c>.
+/// (the first dock icon whose key contains the text), <c>dock-hover:&lt;0..1|off&gt;</c>, <c>dock-reveal:on|off</c>, <c>dock-sweep</c> (magnification frame rate), <c>app</c> (start winver.exe so the foreground app changes; it holds no user data), <c>close-app</c>, <c>crash</c> (unhandled exception), <c>quit</c>.
 /// Example: <c>--self-test "wait:2,menu,wait:1,screenshot,close-menu,wait:1,quit"</c>.
 /// </summary>
 static class SelfTest
@@ -70,9 +70,14 @@ static class SelfTest
                     app.FirstDock?.SetRevealed(on == "on");
                     Log.Write($"self-test: dock revealed = {app.FirstDock?.Revealed}, visible = {app.FirstDock?.IsVisible}");
                     break;
+                case ["dock-state"]:
+                    Log.Write($"self-test: dock revealed = {app.FirstDock?.Revealed}, visible = {app.FirstDock?.IsVisible}");
+                    break;
                 case ["dock-sweep"]:
                     app.FirstDock?.Sweep();
                     break;
+                case ["crash"]:
+                    throw new InvalidOperationException("simulated crash (self-test)");
                 case ["quit"]:
                     app.Shutdown();
                     return;

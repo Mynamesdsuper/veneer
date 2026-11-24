@@ -59,23 +59,28 @@ public static class WindowTools
         uint pid;
         PInvoke.GetWindowThreadProcessId(h, &pid);
         string? exe = ExePath(pid);
-        string? description = null;
-        if (exe is not null)
-        {
-            try
-            {
-                description = FileVersionInfo.GetVersionInfo(exe).FileDescription;
-            }
-            catch (FileNotFoundException)
-            {
-            }
-        }
+        string? description = exe is null ? null : Description(exe);
 
         return new WindowDetails(hwnd, (int)pid, exe, description, ClassName(h), Title(h));
     }
 
+    static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string?> Descriptions = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The exe's file description, read from disk once per exe (it runs on every foreground change).</summary>
+    public static string? Description(string exe) => Descriptions.GetOrAdd(exe, static path =>
+    {
+        try
+        {
+            return FileVersionInfo.GetVersionInfo(path).FileDescription;
+        }
+        catch (Exception e) when (e is FileNotFoundException or IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return null;
+        }
+    });
+
     /// <summary>Full exe path; works for elevated processes too (limited query rights).</summary>
-    static string? ExePath(uint pid)
+    public static string? ExePath(uint pid)
     {
         using var process = PInvoke.OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
         if (process.IsInvalid)
@@ -113,7 +118,7 @@ public static class WindowTools
     /// <summary>Asks the window to close, exactly like its close button (the app may ask to save).</summary>
     public static void Close(nint hwnd) => PInvoke.PostMessage((HWND)hwnd, WM_CLOSE, 0, 0);
 
-    public static void Minimize(nint hwnd) => PInvoke.ShowWindow((HWND)hwnd, SHOW_WINDOW_CMD.SW_MINIMIZE);
+    public static void Minimize(nint hwnd) => PInvoke.ShowWindowAsync((HWND)hwnd, SHOW_WINDOW_CMD.SW_MINIMIZE);
 
     /// <summary>
     /// Brings a window to the front, restoring it if minimized. Allowed because the user just clicked one of our
@@ -122,8 +127,9 @@ public static class WindowTools
     public static void Activate(nint hwnd)
     {
         var h = (HWND)hwnd;
+        // Async: ShowWindow on another process's window waits for it, and a hung app would freeze the dock.
         if (PInvoke.IsIconic(h))
-            PInvoke.ShowWindow(h, SHOW_WINDOW_CMD.SW_RESTORE);
+            PInvoke.ShowWindowAsync(h, SHOW_WINDOW_CMD.SW_RESTORE);
         PInvoke.SetForegroundWindow(h);
     }
 

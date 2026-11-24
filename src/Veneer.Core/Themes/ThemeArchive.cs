@@ -28,24 +28,39 @@ public static class ThemeArchive
     {
         limits ??= ArchiveLimits.Default;
         var errors = new List<Diagnostic>();
-        ZipArchive archive;
-        try
+        // A zip larger than everything it may unpack to is rejected before its directory is even read.
+        if (zip.CanSeek && zip.Length > limits.MaxTotalBytes)
         {
-            archive = new ZipArchive(zip, ZipArchiveMode.Read, leaveOpen: true);
-        }
-        catch (InvalidDataException)
-        {
-            errors.Add(Diagnostic.Error("archive", "is not a valid .zip file"));
+            errors.Add(Diagnostic.Error("archive", $"is larger than {limits.MaxTotalBytes / (1024 * 1024)} MB"));
             return errors;
         }
 
-        using (archive)
+        try
+        {
+            ExtractEntries(zip, destination, limits, errors);
+        }
+        catch (Exception e) when (e is InvalidDataException or NotSupportedException)
+        {
+            // Corrupt data, bad CRC, or a compression method .NET cannot read (e.g. LZMA): reported, never thrown.
+            errors.Add(Diagnostic.Error("archive", $"is not a valid .zip file, or is damaged or uses an unsupported format: {e.Message}"));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            errors.Add(Diagnostic.Error("archive", $"could not be extracted: {e.Message}"));
+        }
+
+        return errors;
+    }
+
+    static void ExtractEntries(Stream zip, string destination, ArchiveLimits limits, List<Diagnostic> errors)
+    {
+        using (var archive = new ZipArchive(zip, ZipArchiveMode.Read, leaveOpen: true))
         {
             var files = archive.Entries.Where(e => !e.FullName.EndsWith('/') && !IsMacJunk(e.FullName)).ToList();
             if (files.Count > limits.MaxFiles)
             {
                 errors.Add(Diagnostic.Error("archive", $"has {files.Count} files, the limit is {limits.MaxFiles}"));
-                return errors;
+                return;
             }
 
             string root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(destination)) + Path.DirectorySeparatorChar;
@@ -63,7 +78,7 @@ public static class ThemeArchive
             if (declared > limits.MaxTotalBytes)
                 errors.Add(Diagnostic.Error("archive", $"unpacks to {declared / (1024 * 1024)} MB, the limit is {limits.MaxTotalBytes / (1024 * 1024)} MB"));
             if (errors.Count > 0)
-                return errors;
+                return;
 
             // Sizes in the zip header can lie, so count the bytes actually written too.
             long total = 0;
@@ -82,15 +97,13 @@ public static class ThemeArchive
                     if (written > limits.MaxFileBytes || total > limits.MaxTotalBytes)
                     {
                         errors.Add(Diagnostic.Error(entry.FullName, "is larger than the zip header says: archive rejected"));
-                        return errors;
+                        return;
                     }
 
                     target.Write(buffer, 0, read);
                 }
             }
         }
-
-        return errors;
     }
 
     static string? Check(ZipArchiveEntry entry, string root, ArchiveLimits limits)
@@ -156,15 +169,16 @@ public static class ThemeArchive
             {
                 Directory.Move(root, target);
             }
-            catch (IOException)
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
                 if (hadPrevious)
-                    Directory.Move(backup, target); // put the old version back
+                    TryIo(() => Directory.Move(backup, target)); // put the old version back; never hide the first error
                 throw;
             }
 
-            if (hadPrevious)
-                Directory.Delete(backup, recursive: true);
+            // The new theme is in place: a leftover backup folder is only clutter, not a failure.
+            if (hadPrevious && !TryIo(() => Directory.Delete(backup, recursive: true)))
+                diagnostics.Add(Diagnostic.Warning("archive", $"the previous version could not be removed: {backup}"));
             return new ThemeInstallResult(target, diagnostics);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
@@ -175,7 +189,20 @@ public static class ThemeArchive
         finally
         {
             if (Directory.Exists(staging))
-                Directory.Delete(staging, recursive: true);
+                TryIo(() => Directory.Delete(staging, recursive: true));
+        }
+    }
+
+    static bool TryIo(Action action)
+    {
+        try
+        {
+            action();
+            return true;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return false;
         }
     }
 

@@ -18,6 +18,7 @@ public static class ThemeLoader
         CommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
         MaxDepth = 64,
+        AllowDuplicateProperties = false, // a duplicate key is a parse error, reported with its line
     };
 
     /// <param name="themeDirectory">Folder that holds <c>theme.json</c> and the theme's assets.</param>
@@ -30,12 +31,34 @@ public static class ThemeLoader
         if (json is null)
             return new ThemeLoadResult(null, diagnostics, []);
         string? overrides = overridesPath is null ? null : ReadText(overridesPath, "overrides", Severity.Warning, required: false, diagnostics);
-        return Load(json, themeDirectory, variant, overrides, diagnostics);
+        return LoadWithFallback(json, themeDirectory, variant, overrides, diagnostics);
     }
 
     /// <summary>Same as <see cref="Load(string, string?, string?)"/> with the JSON already in memory. Assets resolve against <paramref name="themeDirectory"/>.</summary>
     public static ThemeLoadResult LoadFromJson(string themeJson, string themeDirectory, string? variant = null, string? overridesJson = null) =>
-        Load(themeJson, themeDirectory, variant, overridesJson, []);
+        LoadWithFallback(themeJson, themeDirectory, variant, overridesJson, []);
+
+    /// <summary>
+    /// The overrides file is shared by every theme, so a value valid for one theme can be invalid for another (an
+    /// unknown token, a field out of range). When the overrides break the load, the theme loads without them and
+    /// their problems become warnings: the user still gets the theme, and the file is left untouched.
+    /// </summary>
+    static ThemeLoadResult LoadWithFallback(string json, string themeDirectory, string? variant, string? overridesJson, List<Diagnostic> diagnostics)
+    {
+        var first = new List<Diagnostic>(diagnostics);
+        var result = Load(json, themeDirectory, variant, overridesJson, first);
+        if (result.Success || overridesJson is null)
+            return result;
+
+        var retry = new List<Diagnostic>(diagnostics);
+        var without = Load(json, themeDirectory, variant, null, retry);
+        if (!without.Success)
+            return without; // the theme itself is broken: report its own errors
+
+        retry.Add(Diagnostic.Warning("overrides", "your customizations were not applied because of the problems below; the theme loaded without them"));
+        retry.AddRange(first.Skip(diagnostics.Count).Where(d => d.Severity == Severity.Error).Select(d => d with { Severity = Severity.Warning }));
+        return without with { Diagnostics = retry };
+    }
 
     static ThemeLoadResult Load(string json, string themeDirectory, string? variant, string? overridesJson, List<Diagnostic> diagnostics)
     {
@@ -51,7 +74,7 @@ public static class ThemeLoader
                 return Fail();
             }
 
-            if (sv.GetValue<double>() != SupportedSchemaVersion)
+            if (!sv.TryGetValue(out double version) || version != SupportedSchemaVersion)
             {
                 diagnostics.Add(Diagnostic.Error("schemaVersion", $"version {sv.ToJsonString()} is not supported: this Veneer reads version {SupportedSchemaVersion}. Update Veneer or ask the theme author."));
                 return Fail();
@@ -103,11 +126,7 @@ public static class ThemeLoader
         try
         {
             if (JsonNode.Parse(json, documentOptions: JsonOptions) is JsonObject o)
-            {
-                // Touch every property now: duplicate keys only surface when the object is enumerated.
-                _ = o.ToJsonString();
                 return o;
-            }
 
             diagnostics.Add(new Diagnostic(severity, label, "must be a JSON object { ... }." + suffix));
         }
@@ -142,8 +161,9 @@ public static class ThemeLoader
             else
                 return File.ReadAllText(path);
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
+            // ArgumentException / NotSupportedException: an empty or malformed path.
             diagnostics.Add(new Diagnostic(severity, label, $"could not be read: {e.Message}"));
         }
 

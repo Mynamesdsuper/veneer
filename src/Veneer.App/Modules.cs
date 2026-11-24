@@ -153,9 +153,10 @@ sealed class StateIcon : ContentControl
             return;
         state = newState + glyph;
         double size = TextElement.GetFontSize(this) * 1.15;
-        if (images.TryGetValue(newState, out string? path))
+        // A theme image that fails to load (damaged file) falls back to the glyph instead of crashing the bar.
+        if (images.TryGetValue(newState, out string? path) && ThemeVisuals.LoadImage(path) is { } image)
         {
-            Content = new Image { Source = new BitmapImage(new Uri(path)), Height = size, Stretch = Stretch.Uniform };
+            Content = new Image { Source = image, Height = size, Stretch = Stretch.Uniform };
         }
         else
         {
@@ -189,18 +190,15 @@ sealed class ClockModule : TextBlock
         };
     }
 
-    bool ShowsSeconds => format.Contains('s') || format is "T" or "G" or "F" or "o" or "O" or "r" or "R" or "s" or "u" or "U";
-
     void OnSystemChange(object? sender, EventArgs e) => Dispatcher.BeginInvoke(Update);
 
     void Update()
     {
+        if (!IsLoaded)
+            return; // an update queued before Unloaded must not restart the timer of a removed clock
         var now = DateTime.Now;
         Text = now.ToString(format, CultureInfo.CurrentCulture);
-        var next = ShowsSeconds
-            ? now.AddTicks(TimeSpan.TicksPerSecond - now.Ticks % TimeSpan.TicksPerSecond)
-            : now.AddTicks(TimeSpan.TicksPerMinute - now.Ticks % TimeSpan.TicksPerMinute);
-        timer.Interval = next - now + TimeSpan.FromMilliseconds(20);
+        timer.Interval = ModuleStates.UntilNextTick(now, ModuleStates.ShowsSeconds(format));
         timer.Start();
     }
 }
@@ -213,8 +211,8 @@ sealed class LogoMenuModule : ClickableModule
     public LogoMenuModule(ModuleSpec spec, ModuleContext ctx)
     {
         this.ctx = ctx;
-        Child = spec.Icon is not null
-            ? new Image { Source = new BitmapImage(new Uri(spec.Icon)), Height = 16, Stretch = Stretch.Uniform }
+        Child = spec.Icon is not null && ThemeVisuals.LoadImage(spec.Icon) is { } logo
+            ? new Image { Source = logo, Height = 16, Stretch = Stretch.Uniform }
             : new TextBlock { Text = "⊞", FontSize = 16 }; // placeholder when the theme has no logo
     }
 
@@ -248,9 +246,12 @@ sealed class ActiveAppModule : ClickableModule
     {
         this.ctx = ctx;
         desktopName = spec.Options["desktopName"]?.GetValue<string>() ?? "Desktop";
-        names = spec.Options["names"] is System.Text.Json.Nodes.JsonObject map
-            ? map.ToDictionary(kv => kv.Key.ToLowerInvariant(), kv => kv.Value!.GetValue<string>())
-            : [];
+        names = [];
+        if (spec.Options["names"] is System.Text.Json.Nodes.JsonObject map)
+        {
+            foreach (var (exe, name) in map)
+                names[exe.ToLowerInvariant()] = name!.GetValue<string>(); // indexer: "Explorer.exe" and "explorer.exe" may both appear
+        }
         Child = text;
         Loaded += (_, _) =>
         {
@@ -393,10 +394,7 @@ sealed class NetworkModule : ClickableModule
         }
     }
 
-    // shortcut: virtual adapters are recognized by name (Hyper-V, VPN, VM software); refine if a real adapter is misread.
-    static bool IsVirtual(NetworkInterface n) =>
-        new[] { "virtual", "hyper-v", "vethernet", "vmware", "virtualbox", "wsl" }.Any(w =>
-            n.Description.Contains(w, StringComparison.OrdinalIgnoreCase) || n.Name.Contains(w, StringComparison.OrdinalIgnoreCase));
+    static bool IsVirtual(NetworkInterface n) => ModuleStates.IsVirtualAdapter(n.Name, n.Description);
 }
 
 /// <summary>Battery level and charging state; hidden on PCs without a battery. Updates on power status events.</summary>
@@ -433,7 +431,8 @@ sealed class BatteryModule : ClickableModule
             return;
         string state = ModuleStates.Battery(battery.Percent, battery.Charging);
         // Segoe Fluent Icons: Battery0..Battery9 are E850..E859, Battery10 is E83F, BatteryCharging is E83E (approximate levels).
-        string glyph = battery.Charging ? "" : battery.Percent >= 95 ? "" : ((char)(0xE850 + battery.Percent / 10)).ToString();
+        int level = ModuleStates.BatteryLevel(battery.Percent);
+        string glyph = battery.Charging ? "" : level == 10 ? "" : ((char)(0xE850 + level)).ToString();
         icon.Show(state, glyph);
         percent.Text = $"{battery.Percent}%";
         ToolTip = $"Battery {battery.Percent}%{(battery.Charging ? " (charging)" : "")}";

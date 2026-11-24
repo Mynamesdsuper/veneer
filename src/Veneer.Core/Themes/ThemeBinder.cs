@@ -25,8 +25,10 @@ internal sealed partial class ThemeBinder(string root, List<Diagnostic> diagnost
     public Theme? Bind(JsonObject o, IReadOnlyDictionary<string, ThemeLayer> origins)
     {
         string? id = Str(o, "id", "", required: true);
-        if (id is not null && !IsValidId(id))
+        if (id is not null && !IdPattern().IsMatch(id))
             Error("id", "use lowercase letters, digits, '.' and '-' only (for example com.example.my-theme)");
+        else if (id is not null && !IsValidId(id))
+            Error("id", $"\"{id.Split('.')[0]}\" is a reserved Windows name and cannot start a theme id");
         string? name = Str(o, "name", "", required: true);
         string? author = Str(o, "author", "");
         string? version = Str(o, "version", "");
@@ -309,8 +311,14 @@ internal sealed partial class ThemeBinder(string root, List<Diagnostic> diagnost
 
     double? Num(JsonObject o, string key, string p, double min, double max)
     {
-        if (Value(o, key, p, JsonValueKind.Number, "a number", false)?.GetValue<double>() is not { } n)
+        if (Value(o, key, p, JsonValueKind.Number, "a number", false) is not { } v)
             return null;
+        if (!v.TryGetValue(out double n) || !double.IsFinite(n))
+        {
+            Error(ThemeLayers.Join(p, key), $"{v.ToJsonString()} is not a usable number");
+            return null;
+        }
+
         if (n >= min && n <= max)
             return n;
         Error(ThemeLayers.Join(p, key), $"{n} is out of range ({min}–{max})");

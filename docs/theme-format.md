@@ -236,6 +236,10 @@ Veneer never crashes on a bad theme. Each problem is reported with its path, for
 - **Warnings** keep the theme: unknown surface types or modules, missing files, orphaned overrides. Unknown
   fields are ignored.
 - A broken overrides file is ignored with a warning, and the theme loads without it.
+- Overrides that make the theme invalid (a value out of range, a token the theme does not have) are not applied:
+  the theme loads without them, and their problems are listed as warnings. The file is never changed.
+- When Veneer writes the overrides file (for example after pinning an app), comments cannot be kept. A file that
+  has comments is first copied to `overrides.json.bak`.
 
 ## Installing from a `.zip`
 

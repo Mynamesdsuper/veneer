@@ -196,7 +196,7 @@ public class ThemeLoaderTests
     [InlineData("\"edge\": \"top\", \"monitor\"", "\"edge\": \"up\", \"monitor\"", "surfaces[id=menubar].edge", "allowed: top, bottom, left, right")]
     [InlineData("\"appearance\": \"light\"", "\"appearance\": \"sepia\"", "windows.appearance", "not valid")]
     [InlineData("\"id\": \"com.example.sample\"", "\"id\": \"My Theme!\"", "id", "lowercase")]
-    [InlineData("\"id\": \"com.example.sample\"", "\"id\": \"con\"", "id", "lowercase")]
+    [InlineData("\"id\": \"com.example.sample\"", "\"id\": \"con\"", "id", "reserved")]
     [InlineData("\"name\": \"Sample\",", "", "name", "is required")]
     [InlineData("\"id\": \"dock\", \"type\"", "\"id\": \"menubar\", \"type\"", "surfaces[id=menubar]", "same id")]
     [InlineData("\"background\": \"$glass\"", "\"background\": \"$frosted\"", "surfaces[id=menubar].style.background", "unknown token \"$frosted\"")]
@@ -323,6 +323,136 @@ public class ThemeLoaderTests
     {
         var r = LoadSample(json: Replace("{ \"module\": \"active-app\", \"bold\": true }", "{ \"module\": \"active-app\", \"names\": { \"a.exe\": 1 } }"));
         Assert.Contains(r.Errors, e => e.Path == "surfaces[id=menubar].start[1].names");
+    }
+
+    [Fact]
+    public void Duplicate_keys_in_the_overrides_only_drop_the_overrides()
+    {
+        var r = LoadSample(overrides: """{ "surfaces": [], "surfaces": [] }""");
+
+        Assert.True(r.Success, string.Join(Environment.NewLine, r.Diagnostics));
+        Assert.Equal("overrides", Assert.Single(r.Warnings).Path);
+    }
+
+    [Theory]
+    [InlineData("""{ "surfaces": [ { "id": "dock", "iconSize": 900 } ] }""", "surfaces[id=dock].iconSize")]
+    [InlineData("""{ "tokens": { "text": "$accent" } }""", "tokens.text")]
+    public void Overrides_that_break_the_theme_are_skipped_with_warnings(string overrides, string path)
+    {
+        var r = LoadSample(overrides: overrides);
+
+        Assert.True(r.Success);
+        Assert.Equal(48, ((DockSurface)r.Theme!.Surfaces[1]).IconSize);
+        Assert.Empty(r.Errors);
+        Assert.Contains(r.Warnings, w => w.Path == "overrides" && w.Message.Contains("not applied"));
+        Assert.Contains(r.Warnings, w => w.Path == path);
+    }
+
+    [Fact]
+    public void A_broken_theme_reports_its_own_errors_even_with_overrides()
+    {
+        var r = LoadSample(json: Replace("\"iconSize\": 48", "\"iconSize\": 900"), overrides: "{}");
+
+        Assert.False(r.Success);
+        Assert.Contains(r.Errors, e => e.Path == "surfaces[id=dock].iconSize");
+    }
+
+    [Theory]
+    [InlineData("\"iconSize\": 48", "\"iconSize\": 1e400", "surfaces[id=dock].iconSize")]
+    [InlineData("\"schemaVersion\": 1,", "\"schemaVersion\": 1e400,", "schemaVersion")]
+    public void Numbers_beyond_double_range_are_errors_at_their_path(string from, string to, string path)
+    {
+        var r = LoadSample(json: Replace(from, to));
+
+        Assert.False(r.Success);
+        Assert.Contains(r.Errors, e => e.Path == path);
+    }
+
+    [Fact]
+    public void Reserved_device_names_get_their_own_message()
+    {
+        var r = LoadSample(json: Replace("\"id\": \"com.example.sample\"", "\"id\": \"nul.theme\""));
+        Assert.Contains(r.Errors, e => e.Path == "id" && e.Message.Contains("reserved"));
+    }
+
+    [Theory]
+    [InlineData("a", true)]
+    [InlineData("com.example.my-theme", true)]
+    [InlineData("com1.x", false)]
+    [InlineData("lpt9", false)]
+    [InlineData("a-", false)]
+    [InlineData(".a", false)]
+    [InlineData("A", false)]
+    public void Theme_id_rules(string id, bool valid) => Assert.Equal(valid, ThemeBinder.IsValidId(id));
+
+    [Fact]
+    public void Theme_id_length_limit_is_100()
+    {
+        Assert.True(ThemeBinder.IsValidId(new string('a', 100)));
+        Assert.False(ThemeBinder.IsValidId(new string('a', 101)));
+    }
+
+    [Fact]
+    public void Icon_folder_is_resolved_and_checked()
+    {
+        Assert.EndsWith(Path.Combine("assets", "icons"), LoadSample().Theme!.IconFolder);
+
+        var missing = LoadSample(json: Replace("\"iconFolder\": \"assets/icons\"", "\"iconFolder\": \"assets/none\""));
+        Assert.True(missing.Success);
+        Assert.Contains(missing.Warnings, w => w.Path == "iconFolder");
+
+        var escape = LoadSample(json: Replace("\"iconFolder\": \"assets/icons\"", "\"iconFolder\": \"../..\""));
+        Assert.Contains(escape.Errors, e => e.Path == "iconFolder");
+    }
+
+    [Fact]
+    public void Invalid_icon_override_keys_are_skipped_with_a_warning()
+    {
+        var r = LoadSample(json: Replace("\"exe:code.exe\"", "\"code.exe\""));
+
+        Assert.True(r.Success);
+        Assert.Empty(r.Theme!.IconOverrides);
+        Assert.Contains(r.Warnings, w => w.Path == "iconOverrides.code.exe");
+    }
+
+    [Theory]
+    [InlineData("\"variants\": {", "\"variants\": [], \"x\": {", "variants")]
+    [InlineData("\"dark\": { \"tokens\"", "\"dark\": 3, \"z\": { \"tokens\"", "variants.dark")]
+    [InlineData("\"glass\": \"#99F5F5F5\"", "\"glass\": { \"a\": 1 }", "tokens.glass")]
+    [InlineData("\"tokens\": { \"glass\"", "\"tokens\": [], \"t\": { \"glass\"", "tokens")]
+    public void Variants_and_tokens_of_the_wrong_kind_are_errors(string from, string to, string path)
+    {
+        // The dark variant replaces tokens.glass, so token cases load without it.
+        var r = LoadSample(path.StartsWith("variants") ? "dark" : null, json: Replace(from, to));
+
+        Assert.False(r.Success);
+        Assert.Contains(r.Errors, e => e.Path == path);
+    }
+
+    [Fact]
+    public void A_variant_can_add_a_surface()
+    {
+        string json = Replace("\"dark\": { \"tokens\"", "\"dark\": { \"surfaces\": [ { \"id\": \"side\", \"type\": \"bar\", \"edge\": \"left\" } ], \"tokens\"");
+        var r = LoadSample("dark", json: json);
+
+        Assert.True(r.Success, string.Join(Environment.NewLine, r.Diagnostics));
+        Assert.Equal(["menubar", "dock", "side"], r.Theme!.Surfaces.Select(s => s.Id));
+        Assert.Equal(ThemeLayer.Variant, r.Theme.OriginOf("surfaces[id=side].edge"));
+    }
+
+    [Fact]
+    public void A_crafted_variant_with_many_keys_loads_quickly()
+    {
+        // Thousands of token leaves plus a variant overriding thousands of scalars: once quadratic (minutes).
+        var tokens = string.Join(",", Enumerable.Range(0, 20000).Select(i => $"\"t{i}\": \"#FF000000\""));
+        string json = Replace("\"tokens\": { \"glass\": \"#99F5F5F5\",", $"\"tokens\": {{ {tokens}, \"glass\": \"#99F5F5F5\",")
+            .Replace("\"dark\": { \"tokens\": {", $"\"dark\": {{ \"tokens\": {{ {tokens},");
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+
+        var r = LoadSample("dark", json: json);
+
+        Assert.True(r.Success, string.Join(Environment.NewLine, r.Diagnostics.Take(3)));
+        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(5), $"took {clock.Elapsed}");
     }
 
     [Fact]

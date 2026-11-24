@@ -32,6 +32,8 @@ sealed class DockWindow : Window
     nint hwnd;
     string signature = "";
     bool revealed = true;
+    bool fullScreen;
+    bool closed;
 
     public DockWindow(Theme theme, DockSurface dock, PixelRect area, uint dpi, AppWindowTracker tracker, string? overridesPath)
     {
@@ -87,6 +89,10 @@ sealed class DockWindow : Window
         tracker.Changed += OnWindowsChanged;
         Closed += (_, _) =>
         {
+            // A rebuild closes this window: nothing queued may touch it afterwards (a pending debounce tick would
+            // call Show on a closed window, which throws).
+            closed = true;
+            debounce.Stop();
             tracker.Changed -= OnWindowsChanged;
             icons.Close();
             trigger?.Close();
@@ -122,6 +128,8 @@ sealed class DockWindow : Window
     /// <summary>Builds the items for the current windows and places the dock. Call once after Show().</summary>
     public void Refresh(bool force = false)
     {
+        if (closed)
+            return;
         var list = DockModel.Build(Pinned, Running(), dock.SeparateRunning);
         string sig = string.Join('|', list.Select(i => $"{i.Key}:{i.IsRunning}"));
         Items = list;
@@ -139,7 +147,7 @@ sealed class DockWindow : Window
     List<RunningApp> Running()
     {
         var groups = new List<(string Key, string? Aumid, string? Exe, List<nint> Windows)>();
-        foreach (var w in AppWindowTracker.Enumerate())
+        foreach (var w in tracker.Enumerate())
         {
             string key = DockModel.KeyFor(w.Aumid, w.ExePath);
             var group = groups.FirstOrDefault(g => g.Key == key);
@@ -177,25 +185,55 @@ sealed class DockWindow : Window
             trigger ??= new EdgeTrigger(this);
             trigger.Place(appBar.Bounds, area, dock.Edge);
         }
+
+        ApplyVisibility();
     }
 
-    /// <summary>Auto-hide: shows or hides the plate and the icons. The edge trigger stays.</summary>
-    public void SetRevealed(bool show)
+    /// <summary>Plate and icons are shown unless a full-screen app is in front or the auto-hidden dock is tucked away.</summary>
+    public bool ShowsSurfaces => !closed && !fullScreen && (revealed || !dock.AutoHide);
+
+    // The edge strip exists only while the dock is tucked away, so it never covers the dock's own bottom pixels.
+    bool ShowsTrigger => !closed && !fullScreen && dock.AutoHide && !revealed;
+
+    void ApplyVisibility()
     {
-        if (show == revealed || !dock.AutoHide)
+        if (closed)
             return;
-        revealed = show;
-        if (show)
+        if (ShowsSurfaces)
         {
-            Show();
+            if (!IsVisible)
+                Show();
             icons.Show();
-            Place();
         }
         else
         {
             Hide();
-            icons.Hide();
+            icons.Hide(); // an owned window does not hide with its owner
         }
+
+        if (trigger is not null)
+            trigger.Visibility = ShowsTrigger ? Visibility.Visible : Visibility.Hidden;
+    }
+
+    /// <summary>Auto-hide: shows or hides the plate and the icons.</summary>
+    public void SetRevealed(bool show)
+    {
+        if (show == revealed || !dock.AutoHide || closed)
+            return;
+        revealed = show;
+        ApplyVisibility();
+        if (show)
+        {
+            Place();
+            icons.StartConcealCountdown(); // hides again if the mouse leaves without ever reaching the icons
+        }
+    }
+
+    /// <summary>A full-screen app (game, video) is in front: hide plate, icons and edge strip together.</summary>
+    public void SetFullScreen(bool value)
+    {
+        fullScreen = value;
+        ApplyVisibility();
     }
 
     /// <summary>Called once the dock is shown: an auto-hidden dock starts hidden.</summary>
@@ -203,7 +241,22 @@ sealed class DockWindow : Window
     {
         Refresh(force: true);
         if (dock.AutoHide)
-            SetRevealed(false);
+        {
+            revealed = false;
+            ApplyVisibility();
+        }
+    }
+
+    /// <summary>
+    /// The theme reloaded and only the pinned list changed (usually our own write to the overrides file): update in
+    /// place, without rebuilding every surface.
+    /// </summary>
+    public void UpdatePinned(IReadOnlyList<string> pinned)
+    {
+        if (closed || pinned.SequenceEqual(Pinned))
+            return;
+        Pinned = pinned.ToList();
+        Refresh(force: true);
     }
 
     public void RemoveAppBar() => appBar?.Remove();
@@ -229,8 +282,9 @@ sealed class DockWindow : Window
     {
         if (item.Running is { Windows.Count: > 0 } app)
         {
+            // The window used most recently, looked up now (foreground changes do not trigger a refresh).
             Log.Write($"dock: activate {item.Key}");
-            WindowTools.Activate(app.Windows[0]);
+            WindowTools.Activate(app.Windows.MaxBy(tracker.LastActive));
         }
         else if (item.Pinned is { } entry && !item.IsSeparator)
         {
@@ -265,6 +319,9 @@ sealed class DockWindow : Window
     /// </summary>
     void SavePinned(List<string> list)
     {
+        if (closed)
+            return; // a menu or drag that outlived a rebuild must not write a stale list
+        var previous = Pinned;
         Pinned = list;
         Refresh(force: true);
         if (overridesPath is null)
@@ -275,7 +332,12 @@ sealed class DockWindow : Window
 
         var json = new JsonArray(list.Select(p => (JsonNode?)JsonValue.Create(p)).ToArray());
         if (!OverridesFile.TrySetSurfaceValue(overridesPath, dock.Id, "defaultPinned", json, out string? error))
-            Log.Write($"dock: pinned apps not saved: {error}");
+        {
+            // Show what is really saved rather than a change that would vanish at the next reload.
+            Log.Write($"dock: pinned apps not saved, change undone: {error}");
+            Pinned = previous;
+            Refresh(force: true);
+        }
     }
 
     // ----- debug self-test hooks -----

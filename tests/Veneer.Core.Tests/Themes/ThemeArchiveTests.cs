@@ -148,6 +148,48 @@ public class ThemeArchiveTests : IDisposable
         Assert.True(ThemeLoader.Load(Path.Combine(themes, "com.example.sample")).Success);
     }
 
+    // Rewrites the compression method of every entry (local and central headers) to 14 (LZMA), which .NET cannot read.
+    static MemoryStream WithUnsupportedMethod(MemoryStream zip)
+    {
+        byte[] b = zip.ToArray();
+        for (int i = 0; i + 4 <= b.Length; i++)
+        {
+            uint sig = BitConverter.ToUInt32(b, i);
+            if (sig == 0x04034b50)
+                BitConverter.GetBytes((ushort)14).CopyTo(b, i + 8);
+            else if (sig == 0x02014b50)
+                BitConverter.GetBytes((ushort)14).CopyTo(b, i + 10);
+        }
+
+        return new MemoryStream(b);
+    }
+
+    [Fact]
+    public void An_unsupported_or_damaged_entry_is_an_error_not_an_exception()
+    {
+        var errors = ThemeArchive.Extract(WithUnsupportedMethod(Zip(("theme.json", new string('x', 500)))), Path.Combine(work, "out"));
+        Assert.Contains("damaged or uses an unsupported format", Assert.Single(errors).Message);
+    }
+
+    [Fact]
+    public void A_damaged_zip_is_reported_by_install_too()
+    {
+        string path = Path.Combine(work, "bad.zip");
+        File.WriteAllBytes(path, WithUnsupportedMethod(Zip(SampleEntries())).ToArray());
+
+        var r = ThemeArchive.Install(path, Path.Combine(work, "themes"));
+
+        Assert.False(r.Success);
+        Assert.Empty(Directory.GetDirectories(Path.Combine(work, "themes"))); // staging cleaned up
+    }
+
+    [Fact]
+    public void A_zip_larger_than_the_total_limit_is_rejected_before_reading()
+    {
+        var errors = ThemeArchive.Extract(Zip(("a.png", new string('x', 100))), Path.Combine(work, "out"), new ArchiveLimits(MaxTotalBytes: 50));
+        Assert.Contains("larger than", Assert.Single(errors).Message);
+    }
+
     [Fact]
     public void Archive_without_theme_json_is_rejected()
     {

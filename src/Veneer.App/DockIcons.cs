@@ -14,6 +14,12 @@ static class DockIcons
     static readonly Dictionary<string, ImageSource?> Cache = [];
     static readonly Dictionary<string, string> Names = [];
 
+    public static void Clear()
+    {
+        Cache.Clear();
+        Names.Clear();
+    }
+
     public static ImageSource? For(Theme theme, DockItem item, uint dpi)
     {
         string key = $"{theme.Id}|{item.Key}";
@@ -54,24 +60,7 @@ static class DockIcons
         return path is null ? null : Load(path);
     }
 
-    static ImageSource? Load(string path)
-    {
-        try
-        {
-            var bitmap = new BitmapImage();
-            bitmap.BeginInit();
-            bitmap.CacheOption = BitmapCacheOption.OnLoad; // do not keep the theme file open
-            bitmap.UriSource = new Uri(path);
-            bitmap.EndInit();
-            bitmap.Freeze();
-            return bitmap;
-        }
-        catch (Exception e) when (e is System.IO.IOException or NotSupportedException or System.IO.FileFormatException)
-        {
-            Log.Write($"dock icon {path}: {e.Message}");
-            return null;
-        }
-    }
+    static ImageSource? Load(string path) => ThemeVisuals.LoadImage(path);
 
     static string? ParsingName(DockItem item) =>
         Aumid(item) is { } aumid ? ShellItems.ParsingName(aumid, isAumid: true)

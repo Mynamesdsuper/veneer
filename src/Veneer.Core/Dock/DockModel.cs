@@ -46,7 +46,8 @@ public static class DockModel
             return string.Equals(pinned, app.Aumid, StringComparison.OrdinalIgnoreCase);
         if (app.ExePath is null)
             return false;
-        return Path.IsPathRooted(pinned)
+        // Fully qualified only: "C:foo.exe" is relative to a drive's current folder and is treated as a file name.
+        return Path.IsPathFullyQualified(pinned)
             ? string.Equals(Path.GetFullPath(pinned), app.ExePath, StringComparison.OrdinalIgnoreCase)
             : string.Equals(pinned, Path.GetFileName(app.ExePath), StringComparison.OrdinalIgnoreCase);
     }
@@ -95,6 +96,37 @@ public static class DockModel
 
     public static List<string> Unpin(IReadOnlyList<string> pinned, string entry) =>
         pinned.Where(p => !string.Equals(p, entry, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    /// <summary>
+    /// While dragging the pinned cell <paramref name="from"/>: the pinned index it would land on, from the cursor
+    /// position <paramref name="along"/> in the base (unmagnified) row. Cells are <paramref name="sizes"/> apart by
+    /// <paramref name="spacing"/>; only the first <paramref name="pinnedCount"/> cells are pinned.
+    /// </summary>
+    public static int DropIndex(IReadOnlyList<double> sizes, double spacing, int pinnedCount, double along, int from)
+    {
+        if (pinnedCount <= 0)
+            return 0;
+        double pos = 0;
+        for (int i = 0; i < pinnedCount && i < sizes.Count; i++)
+        {
+            if (along < pos + sizes[i] / 2)
+                return Math.Clamp(i > from ? i - 1 : i, 0, pinnedCount - 1);
+            pos += sizes[i] + spacing;
+        }
+
+        return pinnedCount - 1;
+    }
+
+    /// <summary>Display order of <paramref name="count"/> cells while cell <paramref name="from"/> is dragged to <paramref name="to"/>.</summary>
+    public static int[] DragOrder(int count, int from, int to)
+    {
+        var order = Enumerable.Range(0, count).ToList();
+        if (from < 0 || from >= count)
+            return [.. order];
+        order.RemoveAt(from);
+        order.Insert(Math.Clamp(to, 0, order.Count), from);
+        return [.. order];
+    }
 
     /// <summary>Moves the pinned entry at <paramref name="from"/> so it ends up at index <paramref name="to"/>.</summary>
     public static List<string> Move(IReadOnlyList<string> pinned, int from, int to)

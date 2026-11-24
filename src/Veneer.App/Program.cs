@@ -18,14 +18,39 @@ static class Program
     [STAThread]
     static int Main(string[] args)
     {
-        // The watchdog must not create any window: handle it before WPF starts.
-        if (args.Length == 2 && args[0] == Watchdog.Argument && int.TryParse(args[1], out int pid))
-            return Watchdog.Run(pid, new Taskbar());
+        // The watchdog and its launcher must not create any window: handle them before WPF starts.
+        if (args.Length == 2 && int.TryParse(args[1], out int pid))
+        {
+            if (args[0] == Watchdog.LaunchArgument)
+                return Watchdog.Launch(pid);
+            if (args[0] == Watchdog.Argument)
+                return Watchdog.Run(pid, new Taskbar(), NoOtherInstance);
+        }
 
         var taskbar = new Taskbar();
+        if (args.Contains(Taskbar.SignInRestoreArgument))
+        {
+            // Started by the RunOnce safety net, at sign-in or when Explorer restarts. Windows consumed the entry:
+            // with a Veneer still running, only put the entry back; otherwise restore.
+            if (!NoOtherInstance())
+                Taskbar.SetRunOnce(true);
+            else
+                taskbar.RestoreWhenShellReady("sign-in safety net", TimeSpan.FromSeconds(30));
+            return 0;
+        }
+
         if (args.Contains("--restore-taskbar"))
         {
-            taskbar.Restore("command line");
+            // Manual emergency command: restores even if a (hung) Veneer is still running.
+            taskbar.RestoreWhenShellReady("command line", TimeSpan.FromSeconds(30));
+            return 0;
+        }
+
+        // One Veneer at a time: two would fight over the taskbar state and reserve the bars twice.
+        using var instance = new Mutex(initiallyOwned: true, InstanceMutex, out bool first);
+        if (!first)
+        {
+            Log.Write("another Veneer is already running; exiting");
             return 0;
         }
 
@@ -43,6 +68,26 @@ static class Program
         int code = new App(options, taskbar).Run();
         Log.Write("main returned");
         return code;
+    }
+
+    const string InstanceMutex = @"Local\Veneer.App";
+
+    // For the watchdog: restore only if no other Veneer took over in the meantime (a new instance owns the state).
+    static bool NoOtherInstance()
+    {
+        using var mutex = new Mutex(false, InstanceMutex);
+        try
+        {
+            if (!mutex.WaitOne(0))
+                return false;
+        }
+        catch (AbandonedMutexException)
+        {
+            // the dead main process still owned it: now we do, and nobody else is running
+        }
+
+        mutex.ReleaseMutex();
+        return true;
     }
 
     static string? Value(string[] args, string name)

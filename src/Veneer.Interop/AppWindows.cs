@@ -17,28 +17,30 @@ using Windows.Win32.UI.WindowsAndMessaging;
 namespace Veneer.Interop;
 
 /// <summary>A top-level window that would get a taskbar button.</summary>
-public sealed record AppWindow(nint Handle, int ProcessId, string? ExePath, string? Aumid, string Title);
+public sealed record AppWindow(nint Handle, int ProcessId, string? ExePath, string? Aumid);
 
 /// <summary>
-/// Lists app windows the way the taskbar does and reports changes through WinEvent hooks (no polling):
-/// windows created, destroyed, shown, hidden, cloaked or uncloaked, and foreground changes (for "most recently used").
-/// <see cref="Changed"/> can fire in bursts; consumers should debounce. Create it on a thread with a message loop.
+/// Lists app windows the way the taskbar does and reports changes through WinEvent hooks (no polling).
+/// Only changes that matter raise <see cref="Changed"/>: an app window shown or uncloaked, or a window of the last
+/// listing hidden, destroyed or cloaked. Tooltips, menus and other windows cost nothing beyond the filter.
+/// Foreground changes are only recorded (for "most recently used"). Create it on a thread with a message loop.
 /// </summary>
 public sealed class AppWindowTracker : IDisposable
 {
     const uint EVENT_SYSTEM_FOREGROUND = 0x0003;
-    const uint EVENT_OBJECT_CREATE = 0x8000, EVENT_OBJECT_HIDE = 0x8003;
+    const uint EVENT_OBJECT_DESTROY = 0x8001, EVENT_OBJECT_SHOW = 0x8002, EVENT_OBJECT_HIDE = 0x8003;
     const uint EVENT_OBJECT_CLOAKED = 0x8017, EVENT_OBJECT_UNCLOAKED = 0x8018;
     const int OBJID_WINDOW = 0;
 
     readonly WINEVENTPROC callback; // kept in a field: the hooks hold only a native pointer to it
     readonly List<UnhookWinEventSafeHandle> hooks = [];
     readonly Dictionary<nint, long> lastActive = [];
+    HashSet<nint> known = [];
 
     public AppWindowTracker()
     {
         callback = OnEvent;
-        hooks.Add(PInvoke.SetWinEventHook(EVENT_OBJECT_CREATE, EVENT_OBJECT_HIDE, default, callback, 0, 0, 0));
+        hooks.Add(PInvoke.SetWinEventHook(EVENT_OBJECT_DESTROY, EVENT_OBJECT_HIDE, default, callback, 0, 0, 0));
         hooks.Add(PInvoke.SetWinEventHook(EVENT_OBJECT_CLOAKED, EVENT_OBJECT_UNCLOAKED, default, callback, 0, 0, 0));
         hooks.Add(PInvoke.SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, default, callback, 0, 0, 0));
     }
@@ -49,18 +51,30 @@ public sealed class AppWindowTracker : IDisposable
     {
         if (idObject != OBJID_WINDOW || idChild != 0 || hwnd.IsNull)
             return;
-        if (ev == EVENT_SYSTEM_FOREGROUND)
-            lastActive[hwnd] = Environment.TickCount64;
-        else if (!PInvoke.GetAncestor(hwnd, GET_ANCESTOR_FLAGS.GA_PARENT).Equals(PInvoke.GetDesktopWindow()))
-            return; // only top-level windows matter
-        Changed?.Invoke();
+        switch (ev)
+        {
+            case EVENT_SYSTEM_FOREGROUND:
+                lastActive[hwnd] = Environment.TickCount64;
+                return;
+            case EVENT_OBJECT_SHOW or EVENT_OBJECT_UNCLOAKED:
+                // A new app window. Out-of-context events arrive late, so check the window as it is now.
+                if (!known.Contains(hwnd) && IsAppWindow(hwnd))
+                    Changed?.Invoke();
+                return;
+            default:
+                // Hide, destroy, cloak: the window may already be gone, so only the last listing can tell whether it
+                // was an app window.
+                if (known.Contains(hwnd))
+                    Changed?.Invoke();
+                return;
+        }
     }
 
     /// <summary>When the window was last in the foreground (0 if never seen).</summary>
     public long LastActive(nint hwnd) => lastActive.GetValueOrDefault(hwnd);
 
     /// <summary>The app windows open now, in z-order (front first). Veneer's own windows are left out.</summary>
-    public static List<AppWindow> Enumerate()
+    public List<AppWindow> Enumerate()
     {
         var handles = new List<HWND>();
         PInvoke.EnumWindows((h, _) =>
@@ -81,10 +95,12 @@ public sealed class AppWindowTracker : IDisposable
 
             if (pid == Environment.ProcessId)
                 continue;
-            var details = WindowTools.Describe(h);
-            result.Add(new AppWindow(h, (int)pid, details.ExePath, WindowAumid(h) ?? ProcessAumid(pid), details.Title));
+            result.Add(new AppWindow(h, (int)pid, WindowTools.ExePath(pid), WindowAumid(h) ?? ProcessAumid(pid)));
         }
 
+        known = result.Select(w => w.Handle).ToHashSet();
+        foreach (nint gone in lastActive.Keys.Where(k => !known.Contains(k)).ToList())
+            lastActive.Remove(gone);
         return result;
     }
 
@@ -135,9 +151,9 @@ public sealed class AppWindowTracker : IDisposable
                 Marshal.ReleaseComObject(store);
             }
         }
-        catch (COMException)
+        catch (Exception e) when (e is not OutOfMemoryException)
         {
-            return null;
+            return null; // COM errors come back as various exception types; none may take the dock down
         }
     }
 
@@ -241,7 +257,7 @@ public static class ShellItems
                 .Select(f => f.File)
                 .FirstOrDefault();
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Xml.XmlException or COMException or ArgumentException)
+        catch (Exception e) when (e is not OutOfMemoryException)
         {
             Log.Write($"package icon for {aumid}: {e.Message}");
             return null;
@@ -282,7 +298,7 @@ public static class ShellItems
                 Marshal.ReleaseComObject(item);
             }
         }
-        catch (Exception e) when (e is COMException or ArgumentException or FileNotFoundException)
+        catch (Exception e) when (e is not OutOfMemoryException)
         {
             return null;
         }
@@ -313,7 +329,7 @@ public static class ShellItems
                 Marshal.ReleaseComObject(factory);
             }
         }
-        catch (Exception e) when (e is COMException or ArgumentException or FileNotFoundException)
+        catch (Exception e) when (e is not OutOfMemoryException)
         {
             Log.Write($"icon for \"{parsingName}\": {e.Message}");
             return null;

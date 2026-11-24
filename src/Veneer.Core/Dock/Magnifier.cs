@@ -50,8 +50,11 @@ public static class Magnifier
                 k = i;
         }
 
-        double fraction = Math.Clamp((x - baseStarts[k]) / cells[k].Size, 0, 1);
-        double shift = x - (result[k].Start + fraction * result[k].Length);
+        // Map the cursor through cell k and the gap after it as one span, so the row moves continuously while the
+        // cursor crosses a gap (mapping through the cell alone made the row jump back by the gap at the next cell).
+        double baseSpan = cells[k].Size + spacing, newSpan = result[k].Length + spacing;
+        double offset = Math.Clamp(x - baseStarts[k], 0, baseSpan);
+        double shift = x - (result[k].Start + offset * newSpan / baseSpan);
         for (int i = 0; i < result.Length; i++)
             result[i] = result[i] with { Start = result[i].Start + shift };
         return result;
