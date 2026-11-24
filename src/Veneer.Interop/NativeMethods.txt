@@ -53,3 +53,14 @@ IMMNotificationClient
 CoCreateInstance
 GetForegroundWindow
 GetSystemPowerStatus
+IShellItemImageFactory
+IShellItem
+IPropertyStore
+PropVariantClear
+GetApplicationUserModelId
+DwmGetWindowAttribute
+SetForegroundWindow
+IsIconic
+GetObject
+BITMAP
+GetDesktopWindow

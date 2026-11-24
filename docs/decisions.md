@@ -6,6 +6,22 @@ Record each decision with its date, context, the options considered and the outc
 
 C# + WPF on .NET 10 (LTS), Windows 11 only. .NET 8 reached end of support on 2026-11-10.
 
+## 2026-11-24: Dock (Phase 4a)
+
+- **Grouping key:** AppUserModelID (window property first, then the packaged process), else the exe path. This
+  matches how the taskbar groups Store apps, Terminal, Chromium apps and Steam.
+- **Updates** come from WinEvent hooks (object create, destroy, show, hide, cloak, uncloak; foreground) and are
+  debounced by 150 ms, then the windows are listed again. A burst of events costs one listing; idle costs nothing.
+  The icons are rebuilt only when the set of apps or their running state changes.
+- **The dock reserves a full-width strip** on its edge (`AppBar`), but its window is only as long as its icons,
+  centered in the strip the shell grants.
+- **The running indicator lives inside each icon cell**, in the padding strip on the screen-edge side. Drawing it
+  outside the icon box with negative margins or a Canvas got it clipped by WPF layout.
+- **Shell icons arrive as premultiplied BGRA** (`IShellItemImageFactory`), so they are wrapped as `Pbgra32`.
+  Icons are requested at 256 px and cached per theme and app.
+- **Activation** uses `SetForegroundWindow` right after the user's click on the dock, which Windows allows to
+  the process that received the last input.
+
 ## 2026-11-24: Bar modules (Phase 3b)
 
 - **Menus use the WPF Fluent theme** (`Application.ThemeMode = System`, still marked experimental, `WPF0001`

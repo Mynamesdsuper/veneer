@@ -160,18 +160,33 @@ state names are ignored with a warning; missing states keep the glyph.
 | `magnification.enabled` | boolean (`true` when the object is present) | |
 | `magnification.maxScale` | number 1–3 (`1.5`) | |
 | `magnification.radius` | integer 0–10 (`3`) | How many neighbor icons grow. |
-| `cornerRadius` | number 0–100 (`0`) | Up to 8 uses native Windows rounding; larger values clip the window. |
-| `padding` | number 0–100 (`0`) | |
+| `cornerRadius` | number 0–100 (`0`) | Up to 8 uses native Windows rounding; larger values clip the window (sharper edge, no shadow). |
+| `padding` | number 0–100 (`0`) | Space around the icons. The running indicator sits in the padding on the screen-edge side. |
+| `margin` | number 0–200 (`0`) | Distance from the screen edge. |
+| `reserveSpace` | boolean (`true`) | Maximized windows stay clear of the dock. |
+| `style.spacing` | number 0–200 (`0`) | Gap between icons. |
 | `runningIndicator.shape` | `dot` \| `line` (`dot`) | |
 | `runningIndicator.color` | color | |
 | `runningIndicator.size` | number 1–20 (`4`) | |
 | `autoHide` | boolean (`false`) | |
-| `defaultPinned` | array of strings | Exe names, `ms-settings:` URIs or AppUserModelIDs. |
+| `defaultPinned` | array of strings | See below. |
+
+Pinned entries can be:
+
+- an exe file name (`"explorer.exe"`, found like the Run dialog does) or a full path;
+- an AppUserModelID for Store and packaged apps (`"Microsoft.WindowsTerminal_8wekyb3d8bbwe!App"`). Pin
+  Store apps this way: a Store app's exe name does not match its running windows (`calc.exe` starts the
+  Calculator app, which runs as `Microsoft.WindowsCalculator_8wekyb3d8bbwe!App`);
+- `ms-settings:`, for Settings.
+
+Running apps that are not pinned follow the pinned ones, in the order they were opened. Windows of the same
+app are grouped by AppUserModelID, or by exe when the app has none.
 
 ### Icons
 
 - `iconOverrides`: keys are `exe:<name.exe>` or `aumid:<AppUserModelID>`, values are image paths.
 - `iconFolder`: a folder of images named after the exe, for example `discord.png` for `discord.exe`.
+- Order: `iconOverrides` (`aumid:` first, then `exe:`), then `iconFolder`, then the icon Windows shows.
 
 ### `variants`
 

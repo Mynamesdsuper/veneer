@@ -8,7 +8,7 @@ namespace Veneer.App;
 /// <summary>
 /// Debug builds only: drives the running app from the command line, without simulated input. Steps run in order:
 /// <c>wait:&lt;seconds&gt;</c>, <c>menu</c> (open the logo menu), <c>close-menu</c>, <c>screenshot</c>,
-/// <c>app</c> (start winver.exe so the foreground app changes; it holds no user data), <c>close-app</c>, <c>quit</c>.
+/// <c>dock-click:&lt;text&gt;</c> and <c>dock-close:&lt;text&gt;</c> (the first dock icon whose key contains the text), <c>app</c> (start winver.exe so the foreground app changes; it holds no user data), <c>close-app</c>, <c>quit</c>.
 /// Example: <c>--self-test "wait:2,menu,wait:1,screenshot,close-menu,wait:1,quit"</c>.
 /// </summary>
 static class SelfTest
@@ -46,6 +46,12 @@ static class SelfTest
                 case ["close-app"]:
                     if (started is not null)
                         Veneer.Interop.WindowTools.Quit(started.Id);
+                    break;
+                case ["dock-click", var key]:
+                    app.ClickDockItem(key);
+                    break;
+                case ["dock-close", var key]:
+                    app.CloseDockItem(key);
                     break;
                 case ["quit"]:
                     app.Shutdown();

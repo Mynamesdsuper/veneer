@@ -19,6 +19,15 @@ public static class SystemActions
 
     public static void ShutDown() => Run("shutdown.exe", "/s /t 0");
 
+    /// <summary>
+    /// Starts a dock entry: an AppUserModelID through <c>shell:AppsFolder</c>; an exe name, full path or URI through
+    /// the shell, which also resolves App Paths (e.g. <c>msedge.exe</c>).
+    /// </summary>
+    public static void Launch(string entry, bool isAumid) =>
+        Start(isAumid
+            ? new ProcessStartInfo("explorer.exe", @"shell:AppsFolder\" + entry) { UseShellExecute = true }
+            : new ProcessStartInfo(entry) { UseShellExecute = true });
+
     /// <summary>Opens a URI such as <c>ms-settings:about</c> with its registered handler.</summary>
     public static void Open(string uri) => Start(new ProcessStartInfo(uri) { UseShellExecute = true });
 
@@ -105,6 +114,18 @@ public static class WindowTools
     public static void Close(nint hwnd) => PInvoke.PostMessage((HWND)hwnd, WM_CLOSE, 0, 0);
 
     public static void Minimize(nint hwnd) => PInvoke.ShowWindow((HWND)hwnd, SHOW_WINDOW_CMD.SW_MINIMIZE);
+
+    /// <summary>
+    /// Brings a window to the front, restoring it if minimized. Allowed because the user just clicked one of our
+    /// windows (Windows lets the process that received the last input set the foreground window).
+    /// </summary>
+    public static void Activate(nint hwnd)
+    {
+        var h = (HWND)hwnd;
+        if (PInvoke.IsIconic(h))
+            PInvoke.ShowWindow(h, SHOW_WINDOW_CMD.SW_RESTORE);
+        PInvoke.SetForegroundWindow(h);
+    }
 
     /// <summary>
     /// Asks every visible top-level window of the process to close. Never kills the process: the app decides

@@ -146,7 +146,9 @@ internal sealed partial class ThemeBinder(string root, List<Diagnostic> diagnost
                 ? new RunningIndicator(IndicatorShape.Dot, null, 4)
                 : new RunningIndicator(Enum<IndicatorShape>(ind, "shape", ip) ?? IndicatorShape.Dot, Color(ind, "color", ip), Num(ind, "size", ip, 1, 20) ?? 4),
             Bool(s, "autoHide", p) ?? false,
-            StringList(s, "defaultPinned", p));
+            StringList(s, "defaultPinned", p),
+            Num(s, "margin", p, 0, 200) ?? 0,
+            Bool(s, "reserveSpace", p) ?? true);
     }
 
     List<ModuleSpec> Modules(JsonObject s, string key, string p)

@@ -19,7 +19,7 @@ Every phase ends with `dotnet build` and `dotnet test` green and one commit.
 - [Phase 0: technical spikes](#phase-0-technical-spikes): ✅ done
 - [Phase 2: theme engine and personalization layers](#phase-2-theme-engine-and-personalization-layers): ✅ done
 - [Phase 3: layout engine and bars](#phase-3-layout-engine-and-bars): ✅ done
-- [Phase 4: dock](#phase-4-dock): ⏳ next
+- [Phase 4: dock](#phase-4-dock): 🚧 4a done, 4b next
 - [Phase 5: Windows settings from themes](#phase-5-windows-settings-from-themes)
 - [Phase 6: profiles, settings, tray, install, autostart](#phase-6-profiles-settings-tray-install-autostart)
 - [Phase 7: bundled themes](#phase-7-bundled-themes)
@@ -156,31 +156,39 @@ Split in two steps: **3a** (foundations and the first visible bars) and **3b** (
 
 ## Phase 4: dock
 
+Split like Phase 3: **4a** (a working dock) is done; **4b** (magnification, menus, drag, persistence) is next.
+
 **Placement and look**
-- [ ] Dock on the bottom, left or right edge, styled by the theme.
-- [ ] Separators.
-- [ ] Optional auto-hide.
+- [x] Dock on the bottom, left or right edge, centered, with a margin from the edge; blurred plate, border,
+      corner radius (window region above 8 px), padding, spacing. (4a)
+- [x] Reserved space, so maximized windows stay clear; the window resizes as apps open and close. (4a)
+- [x] Placed after the bars (a bottom bar and a bottom dock stack). (4a)
+- [ ] Separators. (4b)
+- [ ] Optional auto-hide. (4b)
 
 **Apps and windows**
-- [ ] Pinned apps.
-- [ ] Running apps: visible, unowned, not tool windows, not cloaked; grouped by process / AppUserModelID.
-- [ ] Running indicator (dot or line).
-- [ ] Click: launch, bring to front, or restore.
-- [ ] MSIX apps launched through `shell:AppsFolder\<AUMID>`.
+- [x] Pinned apps: exe names (resolved like the Run dialog), full paths, AppUserModelIDs, `ms-settings:`. (4a)
+- [x] Running apps: the taskbar's filter (visible, unowned or `WS_EX_APPWINDOW`, not tool windows, not cloaked);
+      grouped by AppUserModelID (window property, then the packaged process), else by exe. (4a)
+- [x] Live updates from WinEvent hooks (create, destroy, show, hide, cloak, foreground), debounced; no polling.
+      Idle CPU 0.00% with a bar and a dock. (4a)
+- [x] Running indicator (dot or line) in the theme's color. (4a)
+- [x] Click: launch, or bring the most recently used window to the front, restoring it if minimized. (4a)
+- [x] Store apps launched through `shell:AppsFolder\<AUMID>`. (4a)
 
 **Icons**
-- [ ] High-resolution icons for exe and lnk files (`IShellItemImageFactory`).
-- [ ] Icons for MSIX apps via AUMID.
-- [ ] Theme `iconOverrides` and `iconFolder` take priority over system icons.
+- [x] High-resolution icons from the shell (`IShellItemImageFactory`) for exe files and AppUserModelIDs, with a
+      fallback to the exe when an id is not in the Apps folder (Steam). (4a)
+- [x] Theme `iconOverrides` and `iconFolder` take priority over system icons. (4a)
 
-**Interaction**
+**Interaction** (4b)
 - [ ] Hover magnification: intensity and radius from the theme; the math lives in `Veneer.Core` with tests.
 - [ ] Context menu: Keep in Dock, Remove, Close.
 - [ ] Drag to reorder.
 - [ ] Pinned apps and their order saved as user overrides, so they survive theme switches.
 
-**Performance**
-- [ ] Smooth at 60 fps, measured.
+**Performance** (4b)
+- [ ] Smooth at 60 fps during magnification, measured.
 
 ## Phase 5: Windows settings from themes
 

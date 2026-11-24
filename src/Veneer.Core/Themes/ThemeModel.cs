@@ -106,7 +106,9 @@ public sealed record DockSurface(
     double Padding,
     RunningIndicator RunningIndicator,
     bool AutoHide,
-    IReadOnlyList<string> DefaultPinned) : Surface(Id, Edge, Monitor, Style);
+    IReadOnlyList<string> DefaultPinned,
+    double Margin,
+    bool ReserveSpace) : Surface(Id, Edge, Monitor, Style);
 
 public sealed record Magnification(bool Enabled, double MaxScale, int Radius);
 

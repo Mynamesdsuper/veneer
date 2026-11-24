@@ -24,6 +24,7 @@ public sealed class AppBar(nint hwnd)
     PixelRect desired;
     bool reserve;
     bool registered;
+    Func<PixelRect, PixelRect>? fit;
 
     /// <summary>Where the window actually is, in physical pixels (the shell may have adjusted the request).</summary>
     public PixelRect Bounds { get; private set; }
@@ -31,10 +32,16 @@ public sealed class AppBar(nint hwnd)
     /// <summary>Raised when the shell moved the bar (another app bar appeared, the taskbar changed...).</summary>
     public event Action? Moved;
 
-    public void Place(Edge edge, PixelRect desired, bool reserveSpace)
+    /// <param name="desired">The strip to reserve (or to occupy, without <paramref name="reserveSpace"/>).</param>
+    /// <param name="fit">
+    /// Optional: where the window goes inside the strip the shell granted (a dock is shorter than the strip it
+    /// reserves). Without it the window fills the strip.
+    /// </param>
+    public void Place(Edge edge, PixelRect desired, bool reserveSpace, Func<PixelRect, PixelRect>? fit = null)
     {
         this.edge = edge;
         this.desired = desired;
+        this.fit = fit;
         reserve = reserveSpace;
         if (reserve && !registered)
         {
@@ -63,7 +70,7 @@ public sealed class AppBar(nint hwnd)
     {
         registered = false;
         if (Bounds.Width > 0)
-            Place(edge, desired, reserve);
+            Place(edge, desired, reserve, fit);
     }
 
     void Reposition()
@@ -81,6 +88,8 @@ public sealed class AppBar(nint hwnd)
             rect = KeepThickness(FromRect(data.rc), desired, edge);
         }
 
+        if (fit is not null)
+            rect = fit(rect);
         Bounds = rect;
         PInvoke.SetWindowPos(handle, (HWND)(nint)(-1) /* HWND_TOPMOST */, rect.Left, rect.Top, rect.Width, rect.Height, SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE);
     }

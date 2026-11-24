@@ -19,6 +19,8 @@ sealed class App : Application
     readonly ITaskbar taskbar;
     readonly ThemeManager themes = new();
     readonly List<BarWindow> bars = [];
+    readonly List<DockWindow> docks = [];
+    AppWindowTracker? appWindows;
     HwndSource? messages;
     HotKeys? hotKeys;
     int cleanedUp;
@@ -83,12 +85,19 @@ sealed class App : Application
         }
 
         bars.Clear();
+        foreach (var dock in docks)
+        {
+            dock.RemoveAppBar();
+            dock.Close();
+        }
+
+        docks.Clear();
 
         var theme = themes.Current;
         var monitor = Monitors.Primary();
         var barSurfaces = theme.Surfaces.OfType<BarSurface>().ToList();
-        var rects = SurfaceLayout.Compute(monitor.Bounds,
-            barSurfaces.Select(b => new EdgeItem(b.Id, b.Edge, SurfaceLayout.ToPhysical(b.Thickness, monitor.Dpi))));
+        var edgeItems = barSurfaces.Select(b => new EdgeItem(b.Id, b.Edge, SurfaceLayout.ToPhysical(b.Thickness, monitor.Dpi))).ToList();
+        var rects = SurfaceLayout.Compute(monitor.Bounds, edgeItems);
 
         foreach (var surface in barSurfaces)
         {
@@ -98,7 +107,17 @@ sealed class App : Application
             bars.Add(window);
         }
 
-        Log.Write($"theme \"{theme.Id}\": {bars.Count} bar(s) on a {monitor.Bounds.Width}x{monitor.Bounds.Height} monitor at {monitor.Dpi} dpi");
+        var remaining = SurfaceLayout.Remaining(monitor.Bounds, edgeItems);
+        foreach (var surface in theme.Surfaces.OfType<DockSurface>())
+        {
+            appWindows ??= new AppWindowTracker();
+            var window = new DockWindow(theme, surface, remaining, monitor.Dpi, appWindows);
+            window.Show();
+            window.Refresh();
+            docks.Add(window);
+        }
+
+        Log.Write($"theme \"{theme.Id}\": {bars.Count} bar(s), {docks.Count} dock(s) on a {monitor.Bounds.Width}x{monitor.Bounds.Height} monitor at {monitor.Dpi} dpi");
     }
 
     // A hidden top-level window: it receives the shell's TaskbarCreated broadcast (message-only windows do not) and hotkeys.
@@ -132,6 +151,8 @@ sealed class App : Application
             taskbar.OnShellRestarted();
             foreach (var bar in bars)
                 bar.OnShellRestarted();
+            foreach (var dock in docks)
+                dock.OnShellRestarted();
         }
         else if (hotKeys!.WndProc(msg, wParam))
         {
@@ -165,6 +186,10 @@ sealed class App : Application
                 throw new InvalidOperationException("simulated crash (debug hotkey)");
         }
     }
+
+    public void ClickDockItem(string key) => docks.FirstOrDefault()?.ClickItem(key);
+
+    public void CloseDockItem(string key) => docks.FirstOrDefault()?.CloseItem(key);
 
     public void OpenLogoMenu() => bars.Select(b => b.FindModule<LogoMenuModule>()).FirstOrDefault(m => m is not null)?.Open();
 
@@ -213,7 +238,10 @@ sealed class App : Application
         SystemEvents.DisplaySettingsChanged -= OnDisplayChanged;
         foreach (var bar in bars)
             bar.RemoveAppBar();
+        foreach (var dock in docks)
+            dock.RemoveAppBar();
         taskbar.Restore("exit");
+        appWindows?.Dispose();
         Modules.Shutdown();
         hotKeys?.Dispose();
         themes.Dispose();

@@ -57,6 +57,14 @@ public static class SurfaceLayout
         return result;
     }
 
+    /// <summary>What is left of the monitor once the edge surfaces are placed (where a dock goes).</summary>
+    public static PixelRect Remaining(PixelRect monitor, IEnumerable<EdgeItem> items)
+    {
+        var list = items.ToList();
+        int Sum(Edge e) => list.Where(s => s.Edge == e).Sum(s => s.Thickness);
+        return new PixelRect(monitor.Left + Sum(Edge.Left), monitor.Top + Sum(Edge.Top), monitor.Right - Sum(Edge.Right), monitor.Bottom - Sum(Edge.Bottom));
+    }
+
     /// <summary>Converts device-independent pixels to physical pixels for a monitor DPI (96 = 100%).</summary>
     public static int ToPhysical(double dips, uint dpi) => (int)Math.Round(dips * dpi / 96.0, MidpointRounding.AwayFromZero);
 }
