@@ -92,7 +92,12 @@ static class Modules
         if (target is ClickableModule module)
         {
             module.SetActive(true);
-            menu.Closed += (_, _) => module.SetActive(false);
+            // Not when another menu of the same module took over (logo menu → Veneer menu): it keeps the highlight.
+            menu.Closed += (_, _) =>
+            {
+                if (LastMenu is not { IsOpen: true } next || next == menu || next.PlacementTarget != module)
+                    module.SetActive(false);
+            };
         }
 
         menu.PlacementTarget = target;
@@ -108,6 +113,34 @@ static class Modules
 
     /// <summary>The menu opened most recently (used by the debug self-test to close it).</summary>
     public static ContextMenu? LastMenu { get; private set; }
+
+    /// <summary>Closes the open menu, if any (see <c>App.Quit</c>).</summary>
+    public static void CloseMenu()
+    {
+        if (LastMenu is { IsOpen: true } menu)
+            menu.IsOpen = false;
+    }
+
+    /// <summary>Opens a menu at the mouse pointer (the notification-area icon).</summary>
+    public static void OpenAtMouse(ContextMenu menu)
+    {
+        LastMenu = menu;
+        ThemeVisuals.StyleMenu(menu);
+        menu.Placement = PlacementMode.MousePoint;
+        menu.IsOpen = true;
+    }
+
+    /// <summary>Veneer's own menu (profiles, themes, quit...), built by the app each time it opens.</summary>
+    public static Func<ContextMenu>? VeneerMenu { get; set; }
+
+    /// <summary>A section title: a disabled item.</summary>
+    public static MenuItem Header(string text) => new() { Header = text, IsEnabled = false };
+
+    /// <summary>
+    /// An item's text with a check mark when <paramref name="on"/>. Themed menus have no check column (their item
+    /// template is only the text), so the mark is part of the text; spaces keep the names aligned.
+    /// </summary>
+    public static string Checked(string text, bool on) => (on ? "✓ " : "   ") + text;
 
     public static MenuItem Item(string header, Action action, bool enabled = true)
     {
@@ -260,6 +293,13 @@ sealed class LogoMenuModule : ClickableModule
         menu.Items.Add(Modules.Item("Shut Down…", () => { if (Modules.Confirm("Shut down the computer now? Unsaved work in open apps may be lost.")) SystemActions.ShutDown(); }));
         menu.Items.Add(new Separator());
         menu.Items.Add(Modules.Item("Lock Screen", SystemActions.Lock));
+        if (Modules.VeneerMenu is { } veneer)
+        {
+            // A second menu in the same place rather than a submenu: themed menus have no submenus.
+            menu.Items.Add(new Separator());
+            menu.Items.Add(Modules.Item("Veneer ›", () => Modules.Open(veneer(), this, ctx.Edge)));
+        }
+
         Modules.Open(menu, this, ctx.Edge);
     }
 }

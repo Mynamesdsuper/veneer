@@ -1,4 +1,3 @@
-using System.IO;
 using Veneer.Core;
 using Veneer.Interop;
 
@@ -13,8 +12,8 @@ namespace Veneer.App;
 ///   Veneer.App --watchdog &lt;pid&gt;     internal: started by Veneer itself
 ///   --self-test "&lt;steps&gt;"          debug builds only, see SelfTest
 /// </code>
-/// Without <c>--theme</c> the bundled default theme (themesqua) is used, or the built-in fallback if it is missing.
-/// Profiles replace these options in Phase 7.
+/// Without <c>--theme</c> the active profile decides the theme (the bundled <c>aqua</c> by default, or the built-in
+/// fallback if it is missing). <c>--theme</c> is for development and tests: it turns profile switching off.
 /// </summary>
 static class Program
 {
@@ -43,7 +42,7 @@ static class Program
         }
 
         if (args.Contains("--restore-windows-settings"))
-            return new WindowsSettingsService().Restore() ? 0 : 1; // the settings window and tray get a button in Phase 6
+            return new WindowsSettingsService().Restore() ? 0 : 1; // also in the Veneer menu
 
         if (args.Contains("--restore-taskbar"))
         {
@@ -65,7 +64,7 @@ static class Program
             taskbar.Restore("next start (dirty state)");
 
         var options = new Options(
-            Value(args, "--theme") ?? DefaultTheme(),
+            Value(args, "--theme"),
             Value(args, "--variant"),
             Value(args, "--overrides"),
             KeepTaskbar: args.Contains("--keep-taskbar"),
@@ -95,13 +94,6 @@ static class Program
 
         mutex.ReleaseMutex();
         return true;
-    }
-
-    // The bundled default theme next to the executable (themesqua). Without it the built-in fallback theme is used.
-    static string? DefaultTheme()
-    {
-        string folder = Path.Combine(AppContext.BaseDirectory, "themes", "aqua");
-        return File.Exists(Path.Combine(folder, "theme.json")) ? folder : null;
     }
 
     static string? Value(string[] args, string name)

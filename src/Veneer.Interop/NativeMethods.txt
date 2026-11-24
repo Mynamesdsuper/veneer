@@ -70,3 +70,7 @@ PeekMessage
 IsZoomed
 GetWindowRect
 MonitorFromWindow
+Shell_NotifyIcon
+NOTIFYICONDATAW
+ExtractIconEx
+DestroyIcon

@@ -66,12 +66,25 @@ public sealed class WindowsSettingsService(string? snapshotPath = null)
             Broadcast();
             Log.Write($"windows settings: {(dark ? "dark" : "light")} mode");
         }
+        else if (plan.Dark is null && snapshot.Appearance is { } appearance)
+        {
+            // Left to Windows now (another profile, or the user's choice): give back the user's own mode.
+            RestoreAppearance(appearance);
+            snapshot = Keep(snapshot with { Appearance = null });
+            Log.Write("windows settings: light/dark mode given back");
+        }
 
         if (plan.Accent is { } color && Accent.Current is { } current && current.Accent != Accent.ToColorRef(color))
         {
             snapshot = Save(snapshot with { Accent = snapshot.Accent ?? new AccentSnapshot(current.Start, current.Accent, Read(AccentValues)) });
             if (Accent.Set(color))
                 Log.Write($"windows settings: accent {color}");
+        }
+        else if (plan.Accent is null && snapshot.Accent is { } accent)
+        {
+            RestoreAccent(accent);
+            snapshot = Keep(snapshot with { Accent = null });
+            Log.Write("windows settings: accent color given back");
         }
 
         if (plan.Wallpaper is { } file && !Wallpaper.IsEverywhere(file))
@@ -80,6 +93,34 @@ public sealed class WindowsSettingsService(string? snapshotPath = null)
             Wallpaper.Set(file);
             Log.Write($"windows settings: wallpaper {Path.GetFileName(file)}");
         }
+        else if (plan.Wallpaper is null && snapshot.Wallpaper is { } wallpaper)
+        {
+            Wallpaper.Restore(wallpaper);
+            Keep(snapshot with { Wallpaper = null });
+            Log.Write("windows settings: wallpaper given back");
+        }
+    }
+
+    // Saves what is still to restore, or deletes the file when nothing is left.
+    WindowsSnapshot Keep(WindowsSnapshot snapshot)
+    {
+        if (!snapshot.IsEmpty)
+            return Save(snapshot);
+        File.Delete(path);
+        return snapshot;
+    }
+
+    static void RestoreAppearance(AppearanceSnapshot appearance)
+    {
+        Write(appearance.Values);
+        Broadcast();
+    }
+
+    static void RestoreAccent(AccentSnapshot accent)
+    {
+        Accent.SetPreference(accent.PreferenceStart, accent.PreferenceAccent);
+        Write(accent.Values); // after the API call, which rewrites some of these values
+        Broadcast();
     }
 
     /// <summary>Writes the saved originals back and deletes the snapshot. False when there is a snapshot that cannot be read.</summary>
@@ -100,18 +141,9 @@ public sealed class WindowsSettingsService(string? snapshotPath = null)
         }
 
         if (snapshot.Appearance is { } appearance)
-        {
-            Write(appearance.Values);
-            Broadcast();
-        }
-
+            RestoreAppearance(appearance);
         if (snapshot.Accent is { } accent)
-        {
-            Accent.SetPreference(accent.PreferenceStart, accent.PreferenceAccent);
-            Write(accent.Values); // after the API call, which rewrites some of these values
-            Broadcast();
-        }
-
+            RestoreAccent(accent);
         if (snapshot.Wallpaper is { } wallpaper)
             Wallpaper.Restore(wallpaper);
 

@@ -6,6 +6,7 @@ using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using Veneer.Core;
 using Veneer.Core.Layout;
+using Veneer.Core.Profiles;
 using Veneer.Core.Settings;
 using Veneer.Core.Themes;
 using Veneer.Interop;
@@ -15,9 +16,21 @@ namespace Veneer.App;
 /// <summary>Owns the theme, the surface windows and the taskbar. Every exit path goes through <see cref="Cleanup"/>.</summary>
 sealed class App : Application
 {
-    const int HotKeyQuit = 1, HotKeyReload = 2, HotKeyRestoreTaskbar = 3, HotKeyScreenshot = 4, HotKeyCrash = 5, HotKeyLogoMenu = 6;
+    const int HotKeyQuit = 1, HotKeyReload = 2, HotKeyRestoreTaskbar = 3, HotKeyScreenshot = 4, HotKeyCrash = 5, HotKeyLogoMenu = 6, HotKeyNextProfile = 7;
+
+    /// <summary>Where themes are found by name: the user's installed themes first, then the bundled ones.</summary>
+    static readonly string[] ThemeRoots = [AppPaths.Themes, Path.Combine(AppContext.BaseDirectory, "themes")];
+
+    /// <summary>
+    /// What the surfaces are built from: the active profile's theme, overrides and Windows preferences. Profile is
+    /// null when <c>--theme</c> on the command line turns profiles off; ThemeFolder is null for the built-in theme.
+    /// </summary>
+    sealed record Session(string? Profile, string? ThemeFolder, string OverridesPath, string PreferencesPath);
 
     readonly Options options;
+    readonly ProfileStore profiles = new(AppPaths.Root);
+    Session session = null!; // set in OnStartup
+    TrayIcon? tray;
     readonly ITaskbar taskbar;
     readonly ThemeManager themes = new();
     readonly List<BarWindow> bars = [];
@@ -43,7 +56,7 @@ sealed class App : Application
         AppDomain.CurrentDomain.UnhandledException += (_, e) => Crash("appdomain", e.ExceptionObject as Exception);
         // Give everything back, then really exit: if another app cancels the logoff, a half-cleaned Veneer (bars no
         // longer reserved, hotkeys gone) would be worse than none. The user can start it again.
-        SessionEnding += (_, e) => { Log.Write($"session ending: {e.ReasonSessionEnding}"); Cleanup(); Shutdown(); };
+        SessionEnding += (_, e) => { Log.Write($"session ending: {e.ReasonSessionEnding}"); Cleanup(); Quit(); };
         Exit += (_, _) => Cleanup();
     }
 
@@ -53,13 +66,8 @@ sealed class App : Application
         CreateMessageWindow();
 
         themes.Loaded += r => Dispatcher.BeginInvoke(() => OnThemeLoaded(r));
-        if (options.Theme is not null)
-        {
-            // The folder must exist so the overrides file is watched even before it is first written.
-            Directory.CreateDirectory(Path.GetDirectoryName(OverridesPath)!);
-            variant = options.Variant;
-            themes.Apply(options.Theme, variant, OverridesPath);
-        }
+        Modules.VeneerMenu = VeneerMenu;
+        LoadSession(rebuildBuiltIn: false); // the surfaces are built below, once the taskbar is hidden
 
         if (!options.KeepTaskbar)
         {
@@ -72,9 +80,126 @@ sealed class App : Application
         if (options.SelfTest is not null)
             SelfTest.Run(options.SelfTest, this);
 #endif
-        if (options.Theme is null)
+        if (session.ThemeFolder is null)
             Rebuild(); // otherwise the Loaded event of Apply() above builds the surfaces
     }
+
+    Session NewSession()
+    {
+        string active = profiles.Active;
+        string overrides = options.Overrides ?? profiles.OverridesPath(active);
+        if (options.Theme is not null)
+            return new Session(null, options.Theme, overrides, profiles.PreferencesPath(active));
+
+        var warnings = new List<string>();
+        var profile = profiles.Load(active, warnings);
+        foreach (string w in warnings)
+            Log.Write($"profile \"{active}\": {w}");
+        string? folder = ThemeFolders.Find(profile.Theme, ThemeRoots);
+        if (folder is null)
+        {
+            Log.Write($"profile \"{active}\": theme \"{profile.Theme}\" not found; using \"{Profile.DefaultTheme}\"");
+            folder = ThemeFolders.Find(Profile.DefaultTheme, ThemeRoots); // null: the built-in fallback theme
+        }
+
+        return new Session(active, folder, overrides, profiles.PreferencesPath(active));
+    }
+
+    /// <summary>Loads the active profile (or the command line's theme). The theme's Loaded event rebuilds the surfaces.</summary>
+    void LoadSession(bool rebuildBuiltIn = true)
+    {
+        session = NewSession();
+        Log.Write($"profile: {session.Profile ?? "(none: --theme)"}, theme: {session.ThemeFolder ?? "(built-in)"}");
+        variant = options.Variant;
+        applied = null; // rebuild everything and apply the profile's Windows settings, even if only the pins differ
+        if (session.ThemeFolder is null)
+        {
+            // shortcut: the theme manager cannot go back to the built-in theme; the current theme stays on screen.
+            if (rebuildBuiltIn)
+                Rebuild();
+            return;
+        }
+
+        // The folder must exist so the overrides file is watched even before it is first written.
+        Directory.CreateDirectory(Path.GetDirectoryName(session.OverridesPath)!);
+        themes.Apply(session.ThemeFolder, variant, session.OverridesPath);
+    }
+
+    /// <summary>Makes <paramref name="name"/> the active profile and switches to it.</summary>
+    public void SwitchProfile(string name)
+    {
+        if (session.Profile is null)
+            return; // --theme: profiles are off
+        Try($"switch to profile \"{name}\"", () =>
+        {
+            profiles.SetActive(name);
+            LoadSession();
+        });
+    }
+
+    /// <summary>Gives the active profile another theme.</summary>
+    public void SetTheme(string name)
+    {
+        if (session.Profile is not { } active)
+            return;
+        Try($"switch to theme \"{name}\"", () =>
+        {
+            profiles.Save(active, profiles.Load(active, []) with { Theme = name });
+            LoadSession();
+        });
+    }
+
+    // A menu action that writes files: a full disk or a locked file is logged, never fatal.
+    static void Try(string what, Action action)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            Log.Write($"could not {what}: {e.Message}");
+        }
+    }
+
+    /// <summary>Veneer's own menu: in the bar (logo menu → Veneer) and on the notification-area icon.</summary>
+    System.Windows.Controls.ContextMenu VeneerMenu()
+    {
+        var menu = new System.Windows.Controls.ContextMenu();
+        bool profilesOn = session.Profile is not null;
+        menu.Items.Add(Modules.Header("Profile"));
+        foreach (string name in profiles.Names())
+            menu.Items.Add(Modules.Item(Modules.Checked(name, name == session.Profile), () => SwitchProfile(name), profilesOn));
+        menu.Items.Add(new System.Windows.Controls.Separator());
+        menu.Items.Add(Modules.Header("Theme"));
+        foreach (var theme in ThemeFolders.List(ThemeRoots))
+        {
+            bool current = string.Equals(theme.Folder, session.ThemeFolder, StringComparison.OrdinalIgnoreCase);
+            menu.Items.Add(Modules.Item(Modules.Checked(theme.DisplayName, current), () => SetTheme(theme.Name), profilesOn));
+        }
+
+        menu.Items.Add(new System.Windows.Controls.Separator());
+        bool autostart = Autostart.IsEnabled;
+        menu.Items.Add(Modules.Item(Modules.Checked("Start with Windows", autostart), () => Try("change autostart", () => Autostart.Set(!autostart))));
+        menu.Items.Add(Modules.Item("Restore the Windows taskbar", () => taskbar.Restore("menu")));
+        menu.Items.Add(Modules.Item("Restore original Windows settings", RestoreWindowsSettings, windowsSettings.HasSnapshot));
+        menu.Items.Add(new System.Windows.Controls.Separator());
+        menu.Items.Add(Modules.Item("Quit Veneer", Quit));
+        return menu;
+    }
+
+    // Slow (every app answers the change notification): off the UI thread.
+    void RestoreWindowsSettings() => Task.Run(() =>
+    {
+        try
+        {
+            windowsSettings.Restore();
+        }
+        catch (Exception e)
+        {
+            Log.Write($"windows settings not restored: {e}");
+        }
+    });
 
     void OnThemeLoaded(ThemeLoadResult result)
     {
@@ -104,16 +229,14 @@ sealed class App : Application
             Rebuild();
     }
 
-    static string PreferencesPath => Path.Combine(AppPaths.Profiles, "default", WindowsPreferences.FileName);
-
     WindowsPreferences Preferences()
     {
         var warnings = new List<string>();
         string? json = null;
         try
         {
-            if (File.Exists(PreferencesPath))
-                json = File.ReadAllText(PreferencesPath);
+            if (File.Exists(session.PreferencesPath))
+                json = File.ReadAllText(session.PreferencesPath);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
@@ -132,7 +255,7 @@ sealed class App : Application
     /// </summary>
     bool ChooseVariant(Theme theme)
     {
-        if (options.Variant is not null || options.Theme is null)
+        if (options.Variant is not null || session.ThemeFolder is null)
             return false;
         bool? desired = WindowsSettingsPlan.DesiredDark(theme.Windows.Appearance, Preferences().Appearance);
         string wanted = WindowsSettingsPlan.Variant(desired, WindowsSettingsService.WindowsIsDark);
@@ -140,7 +263,7 @@ sealed class App : Application
             return false;
         variant = wanted;
         Log.Write($"theme variant: {variant}");
-        themes.Apply(options.Theme, variant, OverridesPath);
+        themes.Apply(session.ThemeFolder, variant, session.OverridesPath);
         return true;
     }
 
@@ -216,7 +339,7 @@ sealed class App : Application
         foreach (var surface in dockSurfaces)
         {
             appWindows ??= new AppWindowTracker();
-            var window = new DockWindow(theme, surface, remaining, monitor.Dpi, appWindows, options.Theme is null ? null : OverridesPath);
+            var window = new DockWindow(theme, surface, remaining, monitor.Dpi, appWindows, session.ThemeFolder is null ? null : session.OverridesPath);
             window.FullScreenChanged += OnFullScreenChanged;
             window.Show();
             window.Start();
@@ -237,6 +360,9 @@ sealed class App : Application
         RegisterHotKey(HotKeyQuit, 'Q');
         RegisterHotKey(HotKeyReload, 'R');
         RegisterHotKey(HotKeyRestoreTaskbar, 'T');
+        RegisterHotKey(HotKeyNextProfile, 'P');
+        tray = new TrayIcon(messages.Handle, "Veneer");
+        tray.Clicked += () => Modules.OpenAtMouse(VeneerMenu());
 #if DEBUG
         RegisterHotKey(HotKeyScreenshot, 'S');
         RegisterHotKey(HotKeyCrash, 'X'); // tests the crash path: the taskbar must come back
@@ -262,12 +388,13 @@ sealed class App : Application
         {
             Log.Write("Explorer restarted");
             taskbar.OnShellRestarted();
+            tray?.OnShellRestarted();
             foreach (var bar in bars)
                 bar.OnShellRestarted();
             foreach (var dock in docks)
                 dock.OnShellRestarted();
         }
-        else if (hotKeys!.WndProc(msg, wParam))
+        else if (hotKeys!.WndProc(msg, wParam) || tray?.WndProc(msg, lParam) == true)
         {
             handled = true;
         }
@@ -280,7 +407,7 @@ sealed class App : Application
         switch (id)
         {
             case HotKeyQuit:
-                Shutdown();
+                Quit();
                 break;
             case HotKeyReload:
                 if (themes.Reload() is null)
@@ -288,6 +415,10 @@ sealed class App : Application
                 break;
             case HotKeyRestoreTaskbar:
                 taskbar.Restore("hotkey");
+                break;
+            case HotKeyNextProfile:
+                if (session.Profile is { } current)
+                    SwitchProfile(profiles.Next(current));
                 break;
             case HotKeyScreenshot:
                 SaveScreenshot();
@@ -300,10 +431,18 @@ sealed class App : Application
         }
     }
 
-    public DockWindow? FirstDock => docks.FirstOrDefault();
+    /// <summary>
+    /// Every way out goes through here. An open menu is closed first, and the shutdown waits until WPF has finished
+    /// closing it: a blurred (acrylic) menu still open while WPF shuts down its dispatcher keeps <c>Run</c> from ever
+    /// returning, and the process hangs.
+    /// </summary>
+    public void Quit()
+    {
+        Modules.CloseMenu();
+        Dispatcher.BeginInvoke(() => Shutdown(), System.Windows.Threading.DispatcherPriority.ContextIdle);
+    }
 
-    /// <summary>The user's overrides: --overrides, or the default profile's file until profiles exist (Phase 6).</summary>
-    string OverridesPath => options.Overrides ?? Path.Combine(AppPaths.Profiles, "default", "overrides.json");
+    public DockWindow? FirstDock => docks.FirstOrDefault();
 
     // A full-screen app (game, video) is in front: get out of its way, and come back when it closes.
     void OnFullScreenChanged(bool isFullScreen)
@@ -317,6 +456,8 @@ sealed class App : Application
         foreach (var dock in docks)
             dock.SetFullScreen(fullScreen); // plate, icons and auto-hide strip together
     }
+
+    public void OpenVeneerMenu() => Modules.OpenAtMouse(VeneerMenu());
 
     public void OpenLogoMenu() => bars.Select(b => b.FindModule<LogoMenuModule>()).FirstOrDefault(m => m is not null)?.Open();
 
@@ -374,6 +515,7 @@ sealed class App : Application
             Step(() => appWindows?.Dispose());
             Step(Modules.Shutdown);
             Step(() => hotKeys?.Dispose());
+            Step(() => tray?.Dispose());
             Step(themes.Dispose);
         }
         finally

@@ -5,3 +5,5 @@ theme. Tools here are never used by the theme loader, and they must never write 
 
 - `aqua-art/make-art.ps1`: draws the original wallpapers and logo of the bundled `aqua` theme into
   `themes/aqua/assets` (`pwsh -File tools/aqua-art/make-art.ps1`).
+- `app-icon/make-icon.ps1`: draws Veneer's application icon into `src/Veneer.App/veneer.ico`
+  (`pwsh -File tools/app-icon/make-icon.ps1`).

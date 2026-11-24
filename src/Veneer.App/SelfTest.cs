@@ -9,7 +9,8 @@ namespace Veneer.App;
 /// Debug builds only: drives the running app from the command line, without simulated input. Steps run in order:
 /// <c>wait:&lt;seconds&gt;</c>, <c>menu</c> (open the logo menu), <c>close-menu</c>, <c>screenshot</c>,
 /// <c>dock-click</c>, <c>dock-close</c>, <c>dock-pin</c>, <c>dock-unpin</c>, <c>dock-menu</c> with <c>:&lt;text&gt;</c>
-/// (the first dock icon whose key contains the text), <c>demo</c> (dock shows pinned apps only), <c>dock-hover:&lt;0..1|off&gt;</c>, <c>dock-reveal:on|off</c>, <c>dock-sweep</c> (magnification frame rate), <c>app</c> (start winver.exe so the foreground app changes; it holds no user data), <c>close-app</c>, <c>crash</c> (unhandled exception), <c>quit</c>.
+/// (the first dock icon whose key contains the text), <c>demo</c> (dock shows pinned apps only), <c>dock-hover:&lt;0..1|off&gt;</c>, <c>dock-reveal:on|off</c>, <c>dock-sweep</c> (magnification frame rate), <c>app</c> (start winver.exe so the foreground app changes; it holds no user data), <c>close-app</c>, <c>crash</c> (unhandled exception), <c>menu-item:&lt;text&gt;</c> (clicks the open menu's first item containing the text), <c>veneer-menu</c> (Veneer's own menu at the mouse, as from the notification-area icon),
+/// <c>profile:&lt;name&gt;</c>, <c>theme:&lt;folder name&gt;</c>, <c>autostart:on|off</c> (writes HKCU Run), <c>quit</c>.
 /// Example: <c>--self-test "wait:2,menu,wait:1,screenshot,close-menu,wait:1,quit"</c>.
 /// </summary>
 static class SelfTest
@@ -82,8 +83,29 @@ static class SelfTest
                     break;
                 case ["crash"]:
                     throw new InvalidOperationException("simulated crash (self-test)");
+                case ["menu-item", var text]:
+                    if (Modules.LastMenu is { } open && open.Items.OfType<System.Windows.Controls.MenuItem>().FirstOrDefault(i => (i.Header as string)?.Contains(text) == true) is { } item)
+                    {
+                        open.IsOpen = false; // a real click closes the menu first
+                        item.RaiseEvent(new System.Windows.RoutedEventArgs(System.Windows.Controls.MenuItem.ClickEvent));
+                    }
+
+                    break;
+                case ["veneer-menu"]:
+                    app.OpenVeneerMenu();
+                    break;
+                case ["profile", var name]:
+                    app.SwitchProfile(name);
+                    break;
+                case ["theme", var name]:
+                    app.SetTheme(name);
+                    break;
+                case ["autostart", var on]:
+                    Veneer.Interop.Autostart.Set(on == "on");
+                    Log.Write($"self-test: autostart = {Veneer.Interop.Autostart.IsEnabled}");
+                    break;
                 case ["quit"]:
-                    app.Shutdown();
+                    app.Quit();
                     return;
                 default:
                     Log.Write($"self-test: unknown step \"{step}\"");

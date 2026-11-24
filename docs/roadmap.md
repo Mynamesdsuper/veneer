@@ -267,17 +267,23 @@ polished, macOS-like interface; **6b** ships a real default theme built on it.
 **Fixes before Phase 7** (2026-11-24)
 - [x] No shadow band under the top bar, and the bar exactly as thick as the theme says.
 - [x] Truly rounded dock glass at any radius (composition), with or without blur; no square corners.
-- [ ] Quitting while a bar menu is open hangs the process after its cleanup (the taskbar is already restored).
+- [x] Quitting while a bar menu is open hung the process after its cleanup: fixed in 7a.
 
 ## Phase 7: profiles, settings, tray, install, autostart
 
-**Profiles**
-- [ ] A profile holds the theme, the variant, the overrides file and which Windows settings to apply.
-- [ ] Create, rename, duplicate and delete profiles.
-- [ ] Switch hot from the tray, the settings window or a hotkey.
-- [ ] Stored in `%APPDATA%\Veneer\profiles\<name>\` (`profile.json` + `overrides.json`).
+**7a: profiles, Veneer menu, autostart** (2026-11-24)
+- [x] A profile holds the theme (`profile.json`), the overrides (`overrides.json`) and the Windows choices, light/dark
+      included (`windows.json`). Stored in `%APPDATA%\Veneer\profiles\<name>\`; the active one in `settings.json`.
+- [x] Create, rename, duplicate and delete profiles: logic and tests (the buttons come with the settings window).
+- [x] Switch hot from the Veneer menu or Ctrl+Alt+Shift+P (next profile). A switch gives back the Windows settings
+      the new profile leaves to Windows.
+- [x] Veneer menu (profiles, themes, start with Windows, restore taskbar, restore Windows settings, quit): in the bar
+      (logo menu → Veneer) and on a notification-area icon, which is only visible while the Windows taskbar is.
+- [x] Start with Windows (`HKCU\...\Run`), off by default; the previous value is saved and given back.
+- [x] Quitting with a menu open no longer hangs.
 
-**Settings window**
+**7b: settings window**
+- [ ] Profiles page: create, rename, duplicate, delete. "Settings…" in the Veneer menu.
 - [ ] Shows each value's origin (theme or you), with "reset to theme value".
 - [ ] Lists theme errors and warnings, and orphaned overrides.
 - [ ] Install a theme from a `.zip` (UI on top of the Phase 2 installer).
@@ -286,15 +292,9 @@ polished, macOS-like interface; **6b** ships a real default theme built on it.
 - [ ] All UI strings in resource files from the start. English and Italian ship; more languages from the
       community. (FluidWin)
 
-**First run**
+**7c: first run**
 - [ ] Offer to import the Windows taskbar's pinned apps into the dock (user overrides), Store apps included,
       deduplicated by AppUserModelID (Discord changes its exe folder on every update). (FluidWin)
-
-**Tray icon**
-- [ ] Open settings, switch profile, switch theme, restore taskbar, quit.
-
-**Autostart**
-- [ ] Start with Windows (`HKCU\...\Run`), off by default.
 
 ## Phase 8: bundled themes
 

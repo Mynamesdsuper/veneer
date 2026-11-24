@@ -6,6 +6,40 @@ Record each decision with its date, context, the options considered and the outc
 
 C# + WPF on .NET 10 (LTS), Windows 11 only. .NET 8 reached end of support on 2026-11-10.
 
+## 2026-11-24: Profiles, Veneer menu, autostart (Phase 7a)
+
+- **Profile layout.** One folder per profile under `profiles\`: `profile.json` (the theme, by folder name),
+  `overrides.json`, and `windows.json` (the Phase 5 file, which already held the light/dark choice, so a profile's
+  "variant" lives there). The active profile is in `settings.json` at the root. `default` always exists; an existing
+  install needs no migration (no `profile.json` means the default theme).
+- **Names are folder names**, checked before any path is built (no separators, `..`, reserved device names, trailing
+  dots or spaces): profile names come from the UI and theme names from an editable file.
+- **Themes by name**: the user's `themes\` first, then the ones bundled next to the executable, so an installed copy
+  wins. A missing theme falls back to `aqua`, then to the built-in theme.
+- **`--theme` on the command line turns profiles off** for that run (tests and theme development).
+- **A switch gives back what the new profile leaves to Windows.** When a setting is left to Windows (its choice is
+  "system", or the theme does not set it) and the snapshot holds its original, that setting alone is restored and
+  dropped from the snapshot. Before, the previous theme's wallpaper stayed until "Restore original Windows
+  settings". Tested for real: the wallpaper came back and the snapshot was deleted.
+- **Veneer menu.** The author chose (option 1): the same menu in the bar (logo menu → "Veneer ›") and on a
+  notification-area icon. Veneer hides the taskbar, so the icon alone would rarely be visible. Themed menus have no
+  submenus (their item template is only the text), so "Veneer ›" opens a second, flat menu in the same place, with
+  profiles and themes listed under section titles and a check mark in the text.
+- **Notification-area icon** through `Shell_NotifyIcon` (no WinForms: in a WPF project its types clash with WPF's).
+  It has a fixed GUID, so Windows remembers the user's show/hide choice. Windows binds that GUID to the
+  executable's path, so when another copy owns it (a Debug build), the icon falls back to the window + number
+  identity.
+- **App icon**: the Aqua logo's "V" on a slate rounded square, drawn by `tools/app-icon/make-icon.ps1` (original, MIT).
+- **Start with Windows**: a `Veneer` value in `HKCU\...\Run` with the quoted executable path. Before the first
+  change the previous value (or its absence) goes to `state\autostart.json`; turning it off puts that back.
+  Tested for real: on, then off, with the Run key unchanged afterwards.
+- **The quit hang** (found in the Phase 6 fixes): a blurred (acrylic) menu still open while WPF shuts down its
+  dispatcher keeps `Application.Run` from returning. Closing the menu during `Exit` is too late. Every way out now
+  goes through `App.Quit`, which closes the open menu and queues the shutdown after WPF has finished closing it.
+  An unblurred menu never hung.
+- **UI strings** of the new menu are still English literals; they move to resource files with the settings window
+  (7b), together with the existing menus.
+
 ## 2026-11-24: Bar shadow and rounded dock glass (Phase 6 fixes)
 
 Two defects the author saw in the Aqua screenshots, measured with pixel samples over a plain white (and a striped)
@@ -33,8 +67,8 @@ window with Veneer off and on.
   - If composition fails, the dock falls back to the old plain blur, with square blurred corners and a log line.
   - Without blur, a dock above 8 px is a per-pixel transparent WPF plate: the bare DWM frame used to show a
     dark square there too.
-- **Found, not fixed:** quitting while a bar menu is open hangs the process after its cleanup (the taskbar is
-  already back). It also happens on the previous commit.
+- **Found, not fixed here:** quitting while a bar menu is open hung the process after its cleanup (the taskbar was
+  already back). It also happened on the previous commit. Fixed in Phase 7a.
 
 ## 2026-11-25: The default theme, Aqua (Phase 6b)
 
