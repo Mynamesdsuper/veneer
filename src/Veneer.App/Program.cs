@@ -1,3 +1,4 @@
+using System.IO;
 using Veneer.Core;
 using Veneer.Interop;
 
@@ -12,7 +13,8 @@ namespace Veneer.App;
 ///   Veneer.App --watchdog &lt;pid&gt;     internal: started by Veneer itself
 ///   --self-test "&lt;steps&gt;"          debug builds only, see SelfTest
 /// </code>
-/// Without <c>--theme</c> the built-in theme is used. Profiles replace these options in Phase 6.
+/// Without <c>--theme</c> the bundled default theme (themesqua) is used, or the built-in fallback if it is missing.
+/// Profiles replace these options in Phase 7.
 /// </summary>
 static class Program
 {
@@ -63,7 +65,7 @@ static class Program
             taskbar.Restore("next start (dirty state)");
 
         var options = new Options(
-            Value(args, "--theme"),
+            Value(args, "--theme") ?? DefaultTheme(),
             Value(args, "--variant"),
             Value(args, "--overrides"),
             KeepTaskbar: args.Contains("--keep-taskbar"),
@@ -92,6 +94,13 @@ static class Program
 
         mutex.ReleaseMutex();
         return true;
+    }
+
+    // The bundled default theme next to the executable (themesqua). Without it the built-in fallback theme is used.
+    static string? DefaultTheme()
+    {
+        string folder = Path.Combine(AppContext.BaseDirectory, "themes", "aqua");
+        return File.Exists(Path.Combine(folder, "theme.json")) ? folder : null;
     }
 
     static string? Value(string[] args, string name)

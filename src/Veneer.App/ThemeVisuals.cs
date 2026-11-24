@@ -12,6 +12,20 @@ static class ThemeVisuals
 {
     static readonly Dictionary<string, FontFamily?> FontCache = [];
 
+    /// <summary>
+    /// A border brush: solid, or a vertical gradient from <paramref name="highlight"/> (top) to <paramref name="border"/>
+    /// (bottom) when the theme gives a highlight, like light on the edge of glass.
+    /// </summary>
+    public static Brush? BorderBrush(ThemeColor? border, ThemeColor? highlight)
+    {
+        if (highlight is not { } top)
+            return Brush(border);
+        var bottom = border ?? new ThemeColor(0, top.R, top.G, top.B);
+        var brush = new LinearGradientBrush(Color.FromArgb(top.A, top.R, top.G, top.B), Color.FromArgb(bottom.A, bottom.R, bottom.G, bottom.B), 90);
+        brush.Freeze();
+        return brush;
+    }
+
     /// <summary>The theme the surfaces are built from; menus and labels take their style from it.</summary>
     public static Theme? Current { get; set; }
 
@@ -40,10 +54,13 @@ static class ThemeVisuals
     {
         const string ns = "xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'";
         string bg = Hex(style.Background, "#F2F6F6F6"), border = Hex(style.Border, "#00000000");
+        string borderBrush = style.BorderHighlight is { } top
+            ? $"<Border.BorderBrush><LinearGradientBrush StartPoint='0,0' EndPoint='0,1'><GradientStop Color='{top}' Offset='0'/><GradientStop Color='{border}' Offset='1'/></LinearGradientBrush></Border.BorderBrush>"
+            : "";
         string highlight = Hex(style.Highlight, "#FF0A84FF"), highlightFg = Hex(style.HighlightForeground, "#FFFFFFFF");
         string separator = Hex(style.Separator, "#26000000");
         double r = style.CornerRadius, p = style.Padding, itemRadius = Math.Max(0, r - p);
-        int bt = style.Border is null ? 0 : 1;
+        int bt = style.Border is null && style.BorderHighlight is null ? 0 : 1;
         // A WPF shadow needs room around the menu; with blur the room would be blurred too, so blurred menus have none.
         string margin = style.Shadow && !style.Blur ? "10" : "0";
         string effect = style.Shadow && !style.Blur ? "<Border.Effect><DropShadowEffect BlurRadius='16' ShadowDepth='3' Opacity='0.25'/></Border.Effect>" : "";
@@ -51,6 +68,7 @@ static class ThemeVisuals
         menu.Template = Parse<System.Windows.Controls.ControlTemplate>($@"
 <ControlTemplate {ns} TargetType='ContextMenu'>
   <Border Margin='{margin}' Background='{bg}' BorderBrush='{border}' BorderThickness='{bt}' CornerRadius='{r}' Padding='{p}'>
+    {borderBrush}
     {effect}
     <ItemsPresenter/>
   </Border>

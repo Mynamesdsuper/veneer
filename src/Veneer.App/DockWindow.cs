@@ -63,8 +63,8 @@ sealed class DockWindow : Window
         Content = new System.Windows.Controls.Border
         {
             Background = ThemeVisuals.Brush(dock.Style.Background),
-            BorderBrush = ThemeVisuals.Brush(dock.Style.Border),
-            BorderThickness = new Thickness(dock.Style.Border is null ? 0 : 1),
+            BorderBrush = ThemeVisuals.BorderBrush(dock.Style.Border, dock.Style.BorderHighlight),
+            BorderThickness = new Thickness(dock.Style.Border is null && dock.Style.BorderHighlight is null ? 0 : 1),
             CornerRadius = new CornerRadius(dock.CornerRadius),
         };
         icons = new DockIconsWindow(this);

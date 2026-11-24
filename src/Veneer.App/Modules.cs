@@ -294,6 +294,15 @@ sealed class ActiveAppModule : ClickableModule
 
     void OnForeground(nint hwnd) => Show(hwnd);
 
+    static readonly Dictionary<string, string?> PackagedNames = [];
+
+    static string? PackagedName(string aumid)
+    {
+        if (!PackagedNames.TryGetValue(aumid, out string? name))
+            PackagedNames[aumid] = name = ShellItems.DisplayName(@"shell:AppsFolder\" + aumid);
+        return name;
+    }
+
     void Show(nint hwnd)
     {
         if (hwnd == 0)
@@ -302,7 +311,10 @@ sealed class ActiveAppModule : ClickableModule
         if (details.ProcessId == Environment.ProcessId)
             return; // our own menus and dialogs: keep showing the app the user was in
         target = details;
-        text.Text = ModuleStates.ActiveAppName(details.ClassName, details.ExePath, details.Description, details.Title, desktopName, names);
+        // Packaged apps (Terminal, Store apps) describe their exe as a host ("Windows Terminal Host"): use the name
+        // Windows shows for the app instead.
+        string? description = AppWindowTracker.AumidOf(hwnd) is { } aumid ? PackagedName(aumid) ?? details.Description : details.Description;
+        text.Text = ModuleStates.ActiveAppName(details.ClassName, details.ExePath, description, details.Title, desktopName, names);
 #if DEBUG
         Log.Write($"active-app: \"{text.Text}\" ({details.ClassName}, {details.ExePath})");
 #endif

@@ -134,6 +134,7 @@ Each surface has:
 | `style.hover`, `style.pressed` | color | Background of a clickable module under the mouse, and while its menu is open (`pressed` defaults to `hover`). |
 | `style.highlightRadius` | number 0–100 (`0`) | Corner radius of that background. |
 | `style.highlightInset` | number 0–50 (`2`) | Space between that background and the bar's edges. |
+| `style.borderHighlight` | color | Makes the border a vertical gradient: this color at the top, `border` at the bottom, like light on the edge of glass. Pop-up styles accept it too. |
 
 **Bar** (`"type": "bar"`):
 
@@ -209,6 +210,7 @@ The look of Veneer's menus (logo menu, active app, dock). Without it, menus keep
 | Field | Type | Notes |
 |-------|------|-------|
 | `background`, `foreground`, `border` | color | |
+| `borderHighlight` | color | Top color of a gradient border (see `style.borderHighlight`). |
 | `blur` | boolean (`false`) | Blur behind the menu. Blurred menus have no drop shadow. |
 | `cornerRadius` | number 0–50 (`0`) | |
 | `padding` | number 0–100 (`4`) | |

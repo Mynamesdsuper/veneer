@@ -17,4 +17,9 @@
     <StartupObject>Veneer.App.Program</StartupObject>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- Bundled themes ship next to the executable: themes\<name>\... -->
+    <None Include="../../themes/**/*" Exclude="../../themes/README.md" LinkBase="themes" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

@@ -499,6 +499,34 @@ public class ThemeLoaderTests
         Assert.Contains(r.Errors, e => e.Path == path);
     }
 
+    static string RepoThemes()
+    {
+        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
+        {
+            if (File.Exists(Path.Combine(dir.FullName, "Veneer.slnx")))
+                return Path.Combine(dir.FullName, "themes");
+        }
+
+        throw new DirectoryNotFoundException("repository root not found");
+    }
+
+    [Theory]
+    [InlineData("aqua", null)]
+    [InlineData("aqua", "dark")]
+    [InlineData("aqua", "light")]
+    public void Bundled_themes_load_without_errors_or_warnings(string folder, string? variant)
+    {
+        var r = ThemeLoader.Load(Path.Combine(RepoThemes(), folder), variant);
+
+        Assert.True(r.Success, string.Join(Environment.NewLine, r.Diagnostics));
+        Assert.Empty(r.Diagnostics);
+        Assert.NotNull(r.Theme!.Windows.Wallpaper);
+        Assert.NotNull(((BarSurface)r.Theme.Surfaces[0]).Start[0].Icon);
+        Assert.NotNull(r.Theme.Surfaces.OfType<DockSurface>().Single().Style.BorderHighlight);
+        Assert.NotNull(r.Theme.Menu!.BorderHighlight);
+        Assert.True(File.Exists(Path.Combine(RepoThemes(), folder, "LICENSE")));
+    }
+
     [Fact]
     public void Built_in_theme_is_valid()
     {

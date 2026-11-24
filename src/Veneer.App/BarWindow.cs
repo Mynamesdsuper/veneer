@@ -111,7 +111,7 @@ sealed class BarWindow : Window
         var root = new Border
         {
             Background = ThemeVisuals.Brush(style.Background),
-            BorderBrush = ThemeVisuals.Brush(style.Border),
+            BorderBrush = ThemeVisuals.BorderBrush(style.Border, style.BorderHighlight),
             BorderThickness = style.Border is null ? new Thickness(0) : InnerEdge(bar.Edge),
             Child = zones,
         };

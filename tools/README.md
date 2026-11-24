@@ -2,3 +2,6 @@
 
 Helper tools for theme authors and developers, such as converting an SVG icon set to PNG for a local
 theme. Tools here are never used by the theme loader, and they must never write into the repository.
+
+- `aqua-art/make-art.ps1`: draws the original wallpapers and logo of the bundled `aqua` theme into
+  `themes/aqua/assets` (`pwsh -File tools/aqua-art/make-art.ps1`).

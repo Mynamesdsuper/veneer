@@ -1,0 +1,107 @@
+{
+  // Veneer's default theme. Layout: a glass menu bar on top and a magnifying dock at the bottom (macOS-like).
+  // Look: smoked slate glass with thin light-catching edges, large radii, monochrome text and icons
+  // (the author's reference aesthetic). Original artwork: tools/aqua-art. Follows Windows light/dark mode.
+  "schemaVersion": 1,
+  "id": "veneer.aqua",
+  "name": "Aqua",
+  "author": "Veneer",
+  "version": "1.1.0",
+  "license": "MIT",
+
+  "windows": {
+    "wallpaper": "assets/wallpaper-light.jpg",
+    "appearance": "system"
+  },
+
+  // Light ("ice") values here; the "dark" variant below swaps them for smoked slate.
+  "tokens": {
+    "text": "#E6151A22",
+    "bar": "#4DFFFFFF",
+    "barEdge": "#1A000000",
+    "glass": "#59FFFFFF",
+    "edge": "#1F000000",
+    "edgeLight": "#B3FFFFFF",
+    "hover": "#14000000",
+    "pressed": "#26000000",
+    "menu": "#D1F3F6FA",
+    "menuHighlight": "#1F000000",
+    "separator": "#1A000000",
+    "label": "#E6F3F6FA",
+    "logo": "assets/logo-light.png"
+  },
+
+  "surfaces": [
+    {
+      "id": "menubar",
+      "type": "bar",
+      "edge": "top",
+      "thickness": 28,
+      "reserveSpace": true,
+      "style": {
+        "background": "$bar", "foreground": "$text", "border": "$barEdge", "blur": true,
+        "font": "Segoe UI Variable Text", "fontSize": 13,
+        "padding": 8, "spacing": 4,
+        "hover": "$hover", "pressed": "$pressed", "highlightRadius": 6, "highlightInset": 3
+      },
+      "start": [
+        { "module": "logo-menu", "icon": "$logo", "style": { "padding": 10 } },
+        { "module": "active-app", "desktopName": "Desktop", "style": { "fontWeight": "semibold", "padding": 8 } }
+      ],
+      "end": [
+        { "module": "network", "style": { "padding": 7 } },
+        { "module": "volume", "style": { "padding": 7 } },
+        { "module": "battery", "showPercent": false, "style": { "padding": 7 } },
+        { "module": "clock", "format": "ddd d MMM  HH:mm", "style": { "padding": 8 } }
+      ]
+    },
+    {
+      "id": "dock",
+      "type": "dock",
+      "edge": "bottom",
+      "iconSize": 48,
+      "magnification": { "enabled": true, "maxScale": 1.6, "radius": 2 },
+      "cornerRadius": 22,
+      "padding": 7,
+      "margin": 8,
+      "bounceOnLaunch": true,
+      "style": {
+        "background": "$glass", "border": "$edge", "borderHighlight": "$edgeLight", "blur": true,
+        "spacing": 6, "foreground": "$text"
+      },
+      "runningIndicator": { "shape": "dot", "color": "$text", "size": 4 },
+      "label": {
+        "background": "$label", "foreground": "$text", "border": "$edge", "borderHighlight": "$edgeLight",
+        "cornerRadius": 8, "padding": 3, "fontSize": 13
+      },
+      "defaultPinned": [ "explorer.exe", "msedge.exe", "Microsoft.WindowsTerminal_8wekyb3d8bbwe!App", "ms-settings:" ]
+    }
+  ],
+
+  "menu": {
+    "background": "$menu", "foreground": "$text", "border": "$edge", "borderHighlight": "$edgeLight", "blur": true,
+    "cornerRadius": 12, "padding": 5, "fontSize": 13,
+    "highlight": "$menuHighlight", "highlightForeground": "$text", "separator": "$separator"
+  },
+
+  "variants": {
+    "dark": {
+      "windows": { "wallpaper": "assets/wallpaper-dark.jpg" },
+      "tokens": {
+        "text": "#F2FFFFFF",
+        "bar": "#4D1A2230",
+        "barEdge": "#1FFFFFFF",
+        "glass": "#4D1E2633",
+        "edge": "#0FFFFFFF",
+        "edgeLight": "#4DFFFFFF",
+        "hover": "#1FFFFFFF",
+        "pressed": "#33FFFFFF",
+        "menu": "#C21E2633",
+        "menuHighlight": "#29FFFFFF",
+        "separator": "#1FFFFFFF",
+        "label": "#D11E2633",
+        "logo": "assets/logo-dark.png"
+      }
+    }
+  }
+}

@@ -70,6 +70,14 @@ public sealed class AppWindowTracker : IDisposable
         }
     }
 
+    /// <summary>The AppUserModelID of a window: its own property, else its packaged process's; null for classic apps.</summary>
+    public static unsafe string? AumidOf(nint hwnd)
+    {
+        uint pid;
+        PInvoke.GetWindowThreadProcessId((HWND)hwnd, &pid);
+        return WindowAumid((HWND)hwnd) ?? ProcessAumid(pid);
+    }
+
     /// <summary>When the window was last in the foreground (0 if never seen).</summary>
     public long LastActive(nint hwnd) => lastActive.GetValueOrDefault(hwnd);
 

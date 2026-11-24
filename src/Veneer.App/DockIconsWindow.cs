@@ -244,8 +244,8 @@ sealed class DockIconsWindow : Window
             label = new Border
             {
                 Background = ThemeVisuals.Brush(style.Background),
-                BorderBrush = ThemeVisuals.Brush(style.Border),
-                BorderThickness = new Thickness(style.Border is null ? 0 : 1),
+                BorderBrush = ThemeVisuals.BorderBrush(style.Border, style.BorderHighlight),
+                BorderThickness = new Thickness(style.Border is null && style.BorderHighlight is null ? 0 : 1),
                 CornerRadius = new CornerRadius(style.CornerRadius),
                 Padding = new Thickness(style.Padding * 2, style.Padding, style.Padding * 2, style.Padding),
                 IsHitTestVisible = false,

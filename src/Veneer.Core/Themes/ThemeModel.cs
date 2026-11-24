@@ -78,9 +78,12 @@ public sealed record SurfaceStyle(
     ThemeColor? Hover = null,
     ThemeColor? Pressed = null,
     double HighlightRadius = 0,
-    double HighlightInset = 2);
+    double HighlightInset = 2,
+    ThemeColor? BorderHighlight = null);
 
 /// <summary>
+/// <see cref="BorderHighlight"/> (also on surfaces) turns the border into a vertical gradient: that color at the top,
+/// <c>border</c> at the bottom, like light catching the edge of glass.
 /// The look of a pop-up: the theme's menus (<c>menu</c>) or the dock's name label (<c>label</c>). A null style keeps
 /// the Windows 11 look. <see cref="Highlight"/> is the background of the menu item under the mouse.
 /// </summary>
@@ -95,7 +98,8 @@ public sealed record PopupStyle(
     ThemeColor? Highlight,
     ThemeColor? HighlightForeground,
     ThemeColor? Separator,
-    bool Shadow);
+    bool Shadow,
+    ThemeColor? BorderHighlight = null);
 
 /// <summary>A module's own look. Null values inherit from the surface.</summary>
 public sealed record ModuleStyle(ThemeColor? Foreground, TextStyle Text, double? Padding);

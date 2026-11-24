@@ -119,7 +119,8 @@ internal sealed partial class ThemeBinder(string root, List<Diagnostic> diagnost
                     Color(styleObj, "hover", sp),
                     Color(styleObj, "pressed", sp),
                     Num(styleObj, "highlightRadius", sp, 0, 100) ?? 0,
-                    Num(styleObj, "highlightInset", sp, 0, 50) ?? 2);
+                    Num(styleObj, "highlightInset", sp, 0, 50) ?? 2,
+                    Color(styleObj, "borderHighlight", sp));
 
             if (edge is not { } e)
                 continue;
@@ -241,7 +242,8 @@ internal sealed partial class ThemeBinder(string root, List<Diagnostic> diagnost
         Color(o, "highlight", p),
         Color(o, "highlightForeground", p),
         Color(o, "separator", p),
-        Bool(o, "shadow", p) ?? true);
+        Bool(o, "shadow", p) ?? true,
+        Color(o, "borderHighlight", p));
 
     /// <summary>Checks the options each module understands. A new module adds its case here and its view in the app.</summary>
     void ModuleOptions(string module, JsonObject m, string p)
