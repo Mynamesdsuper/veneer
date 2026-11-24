@@ -17,8 +17,13 @@ C# + WPF on .NET 10 (LTS), Windows 11 only. .NET 8 reached end of support on 202
   centered in the strip the shell grants.
 - **The running indicator lives inside each icon cell**, in the padding strip on the screen-edge side. Drawing it
   outside the icon box with negative margins or a Canvas got it clipped by WPF layout.
-- **Shell icons arrive as premultiplied BGRA** (`IShellItemImageFactory`), so they are wrapped as `Pbgra32`.
-  Icons are requested at 256 px and cached per theme and app.
+- **Icon quality.** `IShellItemImageFactory` returns some icons premultiplied and some with straight alpha.
+  Each icon is checked (a color channel above its alpha means straight alpha). Guessing wrong gave light
+  fringes. Icons are requested at 256 px, cached per theme and app, and scaled down with
+  `BitmapScalingMode.HighQuality`; the default bilinear filter gave jagged edges.
+- **Store apps use their unplated icon**, like the taskbar: the manifest's `Square44x44Logo` in its largest
+  `altform-unplated` target size (package found through `PackageManager`). The shell icon of some Store apps
+  sits on a gray plate.
 - **Activation** uses `SetForegroundWindow` right after the user's click on the dock, which Windows allows to
   the process that received the last input.
 

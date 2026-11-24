@@ -179,6 +179,8 @@ Split like Phase 3: **4a** (a working dock) is done; **4b** (magnification, menu
 **Icons**
 - [x] High-resolution icons from the shell (`IShellItemImageFactory`) for exe files and AppUserModelIDs, with a
       fallback to the exe when an id is not in the Apps folder (Steam). (4a)
+- [x] Store apps use their unplated package icon (as the taskbar does). (4a)
+- [x] Clean edges: straight or premultiplied alpha detected per icon, high-quality downscaling. (4a)
 - [x] Theme `iconOverrides` and `iconFolder` take priority over system icons. (4a)
 
 **Interaction** (4b)

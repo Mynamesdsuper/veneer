@@ -214,6 +214,8 @@ sealed class DockWindow : Window
                 HorizontalAlignment = dock.Edge switch { Edge.Left => HorizontalAlignment.Right, Edge.Right => HorizontalAlignment.Left, _ => HorizontalAlignment.Center },
                 VerticalAlignment = bottom ? VerticalAlignment.Top : VerticalAlignment.Center,
             });
+            // 256 px icons shown at 48: the default bilinear filter makes jagged edges.
+            RenderOptions.SetBitmapScalingMode(this, BitmapScalingMode.HighQuality);
             if (item.IsRunning)
                 Children.Add(Indicator(dock));
             ToolTip = Icons.Name(item);
@@ -270,7 +272,9 @@ static class Icons
         string key = $"{theme.Id}|{item.Key}";
         if (Cache.TryGetValue(key, out var cached))
             return cached;
-        var image = FromTheme(theme, item) ?? FromShell(item, SurfaceLayout.ToPhysical(256, Math.Max(dpi, 96u)));
+        var image = FromTheme(theme, item)
+            ?? (Aumid(item) is { } aumid && ShellItems.PackagedIcon(aumid) is { } packaged ? Load(packaged) : null)
+            ?? FromShell(item, SurfaceLayout.ToPhysical(256, Math.Max(dpi, 96u)));
         Cache[key] = image;
         return image;
     }
@@ -300,8 +304,11 @@ static class Icons
                 path = candidate;
         }
 
-        if (path is null)
-            return null;
+        return path is null ? null : Load(path);
+    }
+
+    static ImageSource? Load(string path)
+    {
         try
         {
             var bitmap = new BitmapImage();
@@ -331,9 +338,24 @@ static class Icons
         if (icon is null)
             return null;
         var (pixels, width, height) = icon.Value;
-        var bitmap = BitmapSource.Create(width, height, 96, 96, PixelFormats.Pbgra32, null, pixels, width * 4);
+        var format = IsPremultiplied(pixels) ? PixelFormats.Pbgra32 : PixelFormats.Bgra32;
+        var bitmap = BitmapSource.Create(width, height, 96, 96, format, null, pixels, width * 4);
         bitmap.Freeze();
         return bitmap;
+    }
+
+    // The shell returns some icons premultiplied and some with straight alpha. In premultiplied data no color
+    // channel can exceed its alpha; one that does means straight alpha. Guessing wrong gives light fringes.
+    static bool IsPremultiplied(byte[] bgra)
+    {
+        for (int i = 0; i < bgra.Length; i += 4)
+        {
+            byte a = bgra[i + 3];
+            if (bgra[i] > a || bgra[i + 1] > a || bgra[i + 2] > a)
+                return false;
+        }
+
+        return true;
     }
 
     public static string Name(DockItem item)

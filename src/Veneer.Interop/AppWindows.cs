@@ -209,6 +209,55 @@ public static class ShellItems
         return null;
     }
 
+    /// <summary>
+    /// The best unplated icon file of a packaged app (what the taskbar shows): the manifest's Square44x44Logo in its
+    /// largest "altform-unplated" target size. Null when the app is not packaged or has no such asset; the shell
+    /// icon (on a plate for some Store apps) is the fallback.
+    /// </summary>
+    public static string? PackagedIcon(string aumid)
+    {
+        int bang = aumid.IndexOf('!');
+        if (bang <= 0)
+            return null;
+        string family = aumid[..bang], appId = aumid[(bang + 1)..];
+        try
+        {
+            var package = new global::Windows.Management.Deployment.PackageManager().FindPackagesForUser("", family).FirstOrDefault();
+            if (package?.InstalledPath is not { } root)
+                return null;
+            var manifest = System.Xml.Linq.XDocument.Load(Path.Combine(root, "AppxManifest.xml"));
+            var app = manifest.Descendants().FirstOrDefault(e => e.Name.LocalName == "Application" && (string?)e.Attribute("Id") == appId);
+            var logo = app?.Descendants().FirstOrDefault(e => e.Name.LocalName == "VisualElements")?.Attribute("Square44x44Logo")?.Value;
+            if (logo is null)
+                return null;
+            string folder = Path.Combine(root, Path.GetDirectoryName(logo) ?? "");
+            string stem = Path.GetFileNameWithoutExtension(logo), ext = Path.GetExtension(logo);
+            if (!Directory.Exists(folder))
+                return null;
+            return Directory.EnumerateFiles(folder, $"{stem}.targetsize-*_altform-unplated{ext}")
+                .Select(f => (File: f, Size: TargetSize(f)))
+                .Where(f => f.Size is > 0 and <= 256)
+                .OrderByDescending(f => f.Size)
+                .Select(f => f.File)
+                .FirstOrDefault();
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Xml.XmlException or COMException or ArgumentException)
+        {
+            Log.Write($"package icon for {aumid}: {e.Message}");
+            return null;
+        }
+    }
+
+    static int TargetSize(string file)
+    {
+        string name = Path.GetFileName(file);
+        int i = name.IndexOf(".targetsize-", StringComparison.OrdinalIgnoreCase);
+        if (i < 0)
+            return 0;
+        string digits = new(name[(i + 12)..].TakeWhile(char.IsDigit).ToArray());
+        return int.TryParse(digits, out int n) ? n : 0;
+    }
+
     /// <summary>The shell's display name (e.g. "Microsoft Edge", "Settings").</summary>
     public static unsafe string? DisplayName(string parsingName)
     {
