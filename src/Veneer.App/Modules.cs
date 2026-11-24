@@ -285,19 +285,19 @@ sealed class LogoMenuModule : ClickableModule
     public void Open()
     {
         var menu = new ContextMenu();
-        menu.Items.Add(Modules.Item("About this PC", () => SystemActions.Open("ms-settings:about")));
-        menu.Items.Add(Modules.Item("Settings…", () => SystemActions.Open("ms-settings:")));
+        menu.Items.Add(Modules.Item(Strings.LogoAbout, () => SystemActions.Open("ms-settings:about")));
+        menu.Items.Add(Modules.Item(Strings.LogoSystemSettings, () => SystemActions.Open("ms-settings:")));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Modules.Item("Sleep…", () => { if (Modules.Confirm("Put the computer to sleep now?")) SystemActions.Sleep(); }));
-        menu.Items.Add(Modules.Item("Restart…", () => { if (Modules.Confirm("Restart the computer now? Unsaved work in open apps may be lost.")) SystemActions.Restart(); }));
-        menu.Items.Add(Modules.Item("Shut Down…", () => { if (Modules.Confirm("Shut down the computer now? Unsaved work in open apps may be lost.")) SystemActions.ShutDown(); }));
+        menu.Items.Add(Modules.Item(Strings.LogoSleep, () => { if (Modules.Confirm(Strings.ConfirmSleep)) SystemActions.Sleep(); }));
+        menu.Items.Add(Modules.Item(Strings.LogoRestart, () => { if (Modules.Confirm(Strings.ConfirmRestart)) SystemActions.Restart(); }));
+        menu.Items.Add(Modules.Item(Strings.LogoShutDown, () => { if (Modules.Confirm(Strings.ConfirmShutDown)) SystemActions.ShutDown(); }));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Modules.Item("Lock Screen", SystemActions.Lock));
+        menu.Items.Add(Modules.Item(Strings.LogoLock, SystemActions.Lock));
         if (Modules.VeneerMenu is { } veneer)
         {
             // A second menu in the same place rather than a submenu: themed menus have no submenus.
             menu.Items.Add(new Separator());
-            menu.Items.Add(Modules.Item("Veneer ›", () => Modules.Open(veneer(), this, ctx.Edge)));
+            menu.Items.Add(Modules.Item(Strings.LogoVeneer, () => Modules.Open(veneer(), this, ctx.Edge)));
         }
 
         Modules.Open(menu, this, ctx.Edge);
@@ -370,10 +370,10 @@ sealed class ActiveAppModule : ClickableModule
     {
         bool isApp = target is not null && text.Text != desktopName;
         var menu = new ContextMenu();
-        menu.Items.Add(Modules.Item("Close Window", () => WindowTools.Close(target!.Handle), isApp));
-        menu.Items.Add(Modules.Item("Minimize", () => WindowTools.Minimize(target!.Handle), isApp));
+        menu.Items.Add(Modules.Item(Strings.AppCloseWindow, () => WindowTools.Close(target!.Handle), isApp));
+        menu.Items.Add(Modules.Item(Strings.AppMinimize, () => WindowTools.Minimize(target!.Handle), isApp));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Modules.Item($"Quit {text.Text}", () => WindowTools.Quit(target!.ProcessId), isApp));
+        menu.Items.Add(Modules.Item(Strings.AppQuit(text.Text), () => WindowTools.Quit(target!.ProcessId), isApp));
         Modules.Open(menu, this, ctx.Edge);
     }
 }
@@ -426,7 +426,7 @@ sealed class VolumeModule : ClickableModule
         string state = audio is { Available: true } ? ModuleStates.Volume(level, audio.Muted) : "off";
         icon.Show(state, Glyphs[state]);
         percent.Text = $"{Math.Round(level * 100)}%";
-        ToolTip = $"Volume {Math.Round(level * 100)}%{(audio?.Muted == true ? " (muted)" : "")}";
+        ToolTip = audio?.Muted == true ? Strings.TipVolumeMuted(Math.Round(level * 100)) : Strings.TipVolume(Math.Round(level * 100));
     }
 }
 
@@ -468,7 +468,7 @@ sealed class NetworkModule : ClickableModule
                 n.NetworkInterfaceType is NetworkInterfaceType.Loopback or NetworkInterfaceType.Tunnel,
                 HasGateway(n))));
         icon.Show(state, Glyphs[state]);
-        ToolTip = state switch { "wifi" => "Wi-Fi", "ethernet" => "Ethernet", _ => "Not connected" };
+        ToolTip = state switch { "wifi" => Strings.TipWiFi, "ethernet" => Strings.TipEthernet, _ => Strings.TipOffline };
     }
 
     static bool HasGateway(NetworkInterface n)
@@ -524,6 +524,6 @@ sealed class BatteryModule : ClickableModule
         string glyph = battery.Charging ? "" : level == 10 ? "" : ((char)(0xE850 + level)).ToString();
         icon.Show(state, glyph);
         percent.Text = $"{battery.Percent}%";
-        ToolTip = $"Battery {battery.Percent}%{(battery.Charging ? " (charging)" : "")}";
+        ToolTip = battery.Charging ? Strings.TipBatteryCharging(battery.Percent) : Strings.TipBattery(battery.Percent);
     }
 }

@@ -282,15 +282,21 @@ polished, macOS-like interface; **6b** ships a real default theme built on it.
 - [x] Start with Windows (`HKCU\...\Run`), off by default; the previous value is saved and given back.
 - [x] Quitting with a menu open no longer hangs.
 
-**7b: settings window**
-- [ ] Profiles page: create, rename, duplicate, delete. "Settings…" in the Veneer menu.
-- [ ] Shows each value's origin (theme or you), with "reset to theme value".
-- [ ] Lists theme errors and warnings, and orphaned overrides.
-- [ ] Install a theme from a `.zip` (UI on top of the Phase 2 installer).
-- [ ] Diagnostics report: version, Windows build, monitors and DPI, active theme id, last theme-load diagnostics and
-      the last log lines, ready to paste in an issue. No personal paths. (FluidWin)
-- [ ] All UI strings in resource files from the start. English and Italian ship; more languages from the
-      community. (FluidWin)
+**7b: settings window** (2026-11-24)
+- [x] Settings window (Windows 11 Fluent style, built in code), opened from "Veneer Settings…" in the Veneer menu.
+      Pages: General, Profiles, Theme, Customize, Windows, Diagnostics.
+- [x] Profiles page: use, create, rename (the active one too), duplicate, delete.
+- [x] Customize page: the main values of each bar and dock (position, thickness, reserved space, icon size,
+      magnification, auto-hide), each with its origin (theme, yours, Veneer default) and "reset to theme value".
+      Nested values (`magnification.maxScale`) override only that value.
+- [x] Theme page: pick the profile's theme, install from a `.zip` (also over the active theme), and the current
+      theme's errors and warnings. Orphaned overrides are listed on the Customize page, with "remove".
+- [x] Windows page: wallpaper, accent color and light/dark from the theme or left to Windows, applied at once.
+- [x] Diagnostics report: version, Windows build, monitors and DPI, profile, theme, theme-load diagnostics and the
+      last 40 log lines, with "copy". The user folder, user name and PC name are hidden. (FluidWin)
+- [x] All UI strings in resource files (`Strings.resx`, `Strings.it.resx`), the existing menus and tooltips too.
+      English and Italian ship; the language follows Windows. A test checks every key is translated and used.
+      (FluidWin)
 
 **7c: first run**
 - [ ] Offer to import the Windows taskbar's pinned apps into the dock (user overrides), Store apps included,

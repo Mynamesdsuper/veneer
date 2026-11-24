@@ -74,3 +74,4 @@ Shell_NotifyIcon
 NOTIFYICONDATAW
 ExtractIconEx
 DestroyIcon
+EnumDisplayMonitors

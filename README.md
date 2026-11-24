@@ -32,7 +32,7 @@ The logo menu and the magnifying dock with its label:
 **Early. Not usable day to day yet.** The theme engine works and is tested. The app already draws blurred bars
 from a theme with all their modules and a dock with magnification, hides the taskbar and always gives it back.
 Themes also set the wallpaper, accent color and light/dark mode, with a full restore. The default theme, Aqua, gives a
-polished macOS-like desktop out of the box. Profiles switch theme, overrides and Windows settings together, from the Veneer menu in the bar or the notification area. The settings window is next. The checklist of every feature is in [docs/roadmap.md](docs/roadmap.md).
+polished macOS-like desktop out of the box. Profiles switch theme, overrides and Windows settings together, from the Veneer menu in the bar or the notification area, and a settings window (English and Italian) changes the main values, installs themes and copies a diagnostics report. The checklist of every feature is in [docs/roadmap.md](docs/roadmap.md).
 
 | What | Status |
 |---|---|
@@ -52,7 +52,8 @@ polished macOS-like desktop out of the box. Profiles switch theme, overrides and
 | A polished look: highlights, themed menus, dock labels, launch bounce, stretching dock | ✅ Done (Phase 6a) |
 | A real default theme, **Aqua** (macOS-like, original artwork, light and dark) | ✅ Done, used when no theme is chosen |
 | Profiles, Veneer menu (bar and notification area), start with Windows | ✅ Done (Phase 7a) |
-| Settings window, first-run import of pinned apps | ⏳ Next (Phase 7b, 7c) |
+| Settings window: profiles, theme install, your values with "reset to theme value", Windows choices, diagnostics; English and Italian | ✅ Done (Phase 7b) |
+| First-run import of the taskbar's pinned apps | ⏳ Next (Phase 7c) |
 | Two bundled themes with very different layouts | ⏳ Planned (Phase 8) |
 | First release | ⏳ Planned (Phase 9) |
 | Multi-monitor, display scaling above 100%, ARM64 | ❔ Not verified yet |
@@ -130,8 +131,8 @@ dotnet run --project src/Veneer.App -- --theme <theme folder>  # one theme, prof
 
 While Veneer runs, **Ctrl+Alt+Shift+Q** quits and gives the taskbar back. **Ctrl+Alt+Shift+T** restores the
 taskbar without quitting, and **Ctrl+Alt+Shift+P** switches to the next profile. The logo menu's **Veneer ›**
-item (or Veneer's icon in the notification area) switches profile and theme, turns on starting with Windows, and
-quits. If Veneer ever hangs, **Ctrl+Alt+Shift+F12** ends it and restores the taskbar. By hand:
+item (or Veneer's icon in the notification area) switches profile and theme, opens **Veneer Settings…**, turns on
+starting with Windows, and quits. If Veneer ever hangs, **Ctrl+Alt+Shift+F12** ends it and restores the taskbar. By hand:
 `Veneer.App --restore-taskbar`, and `Veneer.App --restore-windows-settings` for the wallpaper, accent color and
 light/dark mode.
 

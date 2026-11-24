@@ -93,7 +93,7 @@ public sealed class ProfileStore(string root)
     public string? Duplicate(string source, string name)
     {
         if (!Exists(source))
-            return $"there is no profile \"{source}\"";
+            return Strings.ProfileMissing(source);
         if (CheckNew(name) is { } error)
             return error;
         Directory.CreateDirectory(Folder(name));
@@ -109,7 +109,7 @@ public sealed class ProfileStore(string root)
     public string? Rename(string name, string newName)
     {
         if (!Exists(name))
-            return $"there is no profile \"{name}\"";
+            return Strings.ProfileMissing(name);
         bool caseOnly = string.Equals(name, newName, StringComparison.OrdinalIgnoreCase);
         if ((caseOnly ? FolderName.Problem(newName) : CheckNew(newName)) is { } error)
             return error;
@@ -127,11 +127,11 @@ public sealed class ProfileStore(string root)
     public string? Delete(string name)
     {
         if (!Exists(name))
-            return $"there is no profile \"{name}\"";
+            return Strings.ProfileMissing(name);
         if (string.Equals(Active, name, StringComparison.OrdinalIgnoreCase))
-            return "the active profile cannot be deleted; switch to another one first";
+            return Strings.ProfileDeleteActive;
         if (Names().Count == 1)
-            return "the last profile cannot be deleted";
+            return Strings.ProfileDeleteLast;
         if (Directory.Exists(Folder(name)))
             Directory.Delete(Folder(name), recursive: true);
         return null;
@@ -146,5 +146,5 @@ public sealed class ProfileStore(string root)
     }
 
     string? CheckNew(string name) =>
-        FolderName.Problem(name) ?? (Exists(name) ? $"a profile named \"{name}\" already exists" : null);
+        FolderName.Problem(name) ?? (Exists(name) ? Strings.ProfileExists(name) : null);
 }

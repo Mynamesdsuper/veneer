@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="NameEmpty" xml:space="preserve"><value>The name is empty.</value></data>
+  <data name="NameTooLong" xml:space="preserve"><value>The name is longer than {0} characters.</value></data>
+  <data name="NameBadCharacter" xml:space="preserve"><value>The name contains a character Windows does not allow in folder names (\ / : * ? &quot; &lt; &gt; |).</value></data>
+  <data name="NameEdges" xml:space="preserve"><value>The name cannot start with a space or end with a dot or a space.</value></data>
+  <data name="NameReserved" xml:space="preserve"><value>&quot;{0}&quot; is reserved by Windows.</value></data>
+  <data name="ProfileMissing" xml:space="preserve"><value>There is no profile &quot;{0}&quot;.</value></data>
+  <data name="ProfileExists" xml:space="preserve"><value>A profile named &quot;{0}&quot; already exists.</value></data>
+  <data name="ProfileDeleteActive" xml:space="preserve"><value>The active profile cannot be deleted. Switch to another one first.</value></data>
+  <data name="ProfileDeleteLast" xml:space="preserve"><value>The last profile cannot be deleted.</value></data>
+</root>

@@ -19,15 +19,15 @@ public static class FolderName
     public static string? Problem(string? name)
     {
         if (string.IsNullOrWhiteSpace(name))
-            return "the name is empty";
+            return Strings.NameEmpty;
         if (name.Length > MaxLength)
-            return $"the name is longer than {MaxLength} characters";
+            return Strings.NameTooLong(MaxLength);
         if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
-            return "the name contains a character Windows does not allow in folder names (\\ / : * ? \" < > |)";
+            return Strings.NameBadCharacter;
         if (name is "." or ".." || name.EndsWith('.') || name.EndsWith(' ') || name.StartsWith(' '))
-            return "the name cannot start with a space or end with a dot or a space";
+            return Strings.NameEdges;
         if (Reserved.Contains(name.Split('.')[0]))
-            return $"\"{name}\" is reserved by Windows";
+            return Strings.NameReserved(name);
         return null;
     }
 

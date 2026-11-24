@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="MenuProfile" xml:space="preserve"><value>Profilo</value></data>
+  <data name="MenuTheme" xml:space="preserve"><value>Tema</value></data>
+  <data name="MenuStartWithWindows" xml:space="preserve"><value>Avvia con Windows</value></data>
+  <data name="MenuRestoreTaskbar" xml:space="preserve"><value>Ripristina la barra di Windows</value></data>
+  <data name="MenuRestoreWindowsSettings" xml:space="preserve"><value>Ripristina le impostazioni originali di Windows</value></data>
+  <data name="MenuSettings" xml:space="preserve"><value>Impostazioni di Veneer…</value></data>
+  <data name="MenuQuit" xml:space="preserve"><value>Esci da Veneer</value></data>
+  <data name="LogoAbout" xml:space="preserve"><value>Informazioni su questo PC</value></data>
+  <data name="LogoSystemSettings" xml:space="preserve"><value>Impostazioni di sistema…</value></data>
+  <data name="LogoSleep" xml:space="preserve"><value>Sospendi…</value></data>
+  <data name="LogoRestart" xml:space="preserve"><value>Riavvia…</value></data>
+  <data name="LogoShutDown" xml:space="preserve"><value>Arresta il sistema…</value></data>
+  <data name="LogoLock" xml:space="preserve"><value>Blocca lo schermo</value></data>
+  <data name="LogoVeneer" xml:space="preserve"><value>Veneer ›</value></data>
+  <data name="ConfirmSleep" xml:space="preserve"><value>Sospendere il computer adesso?</value></data>
+  <data name="ConfirmRestart" xml:space="preserve"><value>Riavviare il computer adesso? Il lavoro non salvato nelle app aperte potrebbe andare perso.</value></data>
+  <data name="ConfirmShutDown" xml:space="preserve"><value>Spegnere il computer adesso? Il lavoro non salvato nelle app aperte potrebbe andare perso.</value></data>
+  <data name="AppCloseWindow" xml:space="preserve"><value>Chiudi finestra</value></data>
+  <data name="AppMinimize" xml:space="preserve"><value>Riduci a icona</value></data>
+  <data name="AppQuit" xml:space="preserve"><value>Esci da {0}</value></data>
+  <data name="TipVolume" xml:space="preserve"><value>Volume {0}%</value></data>
+  <data name="TipVolumeMuted" xml:space="preserve"><value>Volume {0}% (disattivato)</value></data>
+  <data name="TipWiFi" xml:space="preserve"><value>Wi-Fi</value></data>
+  <data name="TipEthernet" xml:space="preserve"><value>Ethernet</value></data>
+  <data name="TipOffline" xml:space="preserve"><value>Non connesso</value></data>
+  <data name="TipBattery" xml:space="preserve"><value>Batteria {0}%</value></data>
+  <data name="TipBatteryCharging" xml:space="preserve"><value>Batteria {0}% (in carica)</value></data>
+  <data name="DockKeep" xml:space="preserve"><value>Mantieni nel Dock</value></data>
+  <data name="DockRemove" xml:space="preserve"><value>Rimuovi dal Dock</value></data>
+  <data name="DockClose" xml:space="preserve"><value>Chiudi</value></data>
+  <data name="DockCloseAll" xml:space="preserve"><value>Chiudi tutte le finestre</value></data>
+  <data name="SettingsTitle" xml:space="preserve"><value>Impostazioni di Veneer</value></data>
+  <data name="PageGeneral" xml:space="preserve"><value>Generale</value></data>
+  <data name="PageProfiles" xml:space="preserve"><value>Profili</value></data>
+  <data name="PageTheme" xml:space="preserve"><value>Tema</value></data>
+  <data name="PageCustomize" xml:space="preserve"><value>Personalizza</value></data>
+  <data name="PageWindows" xml:space="preserve"><value>Windows</value></data>
+  <data name="PageDiagnostics" xml:space="preserve"><value>Diagnostica</value></data>
+  <data name="StartWithWindows" xml:space="preserve"><value>Avvia Veneer quando accedi a Windows</value></data>
+  <data name="TaskbarSection" xml:space="preserve"><value>Barra delle applicazioni di Windows</value></data>
+  <data name="TaskbarNote" xml:space="preserve"><value>Veneer la nasconde mentre è in esecuzione e la rimette sempre quando si chiude.</value></data>
+  <data name="TaskbarShow" xml:space="preserve"><value>Mostra subito la barra di Windows</value></data>
+  <data name="WindowsSettingsSection" xml:space="preserve"><value>Impostazioni originali di Windows</value></data>
+  <data name="WindowsSettingsNote" xml:space="preserve"><value>Rimette lo sfondo, il colore principale e il modo chiaro o scuro che avevi prima che Veneer li cambiasse.</value></data>
+  <data name="WindowsSettingsNothing" xml:space="preserve"><value>Veneer non ha cambiato nessuna impostazione di Windows.</value></data>
+  <data name="ShortcutsSection" xml:space="preserve"><value>Scorciatoie da tastiera</value></data>
+  <data name="ShortcutQuit" xml:space="preserve"><value>Ctrl+Alt+Shift+Q: esci da Veneer e rimetti la barra di Windows</value></data>
+  <data name="ShortcutTaskbar" xml:space="preserve"><value>Ctrl+Alt+Shift+T: mostra la barra di Windows</value></data>
+  <data name="ShortcutProfile" xml:space="preserve"><value>Ctrl+Alt+Shift+P: profilo successivo</value></data>
+  <data name="ShortcutEmergency" xml:space="preserve"><value>Ctrl+Alt+Shift+F12: chiudi Veneer se è bloccato e rimetti la barra di Windows</value></data>
+  <data name="ProfilesNote" xml:space="preserve"><value>Un profilo tiene insieme un tema, le tue personalizzazioni e le tue scelte per Windows.</value></data>
+  <data name="ProfilesOff" xml:space="preserve"><value>I profili sono spenti: Veneer è stato avviato con --theme.</value></data>
+  <data name="ProfileActive" xml:space="preserve"><value>{0} (attivo)</value></data>
+  <data name="ProfileUse" xml:space="preserve"><value>Usa</value></data>
+  <data name="ProfileNew" xml:space="preserve"><value>Nuovo…</value></data>
+  <data name="ProfileDuplicate" xml:space="preserve"><value>Duplica…</value></data>
+  <data name="ProfileRename" xml:space="preserve"><value>Rinomina…</value></data>
+  <data name="ProfileDelete" xml:space="preserve"><value>Elimina…</value></data>
+  <data name="ProfileNewTitle" xml:space="preserve"><value>Nuovo profilo</value></data>
+  <data name="ProfileDuplicateTitle" xml:space="preserve"><value>Duplica profilo</value></data>
+  <data name="ProfileRenameTitle" xml:space="preserve"><value>Rinomina profilo</value></data>
+  <data name="ProfileNamePrompt" xml:space="preserve"><value>Nome:</value></data>
+  <data name="ProfileCopyName" xml:space="preserve"><value>{0} copia</value></data>
+  <data name="ProfileDeleteConfirm" xml:space="preserve"><value>Eliminare il profilo &quot;{0}&quot; con le sue personalizzazioni? Non si può annullare.</value></data>
+  <data name="Ok" xml:space="preserve"><value>OK</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Annulla</value></data>
+  <data name="ThemeNote" xml:space="preserve"><value>Il tema del profilo &quot;{0}&quot;.</value></data>
+  <data name="ThemeInstall" xml:space="preserve"><value>Installa un tema da un file .zip…</value></data>
+  <data name="ThemeZipFilter" xml:space="preserve"><value>Tema di Veneer (*.zip)|*.zip</value></data>
+  <data name="ThemeInstalling" xml:space="preserve"><value>Installazione in corso…</value></data>
+  <data name="ThemeInstalled" xml:space="preserve"><value>Installato &quot;{0}&quot;. Sceglilo nell&apos;elenco per usarlo.</value></data>
+  <data name="ThemeNotInstalled" xml:space="preserve"><value>Il tema non è stato installato:</value></data>
+  <data name="ThemeProblems" xml:space="preserve"><value>Problemi del tema attuale</value></data>
+  <data name="ThemeProblemsNote" xml:space="preserve"><value>Dettagli per chi crea temi, in inglese.</value></data>
+  <data name="ThemeNoProblems" xml:space="preserve"><value>Nessun problema.</value></data>
+  <data name="ThemeNotLoaded" xml:space="preserve"><value>Il tema non si è potuto caricare, quindi Veneer tiene quello di prima.</value></data>
+  <data name="SeverityError" xml:space="preserve"><value>Errore</value></data>
+  <data name="SeverityWarning" xml:space="preserve"><value>Avviso</value></data>
+  <data name="CustomizeNote" xml:space="preserve"><value>Salvato nel profilo &quot;{0}&quot; e applicato subito. Il tema in sé non cambia mai.</value></data>
+  <data name="CustomizeBuiltIn" xml:space="preserve"><value>Il tema di riserva incorporato non si può personalizzare.</value></data>
+  <data name="SurfaceBar" xml:space="preserve"><value>Barra &quot;{0}&quot;</value></data>
+  <data name="SurfaceDock" xml:space="preserve"><value>Dock &quot;{0}&quot;</value></data>
+  <data name="SettingEdge" xml:space="preserve"><value>Posizione</value></data>
+  <data name="SettingThickness" xml:space="preserve"><value>Spessore</value></data>
+  <data name="SettingReserveSpace" xml:space="preserve"><value>Riserva lo spazio sullo schermo</value></data>
+  <data name="SettingIconSize" xml:space="preserve"><value>Dimensione delle icone</value></data>
+  <data name="SettingMagnification" xml:space="preserve"><value>Ingrandisci le icone sotto il mouse</value></data>
+  <data name="SettingMagnificationScale" xml:space="preserve"><value>Ingrandimento</value></data>
+  <data name="SettingAutoHide" xml:space="preserve"><value>Nascondi automaticamente</value></data>
+  <data name="EdgeTop" xml:space="preserve"><value>In alto</value></data>
+  <data name="EdgeBottom" xml:space="preserve"><value>In basso</value></data>
+  <data name="EdgeLeft" xml:space="preserve"><value>A sinistra</value></data>
+  <data name="EdgeRight" xml:space="preserve"><value>A destra</value></data>
+  <data name="OriginTheme" xml:space="preserve"><value>Dal tema</value></data>
+  <data name="OriginYours" xml:space="preserve"><value>Tuo</value></data>
+  <data name="OriginDefault" xml:space="preserve"><value>Predefinito di Veneer</value></data>
+  <data name="Reset" xml:space="preserve"><value>Ripristina</value></data>
+  <data name="ResetTip" xml:space="preserve"><value>Torna al valore del tema</value></data>
+  <data name="OrphansSection" xml:space="preserve"><value>Personalizzazioni che il tema non usa</value></data>
+  <data name="OrphansNote" xml:space="preserve"><value>Sono per parti che questo tema non ha. Restano salvate nel caso torni a un tema che le ha.</value></data>
+  <data name="OrphanRemove" xml:space="preserve"><value>Rimuovi</value></data>
+  <data name="NotSaved" xml:space="preserve"><value>Non salvato: {0}</value></data>
+  <data name="WindowsNote" xml:space="preserve"><value>Un tema può cambiare queste impostazioni di Windows. Scegli cosa fa Veneer con ognuna.</value></data>
+  <data name="WindowsWallpaper" xml:space="preserve"><value>Sfondo</value></data>
+  <data name="WindowsAccent" xml:space="preserve"><value>Colore principale</value></data>
+  <data name="WindowsAppearance" xml:space="preserve"><value>Modo chiaro o scuro</value></data>
+  <data name="ChoiceFromTheme" xml:space="preserve"><value>Dal tema</value></data>
+  <data name="ChoiceLeave" xml:space="preserve"><value>Lascia com&apos;è in Windows</value></data>
+  <data name="ChoiceLight" xml:space="preserve"><value>Sempre chiaro</value></data>
+  <data name="ChoiceDark" xml:space="preserve"><value>Sempre scuro</value></data>
+  <data name="ChoiceFollow" xml:space="preserve"><value>Segui Windows</value></data>
+  <data name="ThemeSets" xml:space="preserve"><value>Questo tema imposta: {0}</value></data>
+  <data name="ThemeSetsNothing" xml:space="preserve"><value>Questo tema non la imposta.</value></data>
+  <data name="AppearanceLight" xml:space="preserve"><value>chiaro</value></data>
+  <data name="AppearanceDark" xml:space="preserve"><value>scuro</value></data>
+  <data name="AppearanceSystem" xml:space="preserve"><value>segui Windows</value></data>
+  <data name="WindowsRestoreNote" xml:space="preserve"><value>Veneer salva le tue impostazioni originali prima della prima modifica. Puoi rimetterle da Generale.</value></data>
+  <data name="DiagnosticsNote" xml:space="preserve"><value>Incolla questo resoconto in una segnalazione. La tua cartella utente, il nome utente e il nome del PC sono nascosti.</value></data>
+  <data name="Copy" xml:space="preserve"><value>Copia</value></data>
+  <data name="Copied" xml:space="preserve"><value>Copiato.</value></data>
+  <data name="Refresh" xml:space="preserve"><value>Aggiorna</value></data>
+</root>

@@ -116,7 +116,11 @@ sealed class App : Application
         {
             // shortcut: the theme manager cannot go back to the built-in theme; the current theme stays on screen.
             if (rebuildBuiltIn)
+            {
                 Rebuild();
+                Changed?.Invoke();
+            }
+
             return;
         }
 
@@ -167,11 +171,11 @@ sealed class App : Application
     {
         var menu = new System.Windows.Controls.ContextMenu();
         bool profilesOn = session.Profile is not null;
-        menu.Items.Add(Modules.Header("Profile"));
+        menu.Items.Add(Modules.Header(Strings.MenuProfile));
         foreach (string name in profiles.Names())
             menu.Items.Add(Modules.Item(Modules.Checked(name, name == session.Profile), () => SwitchProfile(name), profilesOn));
         menu.Items.Add(new System.Windows.Controls.Separator());
-        menu.Items.Add(Modules.Header("Theme"));
+        menu.Items.Add(Modules.Header(Strings.MenuTheme));
         foreach (var theme in ThemeFolders.List(ThemeRoots))
         {
             bool current = string.Equals(theme.Folder, session.ThemeFolder, StringComparison.OrdinalIgnoreCase);
@@ -180,16 +184,75 @@ sealed class App : Application
 
         menu.Items.Add(new System.Windows.Controls.Separator());
         bool autostart = Autostart.IsEnabled;
-        menu.Items.Add(Modules.Item(Modules.Checked("Start with Windows", autostart), () => Try("change autostart", () => Autostart.Set(!autostart))));
-        menu.Items.Add(Modules.Item("Restore the Windows taskbar", () => taskbar.Restore("menu")));
-        menu.Items.Add(Modules.Item("Restore original Windows settings", RestoreWindowsSettings, windowsSettings.HasSnapshot));
+        menu.Items.Add(Modules.Item(Modules.Checked(Strings.MenuStartWithWindows, autostart), () => Try("change autostart", () => Autostart.Set(!autostart))));
+        menu.Items.Add(Modules.Item(Strings.MenuRestoreTaskbar, () => taskbar.Restore("menu")));
+        menu.Items.Add(Modules.Item(Strings.MenuRestoreWindowsSettings, () => RestoreWindowsSettings(), windowsSettings.HasSnapshot));
         menu.Items.Add(new System.Windows.Controls.Separator());
-        menu.Items.Add(Modules.Item("Quit Veneer", Quit));
+        menu.Items.Add(Modules.Item(Strings.MenuSettings, () => OpenSettings()));
+        menu.Items.Add(Modules.Item(Strings.MenuQuit, Quit));
         return menu;
     }
 
+    SettingsWindow? settings;
+
+    public SettingsWindow? Settings => settings;
+
+    /// <summary>Opens the settings window on <paramref name="page"/>, or brings it to the front when it is already open.</summary>
+    public void OpenSettings(string? page = null)
+    {
+        if (settings is null)
+        {
+            settings = new SettingsWindow(this);
+            settings.Closed += (_, _) => settings = null;
+        }
+
+        settings.ShowPage(page);
+    }
+
+    // What the settings window reads and calls.
+    internal ProfileStore Profiles => profiles;
+
+    internal string? ActiveProfile => session.Profile;
+
+    internal string? ThemeFolder => session.ThemeFolder;
+
+    internal string OverridesPath => session.OverridesPath;
+
+    internal string PreferencesPath => session.PreferencesPath;
+
+    internal Theme CurrentTheme => themes.Current;
+
+    internal ThemeLoadResult? LastLoad => themes.LastResult;
+
+    internal bool HasWindowsSnapshot => windowsSettings.HasSnapshot;
+
+    internal IReadOnlyList<ThemeEntry> InstalledThemes() => ThemeFolders.List(ThemeRoots);
+
+    internal void RestoreTaskbar() => taskbar.Restore("settings");
+
+    /// <summary>Raised on the UI thread after every theme load: the settings window refreshes.</summary>
+    internal event Action? Changed;
+
+    /// <summary>The active profile's folder moved (renamed): load it again from its new place.</summary>
+    internal void ReloadSession() => Try("reload the profile", () => LoadSession());
+
+    /// <summary>windows.json changed: apply the Windows settings again, giving back what is now left to Windows.</summary>
+    internal void PreferencesChanged()
+    {
+        applied = null;
+        if (session.ThemeFolder is null)
+        {
+            Rebuild(); // the built-in theme: no Windows settings to apply
+            Changed?.Invoke();
+        }
+        else
+        {
+            themes.Reload();
+        }
+    }
+
     // Slow (every app answers the change notification): off the UI thread.
-    void RestoreWindowsSettings() => Task.Run(() =>
+    internal Task RestoreWindowsSettings() => Task.Run(() =>
     {
         try
         {
@@ -220,6 +283,7 @@ sealed class App : Application
                     dock.UpdatePinned(updated.DefaultPinned);
             }
 
+            Changed?.Invoke();
             return;
         }
 
@@ -227,9 +291,10 @@ sealed class App : Application
             ApplyWindowsSettings(result.Theme!);
         if (result.Success || bars.Count == 0)
             Rebuild();
+        Changed?.Invoke(); // after a failed load too: the settings window lists its problems
     }
 
-    WindowsPreferences Preferences()
+    internal WindowsPreferences Preferences()
     {
         var warnings = new List<string>();
         string? json = null;
@@ -462,9 +527,9 @@ sealed class App : Application
     public void OpenLogoMenu() => bars.Select(b => b.FindModule<LogoMenuModule>()).FirstOrDefault(m => m is not null)?.Open();
 
     /// <summary>Debug aid: the whole primary monitor as composed by DWM (blur included), for comparison with references/.</summary>
-    public void SaveScreenshot()
+    public void SaveScreenshot(PixelRect? only = null)
     {
-        var area = Monitors.Primary().Bounds;
+        var area = only ?? Monitors.Primary().Bounds;
         var pixels = ScreenCapture.Capture(area);
         var image = BitmapSource.Create(area.Width, area.Height, 96, 96, System.Windows.Media.PixelFormats.Bgr32, null, pixels, area.Width * 4);
         string folder = ScreenshotFolder();

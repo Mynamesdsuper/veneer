@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="MenuProfile" xml:space="preserve"><value>Profile</value></data>
+  <data name="MenuTheme" xml:space="preserve"><value>Theme</value></data>
+  <data name="MenuStartWithWindows" xml:space="preserve"><value>Start with Windows</value></data>
+  <data name="MenuRestoreTaskbar" xml:space="preserve"><value>Restore the Windows taskbar</value></data>
+  <data name="MenuRestoreWindowsSettings" xml:space="preserve"><value>Restore original Windows settings</value></data>
+  <data name="MenuSettings" xml:space="preserve"><value>Veneer Settings…</value></data>
+  <data name="MenuQuit" xml:space="preserve"><value>Quit Veneer</value></data>
+  <data name="LogoAbout" xml:space="preserve"><value>About This PC</value></data>
+  <data name="LogoSystemSettings" xml:space="preserve"><value>System Settings…</value></data>
+  <data name="LogoSleep" xml:space="preserve"><value>Sleep…</value></data>
+  <data name="LogoRestart" xml:space="preserve"><value>Restart…</value></data>
+  <data name="LogoShutDown" xml:space="preserve"><value>Shut Down…</value></data>
+  <data name="LogoLock" xml:space="preserve"><value>Lock Screen</value></data>
+  <data name="LogoVeneer" xml:space="preserve"><value>Veneer ›</value></data>
+  <data name="ConfirmSleep" xml:space="preserve"><value>Put the computer to sleep now?</value></data>
+  <data name="ConfirmRestart" xml:space="preserve"><value>Restart the computer now? Unsaved work in open apps may be lost.</value></data>
+  <data name="ConfirmShutDown" xml:space="preserve"><value>Shut down the computer now? Unsaved work in open apps may be lost.</value></data>
+  <data name="AppCloseWindow" xml:space="preserve"><value>Close Window</value></data>
+  <data name="AppMinimize" xml:space="preserve"><value>Minimize</value></data>
+  <data name="AppQuit" xml:space="preserve"><value>Quit {0}</value></data>
+  <data name="TipVolume" xml:space="preserve"><value>Volume {0}%</value></data>
+  <data name="TipVolumeMuted" xml:space="preserve"><value>Volume {0}% (muted)</value></data>
+  <data name="TipWiFi" xml:space="preserve"><value>Wi-Fi</value></data>
+  <data name="TipEthernet" xml:space="preserve"><value>Ethernet</value></data>
+  <data name="TipOffline" xml:space="preserve"><value>Not connected</value></data>
+  <data name="TipBattery" xml:space="preserve"><value>Battery {0}%</value></data>
+  <data name="TipBatteryCharging" xml:space="preserve"><value>Battery {0}% (charging)</value></data>
+  <data name="DockKeep" xml:space="preserve"><value>Keep in Dock</value></data>
+  <data name="DockRemove" xml:space="preserve"><value>Remove from Dock</value></data>
+  <data name="DockClose" xml:space="preserve"><value>Close</value></data>
+  <data name="DockCloseAll" xml:space="preserve"><value>Close All Windows</value></data>
+  <data name="SettingsTitle" xml:space="preserve"><value>Veneer Settings</value></data>
+  <data name="PageGeneral" xml:space="preserve"><value>General</value></data>
+  <data name="PageProfiles" xml:space="preserve"><value>Profiles</value></data>
+  <data name="PageTheme" xml:space="preserve"><value>Theme</value></data>
+  <data name="PageCustomize" xml:space="preserve"><value>Customize</value></data>
+  <data name="PageWindows" xml:space="preserve"><value>Windows</value></data>
+  <data name="PageDiagnostics" xml:space="preserve"><value>Diagnostics</value></data>
+  <data name="StartWithWindows" xml:space="preserve"><value>Start Veneer when you sign in to Windows</value></data>
+  <data name="TaskbarSection" xml:space="preserve"><value>Windows taskbar</value></data>
+  <data name="TaskbarNote" xml:space="preserve"><value>Veneer hides it while it runs and always brings it back when it quits.</value></data>
+  <data name="TaskbarShow" xml:space="preserve"><value>Show the Windows taskbar now</value></data>
+  <data name="WindowsSettingsSection" xml:space="preserve"><value>Original Windows settings</value></data>
+  <data name="WindowsSettingsNote" xml:space="preserve"><value>Put back the wallpaper, accent color and light or dark mode you had before Veneer changed them.</value></data>
+  <data name="WindowsSettingsNothing" xml:space="preserve"><value>Veneer has not changed any Windows setting.</value></data>
+  <data name="ShortcutsSection" xml:space="preserve"><value>Keyboard shortcuts</value></data>
+  <data name="ShortcutQuit" xml:space="preserve"><value>Ctrl+Alt+Shift+Q: quit Veneer and bring the taskbar back</value></data>
+  <data name="ShortcutTaskbar" xml:space="preserve"><value>Ctrl+Alt+Shift+T: show the Windows taskbar</value></data>
+  <data name="ShortcutProfile" xml:space="preserve"><value>Ctrl+Alt+Shift+P: next profile</value></data>
+  <data name="ShortcutEmergency" xml:space="preserve"><value>Ctrl+Alt+Shift+F12: end a frozen Veneer and bring the taskbar back</value></data>
+  <data name="ProfilesNote" xml:space="preserve"><value>A profile keeps a theme, your customizations and your Windows choices together.</value></data>
+  <data name="ProfilesOff" xml:space="preserve"><value>Profiles are off: Veneer was started with --theme.</value></data>
+  <data name="ProfileActive" xml:space="preserve"><value>{0} (active)</value></data>
+  <data name="ProfileUse" xml:space="preserve"><value>Use</value></data>
+  <data name="ProfileNew" xml:space="preserve"><value>New…</value></data>
+  <data name="ProfileDuplicate" xml:space="preserve"><value>Duplicate…</value></data>
+  <data name="ProfileRename" xml:space="preserve"><value>Rename…</value></data>
+  <data name="ProfileDelete" xml:space="preserve"><value>Delete…</value></data>
+  <data name="ProfileNewTitle" xml:space="preserve"><value>New profile</value></data>
+  <data name="ProfileDuplicateTitle" xml:space="preserve"><value>Duplicate profile</value></data>
+  <data name="ProfileRenameTitle" xml:space="preserve"><value>Rename profile</value></data>
+  <data name="ProfileNamePrompt" xml:space="preserve"><value>Name:</value></data>
+  <data name="ProfileCopyName" xml:space="preserve"><value>{0} copy</value></data>
+  <data name="ProfileDeleteConfirm" xml:space="preserve"><value>Delete the profile &quot;{0}&quot; with its customizations? This cannot be undone.</value></data>
+  <data name="Ok" xml:space="preserve"><value>OK</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="ThemeNote" xml:space="preserve"><value>The theme of the profile &quot;{0}&quot;.</value></data>
+  <data name="ThemeInstall" xml:space="preserve"><value>Install a theme from a .zip file…</value></data>
+  <data name="ThemeZipFilter" xml:space="preserve"><value>Veneer theme (*.zip)|*.zip</value></data>
+  <data name="ThemeInstalling" xml:space="preserve"><value>Installing…</value></data>
+  <data name="ThemeInstalled" xml:space="preserve"><value>Installed &quot;{0}&quot;. Choose it in the list to use it.</value></data>
+  <data name="ThemeNotInstalled" xml:space="preserve"><value>The theme was not installed:</value></data>
+  <data name="ThemeProblems" xml:space="preserve"><value>Problems in the current theme</value></data>
+  <data name="ThemeProblemsNote" xml:space="preserve"><value>Details for theme authors, in English.</value></data>
+  <data name="ThemeNoProblems" xml:space="preserve"><value>No problems found.</value></data>
+  <data name="ThemeNotLoaded" xml:space="preserve"><value>The theme could not be loaded, so Veneer keeps the previous one.</value></data>
+  <data name="SeverityError" xml:space="preserve"><value>Error</value></data>
+  <data name="SeverityWarning" xml:space="preserve"><value>Warning</value></data>
+  <data name="CustomizeNote" xml:space="preserve"><value>Saved in the profile &quot;{0}&quot; and applied at once. The theme itself never changes.</value></data>
+  <data name="CustomizeBuiltIn" xml:space="preserve"><value>The built-in fallback theme cannot be customized.</value></data>
+  <data name="SurfaceBar" xml:space="preserve"><value>Bar &quot;{0}&quot;</value></data>
+  <data name="SurfaceDock" xml:space="preserve"><value>Dock &quot;{0}&quot;</value></data>
+  <data name="SettingEdge" xml:space="preserve"><value>Position</value></data>
+  <data name="SettingThickness" xml:space="preserve"><value>Thickness</value></data>
+  <data name="SettingReserveSpace" xml:space="preserve"><value>Reserve screen space</value></data>
+  <data name="SettingIconSize" xml:space="preserve"><value>Icon size</value></data>
+  <data name="SettingMagnification" xml:space="preserve"><value>Magnify icons under the mouse</value></data>
+  <data name="SettingMagnificationScale" xml:space="preserve"><value>Magnification</value></data>
+  <data name="SettingAutoHide" xml:space="preserve"><value>Hide automatically</value></data>
+  <data name="EdgeTop" xml:space="preserve"><value>Top</value></data>
+  <data name="EdgeBottom" xml:space="preserve"><value>Bottom</value></data>
+  <data name="EdgeLeft" xml:space="preserve"><value>Left</value></data>
+  <data name="EdgeRight" xml:space="preserve"><value>Right</value></data>
+  <data name="OriginTheme" xml:space="preserve"><value>From the theme</value></data>
+  <data name="OriginYours" xml:space="preserve"><value>Yours</value></data>
+  <data name="OriginDefault" xml:space="preserve"><value>Veneer default</value></data>
+  <data name="Reset" xml:space="preserve"><value>Reset</value></data>
+  <data name="ResetTip" xml:space="preserve"><value>Go back to the theme&apos;s value</value></data>
+  <data name="OrphansSection" xml:space="preserve"><value>Customizations the theme does not use</value></data>
+  <data name="OrphansNote" xml:space="preserve"><value>They are for parts this theme does not have. They are kept in case you go back to a theme that has them.</value></data>
+  <data name="OrphanRemove" xml:space="preserve"><value>Remove</value></data>
+  <data name="NotSaved" xml:space="preserve"><value>Not saved: {0}</value></data>
+  <data name="WindowsNote" xml:space="preserve"><value>A theme can change these Windows settings. Choose what Veneer does with each one.</value></data>
+  <data name="WindowsWallpaper" xml:space="preserve"><value>Wallpaper</value></data>
+  <data name="WindowsAccent" xml:space="preserve"><value>Accent color</value></data>
+  <data name="WindowsAppearance" xml:space="preserve"><value>Light or dark mode</value></data>
+  <data name="ChoiceFromTheme" xml:space="preserve"><value>From the theme</value></data>
+  <data name="ChoiceLeave" xml:space="preserve"><value>Leave Windows as it is</value></data>
+  <data name="ChoiceLight" xml:space="preserve"><value>Always light</value></data>
+  <data name="ChoiceDark" xml:space="preserve"><value>Always dark</value></data>
+  <data name="ChoiceFollow" xml:space="preserve"><value>Follow Windows</value></data>
+  <data name="ThemeSets" xml:space="preserve"><value>This theme sets: {0}</value></data>
+  <data name="ThemeSetsNothing" xml:space="preserve"><value>This theme does not set it.</value></data>
+  <data name="AppearanceLight" xml:space="preserve"><value>light</value></data>
+  <data name="AppearanceDark" xml:space="preserve"><value>dark</value></data>
+  <data name="AppearanceSystem" xml:space="preserve"><value>follow Windows</value></data>
+  <data name="WindowsRestoreNote" xml:space="preserve"><value>Veneer saves your original settings before the first change. You can put them back from General.</value></data>
+  <data name="DiagnosticsNote" xml:space="preserve"><value>Paste this report in an issue. Your user folder, user name and PC name are hidden.</value></data>
+  <data name="Copy" xml:space="preserve"><value>Copy</value></data>
+  <data name="Copied" xml:space="preserve"><value>Copied.</value></data>
+  <data name="Refresh" xml:space="preserve"><value>Refresh</value></data>
+</root>

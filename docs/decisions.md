@@ -6,6 +6,36 @@ Record each decision with its date, context, the options considered and the outc
 
 C# + WPF on .NET 10 (LTS), Windows 11 only. .NET 8 reached end of support on 2026-11-10.
 
+## 2026-11-24: Settings window and translations (Phase 7b)
+
+- **Built in code, in the Fluent style.** Like the bars and the dock, the window is built in C# (no XAML), and the
+  app's `ThemeMode = System` gives it the Windows 11 look (Mica, Fluent controls) with no new dependency. Six pages:
+  General, Profiles, Theme, Customize, Windows, Diagnostics. Opened from "Veneer Settings…" in the Veneer menu; the
+  logo menu's own "Settings…" (Windows Settings) became "System Settings…" so the two are not confused.
+- **One path for every change.** The window writes the same files as the menus (the profile's `overrides.json`
+  and `windows.json`, the profile store); hot reload applies the change and `App.Changed` rebuilds the page. A
+  slider saves when the drag ends (or 0.6 s after a key press), because every save rebuilds the bars. A value set
+  back to what the theme says is not written, so it never turns into "yours" by accident.
+- **Customize shows the main values only** (position, thickness, reserved space, icon size, magnification,
+  auto-hide). An editor for every key belongs to the live theme editor, after the first release. Their ranges come
+  from the theme loader's own checks.
+- **Nested overrides.** `OverridesFile` now takes dotted keys (`magnification.maxScale`), so changing one value of an
+  object keeps the theme's other values in it; a reset removes the objects it leaves empty, and the surface entry
+  when only its id is left. Orphaned surfaces can be removed from the Customize page.
+- **Translations.** Every UI text is in `Strings.resx` (English) and `Strings.it.resx` (Italian), in `Veneer.App`
+  and, for the profile messages, in `Veneer.Core`. The language follows Windows. The MSBuild strongly-typed resource
+  generation (`StronglyTypedLanguage`) did not run in the SDK build, so a small hand-written `Strings` class reads each
+  key by its property name; a test checks that both languages have the same keys and placeholders and that every key
+  has a property. **Theme diagnostics stay in English**: they are for theme authors and match `theme-format.md`.
+- **Diagnostics report** in English (anyone can read the issue), with the user folder replaced by `%USERPROFILE%` and
+  the user and PC names by placeholders (whole words only, at least 3 letters, the PC name first because it often
+  contains the user name). It includes the last 40 log lines, which can name running apps; the user sees the whole
+  text before copying it.
+- **Tested in a sandbox** (`VENEER_HOME`, a copy of Aqua without its `windows` section, `--keep-taskbar`): every page,
+  a value set and reset, installing a `.zip` over the active theme while it is watched (works: the watcher does not
+  lock the folder), installing a new theme, and renaming the active profile (its folder moves; the session reloads
+  from the new place). New self-test steps drive the window without simulated input.
+
 ## 2026-11-24: Profiles, Veneer menu, autostart (Phase 7a)
 
 - **Profile layout.** One folder per profile under `profiles\`: `profile.json` (the theme, by folder name),
@@ -38,7 +68,7 @@ C# + WPF on .NET 10 (LTS), Windows 11 only. .NET 8 reached end of support on 202
   goes through `App.Quit`, which closes the open menu and queues the shutdown after WPF has finished closing it.
   An unblurred menu never hung.
 - **UI strings** of the new menu are still English literals; they move to resource files with the settings window
-  (7b), together with the existing menus.
+  (7b), together with the existing menus. (Done in 7b.)
 
 ## 2026-11-24: Bar shadow and rounded dock glass (Phase 6 fixes)
 

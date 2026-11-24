@@ -32,9 +32,10 @@ public sealed record Profile(string Theme = Profile.DefaultTheme)
             if (!doc.RootElement.TryGetProperty("theme", out var theme))
                 return new Profile();
             string? name = theme.ValueKind == JsonValueKind.String ? theme.GetString() : null;
-            if (FolderName.Problem(name) is { } problem)
+            if (!FolderName.IsValid(name))
             {
-                warnings.Add($"{FileName}: \"theme\" must be a theme folder name ({problem}); using \"{DefaultTheme}\"");
+                // The log stays in English (it goes into diagnostics reports): no localized reason here.
+                warnings.Add($"{FileName}: \"theme\" must be a theme folder name, got \"{name}\"; using \"{DefaultTheme}\"");
                 return new Profile();
             }
 

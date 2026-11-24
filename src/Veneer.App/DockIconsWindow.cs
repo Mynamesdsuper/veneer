@@ -472,13 +472,13 @@ sealed class DockIconsWindow : Window
         menu.Items.Add(new MenuItem { Header = DockIcons.Name(item), IsEnabled = false });
         menu.Items.Add(new Separator());
         if (item.Pinned is null)
-            menu.Items.Add(Modules.Item("Keep in Dock", () => owner.KeepInDock(item)));
+            menu.Items.Add(Modules.Item(Strings.DockKeep, () => owner.KeepInDock(item)));
         else
-            menu.Items.Add(Modules.Item("Remove from Dock", () => owner.RemoveFromDock(item)));
+            menu.Items.Add(Modules.Item(Strings.DockRemove, () => owner.RemoveFromDock(item)));
         if (item.IsRunning)
         {
             menu.Items.Add(new Separator());
-            menu.Items.Add(Modules.Item(item.Running!.Windows.Count > 1 ? "Close All Windows" : "Close", () => owner.CloseWindows(item)));
+            menu.Items.Add(Modules.Item(item.Running!.Windows.Count > 1 ? Strings.DockCloseAll : Strings.DockClose, () => owner.CloseWindows(item)));
         }
 
         Modules.Open(menu, cellViews[index], Dock.Edge);

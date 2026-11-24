@@ -21,15 +21,33 @@ public static class OverridesFile
     static readonly JsonDocumentOptions NoComments = ReadOptions with { CommentHandling = JsonCommentHandling.Disallow };
     static readonly JsonSerializerOptions WriteOptions = new() { WriteIndented = true };
 
-    /// <summary>Sets <c>surfaces[id=<paramref name="surfaceId"/>].<paramref name="key"/></c>; null removes the key.</summary>
-    public static bool TrySetSurfaceValue(string path, string surfaceId, string key, JsonNode? value, out string? error)
+    /// <summary>
+    /// Sets <c>surfaces[id=<paramref name="surfaceId"/>].<paramref name="key"/></c>; null removes the key (the theme's
+    /// value applies again). A dotted key (<c>magnification.maxScale</c>) sets one value inside an object, so the
+    /// theme's other values in that object still apply. Objects left empty by a removal are removed too.
+    /// </summary>
+    public static bool TrySetSurfaceValue(string path, string surfaceId, string key, JsonNode? value, out string? error) =>
+        TryEdit(path, surfaces => value is null ? RemoveValue(surfaces, surfaceId, key) : SetValue(surfaces, surfaceId, key, value), out error);
+
+    /// <summary>Removes every customization of surface <paramref name="surfaceId"/> (e.g. one the theme no longer has).</summary>
+    public static bool TryRemoveSurface(string path, string surfaceId, out string? error) =>
+        TryEdit(path, surfaces =>
+        {
+            var matches = Surfaces(surfaces, surfaceId).ToList();
+            foreach (var s in matches)
+                surfaces.Remove(s);
+            return matches.Count > 0;
+        }, out error);
+
+    // edit returns whether it changed anything: a no-op never rewrites the file (and never strips its comments).
+    static bool TryEdit(string path, Func<JsonArray, bool> edit, out string? error)
     {
         // The theme loader may be reading the file right now (hot reload): retry a sharing violation a few times.
         for (int attempt = 1; ; attempt++)
         {
             try
             {
-                return TrySetOnce(path, surfaceId, key, value, out error);
+                return TryEditOnce(path, edit, out error);
             }
             catch (IOException e) when (attempt < 3)
             {
@@ -44,13 +62,14 @@ public static class OverridesFile
         }
     }
 
-    static bool TrySetOnce(string path, string surfaceId, string key, JsonNode? value, out string? error)
+    static bool TryEditOnce(string path, Func<JsonArray, bool> edit, out string? error)
     {
         error = null;
         JsonObject root = [];
+        string? text = null;
         if (File.Exists(path))
         {
-            string text = File.ReadAllText(path);
+            text = File.ReadAllText(path);
             if (JsonNode.Parse(text, documentOptions: ReadOptions) is not JsonObject parsed)
             {
                 error = "the overrides file is not a JSON object; it was left untouched";
@@ -58,8 +77,6 @@ public static class OverridesFile
             }
 
             root = parsed;
-            if (HasComments(text))
-                File.Copy(path, path + ".bak", overwrite: true);
         }
 
         if (root["surfaces"] is not JsonArray surfaces)
@@ -73,20 +90,70 @@ public static class OverridesFile
             root["surfaces"] = surfaces = [];
         }
 
-        var surface = surfaces.OfType<JsonObject>().FirstOrDefault(s => s["id"] is JsonValue v && v.GetValueKind() == JsonValueKind.String && v.GetValue<string>() == surfaceId);
+        if (!edit(surfaces))
+            return true;
+        if (text is not null && HasComments(text))
+            File.Copy(path, path + ".bak", overwrite: true);
+        Write(path, root.ToJsonString(WriteOptions));
+        return true;
+    }
+
+    static string? IdOf(JsonObject surface) =>
+        surface["id"] is JsonValue v && v.GetValueKind() == JsonValueKind.String ? v.GetValue<string>() : null;
+
+    static IEnumerable<JsonObject> Surfaces(JsonArray surfaces, string surfaceId) => surfaces.OfType<JsonObject>().Where(s => IdOf(s) == surfaceId);
+
+    static bool SetValue(JsonArray surfaces, string surfaceId, string key, JsonNode value)
+    {
+        var surface = Surfaces(surfaces, surfaceId).FirstOrDefault();
         if (surface is null)
         {
             surface = new JsonObject { ["id"] = surfaceId };
             surfaces.Add(surface);
         }
 
-        if (value is null)
-            surface.Remove(key);
-        else
-            surface[key] = value.DeepClone();
+        string[] parts = key.Split('.');
+        var parent = surface;
+        foreach (string part in parts[..^1])
+        {
+            if (parent[part] is not JsonObject child)
+            {
+                child = [];
+                parent[part] = child; // replaces a non-object value: the user's new choice wins
+            }
 
-        Write(path, root.ToJsonString(WriteOptions));
+            parent = child;
+        }
+
+        parent[parts[^1]] = value.DeepClone();
         return true;
+    }
+
+    // From every entry with that id: the loader merges them all, so a value left in a second entry would still apply.
+    static bool RemoveValue(JsonArray surfaces, string surfaceId, string key)
+    {
+        bool changed = false;
+        string[] parts = key.Split('.');
+        foreach (var surface in Surfaces(surfaces, surfaceId).ToList())
+        {
+            var parents = new List<JsonObject> { surface };
+            foreach (string part in parts[..^1])
+            {
+                if (parents[^1][part] is not JsonObject child)
+                    break;
+                parents.Add(child);
+            }
+
+            if (parents.Count != parts.Length || !parents[^1].Remove(parts[^1]))
+                continue; // nothing set there
+            changed = true;
+            for (int i = parents.Count - 1; i > 0 && parents[i].Count == 0; i--)
+                parents[i - 1].Remove(parts[i - 1]);
+            if (surface.Count == 1)
+                surfaces.Remove(surface); // only the id is left
+        }
+
+        return changed;
     }
 
     static bool HasComments(string text)

@@ -13,15 +13,29 @@ public readonly record struct MonitorInfo(PixelRect Bounds, uint Dpi);
 public static class Monitors
 {
     /// <summary>The primary monitor: full bounds in physical pixels and its effective DPI (96 = 100%).</summary>
-    public static unsafe MonitorInfo Primary()
+    public static MonitorInfo Primary() => Describe(PInvoke.MonitorFromPoint(default, MONITOR_FROM_FLAGS.MONITOR_DEFAULTTOPRIMARY)).Info;
+
+    /// <summary>Every monitor, for the diagnostics report.</summary>
+    public static unsafe IReadOnlyList<(MonitorInfo Info, bool Primary)> All()
     {
-        var monitor = PInvoke.MonitorFromPoint(default, MONITOR_FROM_FLAGS.MONITOR_DEFAULTTOPRIMARY);
+        var list = new List<(MonitorInfo, bool)>();
+        PInvoke.EnumDisplayMonitors(default, (RECT?)null, (monitor, _, _, _) =>
+        {
+            list.Add(Describe(monitor));
+            return true;
+        }, default);
+        return list;
+    }
+
+    static unsafe (MonitorInfo Info, bool Primary) Describe(HMONITOR monitor)
+    {
+        const uint MONITORINFOF_PRIMARY = 1;
         var info = new MONITORINFO { cbSize = (uint)sizeof(MONITORINFO) };
         PInvoke.GetMonitorInfo(monitor, &info);
         if (PInvoke.GetDpiForMonitor(monitor, MONITOR_DPI_TYPE.MDT_EFFECTIVE_DPI, out uint dpi, out _).Failed)
             dpi = 96;
         var r = info.rcMonitor;
-        return new MonitorInfo(new PixelRect(r.left, r.top, r.right, r.bottom), dpi);
+        return (new MonitorInfo(new PixelRect(r.left, r.top, r.right, r.bottom), dpi), (info.dwFlags & MONITORINFOF_PRIMARY) != 0);
     }
 }
 
