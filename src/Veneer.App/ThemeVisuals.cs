@@ -12,6 +12,100 @@ static class ThemeVisuals
 {
     static readonly Dictionary<string, FontFamily?> FontCache = [];
 
+    /// <summary>The theme the surfaces are built from; menus and labels take their style from it.</summary>
+    public static Theme? Current { get; set; }
+
+    static string Hex(ThemeColor? c, string fallback) => c is { } v ? v.ToString() : fallback;
+
+    /// <summary>
+    /// Gives a menu the theme's look (theme <c>menu</c>). Without one, the Windows 11 look stays. Templates are
+    /// built from XAML text with the theme's values filled in: the shortest way to express a ControlTemplate.
+    /// </summary>
+    public static void StyleMenu(System.Windows.Controls.ContextMenu menu)
+    {
+        if (Current is not { Menu: { } style } theme)
+            return;
+        try
+        {
+            ApplyMenuStyle(menu, theme, style);
+        }
+        catch (Exception e) when (e is System.Windows.Markup.XamlParseException or InvalidOperationException or FormatException)
+        {
+            // A theme value that WPF cannot use: keep the Windows look rather than lose the shell.
+            Log.Write($"menu style not applied: {e.Message}");
+        }
+    }
+
+    static void ApplyMenuStyle(System.Windows.Controls.ContextMenu menu, Theme theme, PopupStyle style)
+    {
+        const string ns = "xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'";
+        string bg = Hex(style.Background, "#F2F6F6F6"), border = Hex(style.Border, "#00000000");
+        string highlight = Hex(style.Highlight, "#FF0A84FF"), highlightFg = Hex(style.HighlightForeground, "#FFFFFFFF");
+        string separator = Hex(style.Separator, "#26000000");
+        double r = style.CornerRadius, p = style.Padding, itemRadius = Math.Max(0, r - p);
+        int bt = style.Border is null ? 0 : 1;
+        // A WPF shadow needs room around the menu; with blur the room would be blurred too, so blurred menus have none.
+        string margin = style.Shadow && !style.Blur ? "10" : "0";
+        string effect = style.Shadow && !style.Blur ? "<Border.Effect><DropShadowEffect BlurRadius='16' ShadowDepth='3' Opacity='0.25'/></Border.Effect>" : "";
+
+        menu.Template = Parse<System.Windows.Controls.ControlTemplate>($@"
+<ControlTemplate {ns} TargetType='ContextMenu'>
+  <Border Margin='{margin}' Background='{bg}' BorderBrush='{border}' BorderThickness='{bt}' CornerRadius='{r}' Padding='{p}'>
+    {effect}
+    <ItemsPresenter/>
+  </Border>
+</ControlTemplate>");
+        menu.HasDropShadow = false;
+        var itemStyle = Parse<Style>($@"
+<Style {ns} TargetType='MenuItem'>
+  <Setter Property='Template'>
+    <Setter.Value>
+      <ControlTemplate TargetType='MenuItem'>
+        <Border x:Name='bd' Background='Transparent' CornerRadius='{itemRadius}' Padding='10,3,24,3'>
+          <ContentPresenter ContentSource='Header' RecognizesAccessKey='True'/>
+        </Border>
+        <ControlTemplate.Triggers>
+          <Trigger Property='IsHighlighted' Value='True'>
+            <Setter TargetName='bd' Property='Background' Value='{highlight}'/>
+            <Setter Property='Foreground' Value='{highlightFg}'/>
+          </Trigger>
+          <Trigger Property='IsEnabled' Value='False'>
+            <Setter Property='Opacity' Value='0.45'/>
+          </Trigger>
+        </ControlTemplate.Triggers>
+      </ControlTemplate>
+    </Setter.Value>
+  </Setter>
+</Style>");
+        // Per item: ItemContainerStyle would also be applied to the separators, which WPF refuses.
+        foreach (var item in menu.Items.OfType<System.Windows.Controls.MenuItem>())
+            item.Style = itemStyle;
+        menu.Resources[System.Windows.Controls.MenuItem.SeparatorStyleKey] = Parse<Style>($@"
+<Style {ns} TargetType='Separator'>
+  <Setter Property='Template'>
+    <Setter.Value>
+      <ControlTemplate TargetType='Separator'>
+        <Rectangle Height='1' Margin='10,4' Fill='{separator}'/>
+      </ControlTemplate>
+    </Setter.Value>
+  </Setter>
+</Style>");
+        TextElement.SetFontFamily(menu, new FontFamily("Segoe UI Variable Text, Segoe UI"));
+        TextElement.SetFontSize(menu, 13);
+        ApplyText(menu, theme, style.Text, style.Foreground ?? new ThemeColor(0xFF, 0x1D, 0x1D, 0x1F));
+
+        if (style.Blur)
+        {
+            menu.Opened += (_, _) =>
+            {
+                if (System.Windows.PresentationSource.FromVisual(menu) is System.Windows.Interop.HwndSource source)
+                    Veneer.Interop.SurfaceWindow.ApplyPopupBlur(source.Handle, 0x01FFFFFF, round: r > 0);
+            };
+        }
+    }
+
+    static T Parse<T>(string xaml) => (T)System.Windows.Markup.XamlReader.Parse(xaml);
+
     public static Brush? Brush(ThemeColor? color)
     {
         if (color is not { } c)

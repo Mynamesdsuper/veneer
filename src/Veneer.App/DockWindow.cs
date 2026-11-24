@@ -34,6 +34,7 @@ sealed class DockWindow : Window
     bool revealed = true;
     bool fullScreen;
     bool closed;
+    PixelRect basePlate; // where Place() put the plate; it stretches from here while icons are magnified
 
     public DockWindow(Theme theme, DockSurface dock, PixelRect area, uint dpi, AppWindowTracker tracker, string? overridesPath)
     {
@@ -179,6 +180,7 @@ sealed class DockWindow : Window
         // An auto-hidden dock never reserves space: it covers windows only while shown.
         appBar.Place(dock.Edge, desired, dock.ReserveSpace && !dock.AutoHide, granted => DockModel.Place(granted, dock.Edge, length, Thickness, margin));
         SurfaceWindow.UpdateRegion(hwnd, appBar.Bounds, CornerRadiusPx);
+        basePlate = appBar.Bounds;
         icons.Place(appBar.Bounds, area);
         if (dock.AutoHide)
         {
@@ -187,6 +189,24 @@ sealed class DockWindow : Window
         }
 
         ApplyVisibility();
+    }
+
+    /// <summary>
+    /// Stretches the plate along the dock by <paramref name="before"/> and <paramref name="after"/> DIPs so that it
+    /// keeps holding the magnified icons (macOS does the same). Called on every magnification frame.
+    /// </summary>
+    public void StretchPlate(double before, double after)
+    {
+        if (appBar is null || closed || basePlate.Width == 0)
+            return;
+        int b = SurfaceLayout.ToPhysical(before, dpi), a = SurfaceLayout.ToPhysical(after, dpi);
+        var rect = dock.Edge is Edge.Left or Edge.Right
+            ? basePlate with { Top = basePlate.Top - b, Bottom = basePlate.Bottom + a }
+            : basePlate with { Left = basePlate.Left - b, Right = basePlate.Right + a };
+        if (rect == appBar.Bounds)
+            return;
+        appBar.MoveWindow(rect);
+        SurfaceWindow.UpdateRegion(hwnd, rect, CornerRadiusPx);
     }
 
     /// <summary>Plate and icons are shown unless a full-screen app is in front or the auto-hidden dock is tucked away.</summary>
@@ -290,6 +310,8 @@ sealed class DockWindow : Window
         {
             Log.Write($"dock: launch {entry}");
             SystemActions.Launch(entry, DockModel.IsAumid(entry));
+            if (dock.BounceOnLaunch && Items.IndexOf(item) is >= 0 and var index)
+                icons.Bounce(index);
         }
     }
 

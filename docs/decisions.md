@@ -6,6 +6,21 @@ Record each decision with its date, context, the options considered and the outc
 
 C# + WPF on .NET 10 (LTS), Windows 11 only. .NET 8 reached end of support on 2026-11-10.
 
+## 2026-11-25: Look and feel, engine part (Phase 6a)
+
+- **New phase.** The author found the look too bare and asked for a polished default theme before profiles. Phase 6
+  is "look and feel"; the former Phases 6–8 became 7–9.
+- **Module highlight** is the module's own rounded background: padding moved inside it, the bar's `highlightInset`
+  keeps it off the bar edges. "Pressed" lasts while the module's menu is open.
+- **Themed menus** are built from XAML text with the theme's values (the shortest way to express WPF control
+  templates). Item styles are set per item: `ItemContainerStyle` would also hit the separators, which WPF refuses
+  (it crashed the shell in the first test). Any style error falls back to the Windows look.
+- **Blur on menus** uses the `SetWindowCompositionAttribute` acrylic from Phase 0: WPF menus are per-pixel
+  transparent windows, where the DWM backdrop does not work. Windows 11 rounding is requested on the pop-up.
+- **The dock plate stretches** with the magnified icons by moving the plate window inside its reserved strip every
+  frame (`AppBar.MoveWindow`, no new shell request). Scripted sweep: 72 fps, slowest frame 37 ms.
+- **Dock label and bounce** live in the icons window, which gets extra room toward the screen for them.
+
 ## 2026-11-25: Windows settings from themes (Phase 5)
 
 - **User choices** (author, 2026-11-24): every setting starts "from the theme". Wallpaper and accent: theme or

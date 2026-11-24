@@ -187,6 +187,7 @@ sealed class App : Application
         if (!ReferenceEquals(theme, applied))
             DockIcons.Clear(); // a reloaded theme may have new icon files: no stale images
         applied = theme;
+        ThemeVisuals.Current = theme;
         var monitor = Monitors.Primary();
         var barSurfaces = theme.Surfaces.OfType<BarSurface>().ToList();
         var edgeItems = barSurfaces.Select(b => new EdgeItem(b.Id, b.Edge, SurfaceLayout.ToPhysical(b.Thickness, monitor.Dpi))).ToList();

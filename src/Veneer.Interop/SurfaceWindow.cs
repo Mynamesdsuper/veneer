@@ -50,6 +50,41 @@ public static class SurfaceWindow
         PInvoke.SendMessage(h, WM_NCACTIVATE, 1, 0);
     }
 
+    /// <summary>
+    /// Blur behind a per-pixel transparent pop-up (a WPF menu or label): the DWM backdrop does not work on those, so
+    /// this uses the undocumented <c>SetWindowCompositionAttribute</c> acrylic (the Phase 0 fallback), plus Windows
+    /// 11 rounding. <paramref name="tintAbgr"/> is a faint base tint; the theme's color is painted by WPF on top.
+    /// </summary>
+    public static unsafe void ApplyPopupBlur(nint hwnd, uint tintAbgr, bool round)
+    {
+        var accent = new AccentPolicy { AccentState = 4 /* ACCENT_ENABLE_ACRYLICBLURBEHIND */, GradientColor = tintAbgr };
+        var data = new CompositionData { Attribute = 19 /* WCA_ACCENT_POLICY */, Data = (nint)(&accent), SizeOfData = sizeof(AccentPolicy) };
+        SetWindowCompositionAttribute(hwnd, ref data);
+        var corner = round ? DWM_WINDOW_CORNER_PREFERENCE.DWMWCP_ROUND : DWM_WINDOW_CORNER_PREFERENCE.DWMWCP_DONOTROUND;
+        PInvoke.DwmSetWindowAttribute((HWND)hwnd, DWMWINDOWATTRIBUTE.DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(DWM_WINDOW_CORNER_PREFERENCE));
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    struct AccentPolicy
+    {
+        public int AccentState;
+        public int AccentFlags;
+        public uint GradientColor;
+        public int AnimationId;
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    struct CompositionData
+    {
+        public int Attribute;
+        public nint Data;
+        public int SizeOfData;
+    }
+
+    // Undocumented (user32), declared by hand.
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    static extern bool SetWindowCompositionAttribute(nint hwnd, ref CompositionData data);
+
     /// <summary>For a plain overlay window (no blur): hidden from Alt+Tab, never activated.</summary>
     public static void MakeOverlay(nint hwnd)
     {

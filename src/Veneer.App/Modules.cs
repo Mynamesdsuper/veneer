@@ -88,6 +88,13 @@ static class Modules
     public static void Open(ContextMenu menu, UIElement target, Edge edge)
     {
         LastMenu = menu;
+        ThemeVisuals.StyleMenu(menu);
+        if (target is ClickableModule module)
+        {
+            module.SetActive(true);
+            menu.Closed += (_, _) => module.SetActive(false);
+        }
+
         menu.PlacementTarget = target;
         menu.Placement = edge switch
         {
@@ -117,6 +124,10 @@ static class Modules
 /// <summary>A module that reacts to clicks: transparent background so the whole area is hit-testable.</summary>
 abstract class ClickableModule : Border
 {
+    Brush? hover;
+    Brush? pressed;
+    bool active;
+
     protected ClickableModule()
     {
         Background = Brushes.Transparent;
@@ -125,9 +136,29 @@ abstract class ClickableModule : Border
             e.Handled = true;
             OnClick();
         };
+        MouseEnter += (_, _) => Refresh();
+        MouseLeave += (_, _) => Refresh();
     }
 
     protected abstract void OnClick();
+
+    /// <summary>The bar's highlight: a rounded background under the mouse, a stronger one while its menu is open.</summary>
+    public void UseHighlight(SurfaceStyle style, Thickness padding)
+    {
+        hover = ThemeVisuals.Brush(style.Hover);
+        pressed = ThemeVisuals.Brush(style.Pressed ?? style.Hover);
+        CornerRadius = new CornerRadius(style.HighlightRadius);
+        Padding = padding; // inside the highlight, so it frames the content
+    }
+
+    /// <summary>While this module's menu is open.</summary>
+    public void SetActive(bool value)
+    {
+        active = value;
+        Refresh();
+    }
+
+    void Refresh() => Background = (active ? pressed : IsMouseOver ? hover : null) ?? Brushes.Transparent;
 }
 
 /// <summary>

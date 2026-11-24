@@ -456,6 +456,50 @@ public class ThemeLoaderTests
     }
 
     [Fact]
+    public void Highlight_menu_label_and_bounce_are_read()
+    {
+        string json = Replace("\"style\": { \"background\": \"$glass\", \"blur\": true, \"foreground\": \"$text\" }",
+                "\"style\": { \"background\": \"$glass\", \"blur\": true, \"foreground\": \"$text\", \"hover\": \"#22000000\", \"pressed\": \"#33000000\", \"highlightRadius\": 5, \"highlightInset\": 3 }")
+            .Replace("\"cornerRadius\": 18,", "\"cornerRadius\": 18, \"bounceOnLaunch\": true, \"label\": { \"background\": \"#E6F4F4F6\", \"cornerRadius\": 6, \"fontSize\": 13, \"shadow\": false },")
+            .Replace("\"iconFolder\": \"assets/icons\",", "\"iconFolder\": \"assets/icons\", \"menu\": { \"background\": \"$glass\", \"blur\": true, \"cornerRadius\": 10, \"highlight\": \"#FF0A84FF\" },");
+        var r = LoadSample(json: json);
+
+        Assert.True(r.Success, string.Join(Environment.NewLine, r.Diagnostics));
+        var theme = r.Theme!;
+        var bar = (BarSurface)theme.Surfaces[0];
+        Assert.Equal(new ThemeColor(0x22, 0, 0, 0), bar.Style.Hover);
+        Assert.Equal(5, bar.Style.HighlightRadius);
+        Assert.Equal(3, bar.Style.HighlightInset);
+        Assert.Equal(new ThemeColor(0x99, 0xF5, 0xF5, 0xF5), theme.Menu!.Background); // tokens work in the menu too
+        Assert.True(theme.Menu.Blur);
+        Assert.Equal(4, theme.Menu.Padding); // default
+        var dock = (DockSurface)theme.Surfaces[1];
+        Assert.True(dock.BounceOnLaunch);
+        Assert.Equal(13, dock.Label!.Text.FontSize);
+        Assert.False(dock.Label.Shadow);
+    }
+
+    [Fact]
+    public void Without_menu_and_label_the_windows_look_stays()
+    {
+        var theme = LoadSample().Theme!;
+        Assert.Null(theme.Menu);
+        Assert.Null(((DockSurface)theme.Surfaces[1]).Label);
+        Assert.Equal(2, ((BarSurface)theme.Surfaces[0]).Style.HighlightInset);
+    }
+
+    [Theory]
+    [InlineData("\"iconFolder\": \"assets/icons\",", "\"iconFolder\": \"assets/icons\", \"menu\": { \"cornerRadius\": 500 },", "menu.cornerRadius")]
+    [InlineData("\"iconFolder\": \"assets/icons\",", "\"iconFolder\": \"assets/icons\", \"menu\": { \"highlight\": \"blue\" },", "menu.highlight")]
+    [InlineData("\"iconFolder\": \"assets/icons\",", "\"iconFolder\": \"assets/icons\", \"menu\": 3,", "menu")]
+    [InlineData("\"cornerRadius\": 18,", "\"cornerRadius\": 18, \"label\": { \"fontWeight\": \"loud\" },", "surfaces[id=dock].label.fontWeight")]
+    public void Bad_menu_and_label_values_are_errors(string from, string to, string path)
+    {
+        var r = LoadSample(json: Replace(from, to));
+        Assert.Contains(r.Errors, e => e.Path == path);
+    }
+
+    [Fact]
     public void Built_in_theme_is_valid()
     {
         Assert.Equal("veneer.fallback", BuiltInTheme.Theme.Id);

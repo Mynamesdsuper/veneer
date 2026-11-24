@@ -45,6 +45,10 @@ sealed class DockIconsWindow : Window
     Point pressPoint;
     bool dragging;
     MagnifiedCell[] layout = [];
+    Border? label; // the theme's name label (dock "label"); null keeps Windows tooltips
+    int bounceIndex = -1;
+    long bounceStart;
+    const double LabelGap = 6, BounceSeconds = 1.4, BouncePeriod = 0.47;
 
     public DockIconsWindow(DockWindow owner)
     {
@@ -115,7 +119,10 @@ sealed class DockIconsWindow : Window
     public void Place(PixelRect plateBounds, PixelRect area)
     {
         double scale = owner.Dpi / 96.0;
-        double grow = Dock.IconSize * (MaxScale - 1);
+        // Room toward the screen for magnified icons, the name label and the launch bounce.
+        double grow = Dock.IconSize * (MaxScale - 1) + LabelRoom;
+        if (Dock.BounceOnLaunch)
+            grow = Math.Max(grow, Dock.IconSize * 0.45);
         int across = SurfaceLayout.ToPhysical(grow, owner.Dpi);
         int along = SurfaceLayout.ToPhysical(grow * (Dock.Magnification.Radius + 1), owner.Dpi);
         var r = Dock.Edge switch
@@ -152,7 +159,7 @@ sealed class DockIconsWindow : Window
         {
             FrameworkElement view = item.IsSeparator
                 ? new Rectangle { Fill = ThemeVisuals.Brush(Dock.Style.Border ?? Dock.Style.Foreground) ?? Brushes.Gray, Opacity = 0.6, IsHitTestVisible = false }
-                : new Image { Source = DockIcons.For(owner.Theme, item, owner.Dpi), Stretch = Stretch.Uniform, ToolTip = DockIcons.Name(item) };
+                : new Image { Source = DockIcons.For(owner.Theme, item, owner.Dpi), Stretch = Stretch.Uniform, ToolTip = Dock.Label is null ? DockIcons.Name(item) : null };
             cellViews.Add(view);
             canvas.Children.Add(view);
             var indicator = item.IsRunning ? Indicator() : null;
@@ -200,12 +207,101 @@ sealed class DockIconsWindow : Window
         layout = dragging ? DragLayout(cells) : Magnifier.Layout(cells, Dock.Style.Spacing, cursor, effective, Dock.Magnification.Radius);
         for (int i = 0; i < layout.Length; i++)
             Arrange(i, layout[i]);
+        UpdateLabel();
+        StretchPlate(cells);
+    }
+
+    // The plate follows the magnified row: as far before and after the base row as the outermost icons reach.
+    void StretchPlate(List<(double Size, bool Scales)> cells)
+    {
+        if (layout.Length == 0 || dragging)
+        {
+            owner.StretchPlate(0, 0);
+            return;
+        }
+
+        double baseRow = cells.Sum(c => c.Size) + Math.Max(0, cells.Count - 1) * Dock.Style.Spacing;
+        double before = Math.Max(0, -layout.Min(c => c.Start));
+        double after = Math.Max(0, layout.Max(c => c.Start + c.Length) - baseRow);
+        owner.StretchPlate(before, after);
+        Canvas.SetLeft(hitArea, Horizontal ? plate.Left - before : plate.Left);
+        Canvas.SetTop(hitArea, Horizontal ? plate.Top : plate.Top - before);
+        if (Horizontal)
+            hitArea.Width = plate.Width + before + after;
+        else
+            hitArea.Height = plate.Height + before + after;
+    }
+
+    double LabelRoom => Dock.Label is { } l ? (l.Text.FontSize ?? 12) * 1.4 + 2 * l.Padding + 2 * LabelGap : 0;
+
+    // The app name above the icon under the mouse, styled by the theme (macOS-like), instead of a Windows tooltip.
+    void UpdateLabel()
+    {
+        if (Dock.Label is not { } style)
+            return;
+        if (label is null)
+        {
+            label = new Border
+            {
+                Background = ThemeVisuals.Brush(style.Background),
+                BorderBrush = ThemeVisuals.Brush(style.Border),
+                BorderThickness = new Thickness(style.Border is null ? 0 : 1),
+                CornerRadius = new CornerRadius(style.CornerRadius),
+                Padding = new Thickness(style.Padding * 2, style.Padding, style.Padding * 2, style.Padding),
+                IsHitTestVisible = false,
+                Child = new TextBlock(),
+            };
+            if (style.Shadow)
+                label.Effect = new System.Windows.Media.Effects.DropShadowEffect { BlurRadius = 8, ShadowDepth = 1, Opacity = 0.25 };
+            ThemeVisuals.ApplyText(label, owner.Theme, style.Text, style.Foreground);
+            canvas.Children.Add(label);
+        }
+
+        int i = cursor is { } c && strength > 0.5 && !dragging ? IndexAt(c) : -1;
+        if (i < 0)
+        {
+            label.Visibility = Visibility.Hidden;
+            return;
+        }
+
+        ((TextBlock)label.Child).Text = DockIcons.Name(owner.Items[i]);
+        label.Visibility = Visibility.Visible;
+        label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        double w = label.DesiredSize.Width, h = label.DesiredSize.Height;
+        var cell = layout[i];
+        double center = RowStart + cell.Start + cell.Length / 2, pad = Dock.Padding;
+        var (left, top) = Dock.Edge switch
+        {
+            Edge.Left => (plate.Left + pad + cell.Length + LabelGap, center - h / 2),
+            Edge.Right => (plate.Right - pad - cell.Length - LabelGap - w, center - h / 2),
+            _ => (center - w / 2, plate.Bottom - pad - cell.Length - LabelGap - h),
+        };
+        Canvas.SetLeft(label, Math.Clamp(left, 0, Math.Max(0, Width - w)));
+        Canvas.SetTop(label, Math.Max(0, top));
+    }
+
+    /// <summary>The launch bounce: a few hops of the icon at <paramref name="index"/>, fading out.</summary>
+    public void Bounce(int index)
+    {
+        bounceIndex = index;
+        bounceStart = Environment.TickCount64;
+        Animate(targetStrength);
+    }
+
+    bool Bouncing => bounceIndex >= 0 && (Environment.TickCount64 - bounceStart) / 1000.0 < BounceSeconds;
+
+    double Lift(int i)
+    {
+        if (i != bounceIndex || !Bouncing)
+            return 0;
+        double t = (Environment.TickCount64 - bounceStart) / 1000.0;
+        return Dock.IconSize * 0.4 * Math.Abs(Math.Sin(Math.PI * t / BouncePeriod)) * (1 - t / BounceSeconds);
     }
 
     // Places one cell. Icons sit on the screen-edge side of the plate (inside its padding) and grow away from the edge.
     void Arrange(int i, MagnifiedCell cell)
     {
-        double start = RowStart + cell.Start, len = cell.Length, pad = Dock.Padding, size = Dock.IconSize;
+        double start = RowStart + cell.Start, len = cell.Length, pad = Dock.Padding, size = Dock.IconSize, lift = Lift(i);
         var view = cellViews[i];
         if (owner.Items[i].IsSeparator)
         {
@@ -222,13 +318,13 @@ sealed class DockIconsWindow : Window
         switch (Dock.Edge)
         {
             case Edge.Left:
-                Set(view, plate.Left + pad, start, len, len);
+                Set(view, plate.Left + pad + lift, start, len, len);
                 break;
             case Edge.Right:
-                Set(view, plate.Right - pad - len, start, len, len);
+                Set(view, plate.Right - pad - len - lift, start, len, len);
                 break;
             default:
-                Set(view, start, plate.Bottom - pad - len, len, len);
+                Set(view, start, plate.Bottom - pad - len - lift, len, len);
                 break;
         }
 
@@ -299,8 +395,12 @@ sealed class DockIconsWindow : Window
         if (strength == 0)
             cursor = null;
         Relayout();
-        if (strength == targetStrength)
+        if (strength == targetStrength && !Bouncing)
+        {
+            bounceIndex = -1;
+            Relayout(); // final frame at rest
             StopAnimation();
+        }
     }
 
     void StopAnimation()

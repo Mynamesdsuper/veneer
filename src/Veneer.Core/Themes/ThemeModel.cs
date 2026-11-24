@@ -47,7 +47,8 @@ public sealed record Theme(
     IReadOnlyList<Surface> Surfaces,
     IReadOnlyDictionary<string, string> IconOverrides,
     string? IconFolder,
-    IReadOnlyDictionary<string, ThemeLayer> Origins)
+    IReadOnlyDictionary<string, ThemeLayer> Origins,
+    PopupStyle? Menu = null)
 {
     /// <summary>Where a value came from, by path (e.g. <c>surfaces[id=dock].iconSize</c>). Null when the value is a default.</summary>
     public ThemeLayer? OriginOf(string path) => Origins.TryGetValue(path, out var layer) ? layer : null;
@@ -73,7 +74,28 @@ public sealed record SurfaceStyle(
     bool Blur,
     TextStyle Text,
     double Padding,
-    double Spacing);
+    double Spacing,
+    ThemeColor? Hover = null,
+    ThemeColor? Pressed = null,
+    double HighlightRadius = 0,
+    double HighlightInset = 2);
+
+/// <summary>
+/// The look of a pop-up: the theme's menus (<c>menu</c>) or the dock's name label (<c>label</c>). A null style keeps
+/// the Windows 11 look. <see cref="Highlight"/> is the background of the menu item under the mouse.
+/// </summary>
+public sealed record PopupStyle(
+    ThemeColor? Background,
+    ThemeColor? Foreground,
+    ThemeColor? Border,
+    bool Blur,
+    double CornerRadius,
+    TextStyle Text,
+    double Padding,
+    ThemeColor? Highlight,
+    ThemeColor? HighlightForeground,
+    ThemeColor? Separator,
+    bool Shadow);
 
 /// <summary>A module's own look. Null values inherit from the surface.</summary>
 public sealed record ModuleStyle(ThemeColor? Foreground, TextStyle Text, double? Padding);
@@ -109,7 +131,9 @@ public sealed record DockSurface(
     IReadOnlyList<string> DefaultPinned,
     double Margin,
     bool ReserveSpace,
-    bool SeparateRunning) : Surface(Id, Edge, Monitor, Style);
+    bool SeparateRunning,
+    PopupStyle? Label = null,
+    bool BounceOnLaunch = false) : Surface(Id, Edge, Monitor, Style);
 
 public sealed record Magnification(bool Enabled, double MaxScale, int Radius);
 

@@ -59,6 +59,19 @@ public sealed class AppBar(nint hwnd)
         Reposition();
     }
 
+    /// <summary>
+    /// Moves the window inside the reserved strip without asking the shell again (the dock plate stretching with its
+    /// magnified icons, many times per second). The reserved strip itself does not change.
+    /// </summary>
+    public void MoveWindow(PixelRect rect)
+    {
+        if (rect == Bounds)
+            return;
+        Bounds = rect; // the WM_WINDOWPOSCHANGING pin now holds this rectangle
+        PInvoke.SetWindowPos(handle, default, rect.Left, rect.Top, rect.Width, rect.Height,
+            SET_WINDOW_POS_FLAGS.SWP_NOZORDER | SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE);
+    }
+
     public void Remove()
     {
         if (!registered)

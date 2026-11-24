@@ -19,8 +19,8 @@ which components exist, which screen edge they sit on, which modules they show a
 
 **Early. Not usable day to day yet.** The theme engine works and is tested. The app already draws blurred bars
 from a theme with all their modules and a dock with magnification, hides the taskbar and always gives it back.
-Themes also set the wallpaper, accent color and light/dark mode, with a full restore. Profiles, the settings
-window and the tray icon are next. The checklist of every feature is in [docs/roadmap.md](docs/roadmap.md).
+Themes also set the wallpaper, accent color and light/dark mode, with a full restore. A polished look and a real
+default theme are next. The checklist of every feature is in [docs/roadmap.md](docs/roadmap.md).
 
 | What | Status |
 |---|---|
@@ -37,9 +37,11 @@ window and the tray icon are next. The checklist of every feature is in [docs/ro
 | Dock: pinned and running apps, live updates, system or theme icons, click to open or switch | ✅ Done |
 | Dock: hover magnification, context menu, drag to reorder, separators, auto-hide, saved pinned apps | ✅ Done (drag still to be tried by hand) |
 | Wallpaper, accent color, light/dark from the theme, with restore | ✅ Done: each one from the theme or the system, snapshot before the first change, byte-for-byte restore tested |
-| Profiles, settings window, tray icon, start with Windows | ⏳ Next (Phase 6) |
-| Two bundled themes with very different layouts | ⏳ Planned (Phase 7) |
-| First release | ⏳ Planned (Phase 8) |
+| A polished look: highlights, themed menus, dock labels, launch bounce, stretching dock | ✅ Done (Phase 6a) |
+| A real default theme (macOS-like, original artwork, light and dark) | ⏳ Next (Phase 6b) |
+| Profiles, settings window, tray icon, start with Windows | ⏳ Planned (Phase 7) |
+| Two bundled themes with very different layouts | ⏳ Planned (Phase 8) |
+| First release | ⏳ Planned (Phase 9) |
 | Multi-monitor, display scaling above 100%, ARM64 | ❔ Not verified yet |
 
 ✅ done · ⚠️ partly done · 🧪 proven in a spike, not in the app yet · ⏳ planned · ❔ not verified
@@ -90,9 +92,10 @@ full multi-monitor support.
 | 3 | Layout engine, bars and their modules | ✅ |
 | 4 | Dock | ✅ |
 | 5 | Windows settings from themes (wallpaper, accent, light/dark) with restore | ✅ |
-| 6 | Profiles, settings window, tray, theme install, start with Windows | ⏳ next |
-| 7 | Bundled themes | ⏳ |
-| 8 | Polish, documentation, first release | ⏳ |
+| 6 | Look and feel: what the engine can draw, and a real default theme | ⚠️ 6a done, 6b next |
+| 7 | Profiles, settings window, tray, theme install, start with Windows | ⏳ |
+| 8 | Bundled themes | ⏳ |
+| 9 | Polish, documentation, first release | ⏳ |
 
 Every feature, phase by phase, with its checkbox: [docs/roadmap.md](docs/roadmap.md).
 

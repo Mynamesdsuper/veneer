@@ -146,9 +146,24 @@ sealed class BarWindow : Window
                 continue;
             double pad = spec.Style.Padding ?? 0;
             double gap = panel.Children.Count == 0 ? 0 : bar.Style.Spacing;
-            element.Margin = horizontal ? new Thickness(gap + pad, 0, pad, 0) : new Thickness(0, gap + pad, 0, pad);
-            element.VerticalAlignment = horizontal ? VerticalAlignment.Center : VerticalAlignment.Top;
-            element.HorizontalAlignment = horizontal ? HorizontalAlignment.Left : HorizontalAlignment.Center;
+            if (element is ClickableModule clickable)
+            {
+                // Padding inside the highlight; the highlight spans the bar minus the inset.
+                double inset = bar.Style.HighlightInset;
+                clickable.UseHighlight(bar.Style, horizontal ? new Thickness(pad, 0, pad, 0) : new Thickness(0, pad, 0, pad));
+                element.Margin = horizontal ? new Thickness(gap, inset, 0, inset) : new Thickness(inset, gap, inset, 0);
+                element.VerticalAlignment = horizontal ? VerticalAlignment.Stretch : VerticalAlignment.Top;
+                element.HorizontalAlignment = horizontal ? HorizontalAlignment.Left : HorizontalAlignment.Stretch;
+                if (element is Border { Child: FrameworkElement content })
+                    content.VerticalAlignment = VerticalAlignment.Center;
+            }
+            else
+            {
+                element.Margin = horizontal ? new Thickness(gap + pad, 0, pad, 0) : new Thickness(0, gap + pad, 0, pad);
+                element.VerticalAlignment = horizontal ? VerticalAlignment.Center : VerticalAlignment.Top;
+                element.HorizontalAlignment = horizontal ? HorizontalAlignment.Left : HorizontalAlignment.Center;
+            }
+
             ThemeVisuals.ApplyText(element, theme, spec.Style.Text, spec.Style.Foreground);
             panel.Children.Add(element);
         }

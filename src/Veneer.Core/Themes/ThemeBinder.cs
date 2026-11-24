@@ -49,7 +49,10 @@ internal sealed partial class ThemeBinder(string root, List<Diagnostic> diagnost
 
         if (HasErrors)
             return null;
-        return new Theme(id!, name!, author, version, license, root, windows, fonts, surfaces, icons, iconFolder, origins);
+        var menu = Popup(Obj(o, "menu", ""), "menu");
+        if (HasErrors)
+            return null;
+        return new Theme(id!, name!, author, version, license, root, windows, fonts, surfaces, icons, iconFolder, origins, menu);
     }
 
     List<Surface> Surfaces(JsonNode? node)
@@ -112,7 +115,11 @@ internal sealed partial class ThemeBinder(string root, List<Diagnostic> diagnost
                     Bool(styleObj, "blur", sp) ?? false,
                     Text(styleObj, sp),
                     Num(styleObj, "padding", sp, 0, 200) ?? 0,
-                    Num(styleObj, "spacing", sp, 0, 200) ?? 0);
+                    Num(styleObj, "spacing", sp, 0, 200) ?? 0,
+                    Color(styleObj, "hover", sp),
+                    Color(styleObj, "pressed", sp),
+                    Num(styleObj, "highlightRadius", sp, 0, 100) ?? 0,
+                    Num(styleObj, "highlightInset", sp, 0, 50) ?? 2);
 
             if (edge is not { } e)
                 continue;
@@ -151,7 +158,9 @@ internal sealed partial class ThemeBinder(string root, List<Diagnostic> diagnost
             StringList(s, "defaultPinned", p),
             Num(s, "margin", p, 0, 200) ?? 0,
             Bool(s, "reserveSpace", p) ?? true,
-            Bool(s, "separateRunning", p) ?? true);
+            Bool(s, "separateRunning", p) ?? true,
+            Popup(Obj(s, "label", p), ThemeLayers.Join(p, "label")),
+            Bool(s, "bounceOnLaunch", p) ?? false);
     }
 
     List<ModuleSpec> Modules(JsonObject s, string key, string p)
@@ -220,6 +229,19 @@ internal sealed partial class ThemeBinder(string root, List<Diagnostic> diagnost
 
         return new TextStyle(Str(style, "font", p), Num(style, "fontSize", p, 4, 200), weight);
     }
+
+    PopupStyle? Popup(JsonObject? o, string p) => o is null ? null : new PopupStyle(
+        Color(o, "background", p),
+        Color(o, "foreground", p),
+        Color(o, "border", p),
+        Bool(o, "blur", p) ?? false,
+        Num(o, "cornerRadius", p, 0, 50) ?? 0,
+        Text(o, p),
+        Num(o, "padding", p, 0, 100) ?? 4,
+        Color(o, "highlight", p),
+        Color(o, "highlightForeground", p),
+        Color(o, "separator", p),
+        Bool(o, "shadow", p) ?? true);
 
     /// <summary>Checks the options each module understands. A new module adds its case here and its view in the app.</summary>
     void ModuleOptions(string module, JsonObject m, string p)

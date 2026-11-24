@@ -131,6 +131,9 @@ Each surface has:
 | `style.fontWeight` | `thin` \| `extralight` \| `light` \| `regular` \| `medium` \| `semibold` \| `bold` \| `extrabold` \| `black` | |
 | `style.padding` | number 0–200 (`0`) | Space at both ends of a bar. |
 | `style.spacing` | number 0–200 (`0`) | Gap between modules. |
+| `style.hover`, `style.pressed` | color | Background of a clickable module under the mouse, and while its menu is open (`pressed` defaults to `hover`). |
+| `style.highlightRadius` | number 0–100 (`0`) | Corner radius of that background. |
+| `style.highlightInset` | number 0–50 (`2`) | Space between that background and the bar's edges. |
 
 **Bar** (`"type": "bar"`):
 
@@ -179,6 +182,8 @@ state names are ignored with a warning; missing states keep the glyph.
 | `autoHide` | boolean (`false`) | Hidden until the mouse touches the screen edge; hides again 0.6 s after it leaves. An auto-hidden dock never reserves space. |
 | `separateRunning` | boolean (`true`) | A separator between the pinned apps and the other running apps. |
 | `defaultPinned` | array of strings | See below. |
+| `label` | pop-up style | The app name shown above the icon under the mouse. Without it, Windows tooltips. |
+| `bounceOnLaunch` | boolean (`false`) | The icon hops a few times when its app is started from the dock. |
 
 Pinned entries can be:
 
@@ -195,6 +200,22 @@ theme updates, and other themes with a dock of the same `id` use it too.
 
 Running apps that are not pinned follow the pinned ones, in the order they were opened. Windows of the same
 app are grouped by AppUserModelID, or by exe when the app has none.
+
+### `menu`
+
+The look of Veneer's menus (logo menu, active app, dock). Without it, menus keep the Windows 11 look. It is a
+**pop-up style**, like the dock's `label`:
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `background`, `foreground`, `border` | color | |
+| `blur` | boolean (`false`) | Blur behind the menu. Blurred menus have no drop shadow. |
+| `cornerRadius` | number 0–50 (`0`) | |
+| `padding` | number 0–100 (`4`) | |
+| `font`, `fontSize`, `fontWeight` | | As in `style`. |
+| `highlight`, `highlightForeground` | color | The menu item under the mouse. |
+| `separator` | color | Separator lines. |
+| `shadow` | boolean (`true`) | A soft drop shadow (not with `blur`). |
 
 ### Icons
 

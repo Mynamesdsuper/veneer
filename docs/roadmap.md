@@ -21,9 +21,10 @@ Every phase ends with `dotnet build` and `dotnet test` green and one commit.
 - [Phase 3: layout engine and bars](#phase-3-layout-engine-and-bars): ✅ done
 - [Phase 4: dock](#phase-4-dock): ✅ done
 - [Phase 5: Windows settings from themes](#phase-5-windows-settings-from-themes): ✅ done
-- [Phase 6: profiles, settings, tray, install, autostart](#phase-6-profiles-settings-tray-install-autostart): ⏳ next
-- [Phase 7: bundled themes](#phase-7-bundled-themes)
-- [Phase 8: polish and first release](#phase-8-polish-and-first-release)
+- [Phase 6: look and feel](#phase-6-look-and-feel): 🚧 6a done, 6b next
+- [Phase 7: profiles, settings, tray, install, autostart](#phase-7-profiles-settings-tray-install-autostart)
+- [Phase 8: bundled themes](#phase-8-bundled-themes)
+- [Phase 9: polish and first release](#phase-9-polish-and-first-release)
 - [After the first release](#after-the-first-release)
 - [Not verified yet](#not-verified-yet)
 - [Ideas from FluidWin](#ideas-from-fluidwin)
@@ -153,7 +154,7 @@ Split in two steps: **3a** (foundations and the first visible bars) and **3b** (
       screenshot to `artifacts/screenshots/` and **X** simulated crash.
 - [x] Debug `--self-test "<steps>"`: drives the app (open/close menus, change the foreground app, screenshot,
       quit) without simulated input. (3b)
-- [x] Visual comparison with the reference screenshots: the remaining gaps are listed under Phase 7. (3b)
+- [x] Visual comparison with the reference screenshots: the remaining gaps are listed under Phase 8. (3b)
 
 ## Phase 4: dock
 
@@ -198,7 +199,7 @@ Split like Phase 3: **4a** (a working dock) and **4b** (magnification, menus, dr
 **Performance** (4b)
 - [x] Magnification measured with a scripted sweep: 63 fps over 2 s, one 33 ms frame. Rendering work capped at
       about 120 updates per second; no work at all while idle.
-- [ ] The plate keeps its size while icons grow (macOS widens it). Later, with the Phase 7 fidelity pass.
+- [x] The plate stretches with the magnified icons, as on macOS. (Phase 6a)
 
 ## Phase 5: Windows settings from themes
 
@@ -214,9 +215,9 @@ Split like Phase 3: **4a** (a working dock) and **4b** (magnification, menus, dr
 **Safety and control**
 - [x] One choice per setting, all "from the theme" by default: wallpaper and accent from the theme or the system;
       light/dark from the theme, light, dark or the system. In `profiles\default\windows.json` until the settings
-      window (Phase 6).
+      window (Phase 7).
 - [x] Snapshot of the originals before the first change of each setting, never overwritten while it exists.
-- [x] "Restore original Windows settings": `Veneer.App --restore-windows-settings` (a button in Phase 6).
+- [x] "Restore original Windows settings": `Veneer.App --restore-windows-settings` (a button in Phase 7).
       Tested on the real PC: accent, palette and light/dark come back byte for byte; the wallpaper too.
 - [x] Changes stay after Veneer exits; the wallpaper does not jump back.
 - [x] Applied off the UI thread: the change notification waits for every app (seconds), the bars do not.
@@ -234,7 +235,29 @@ Split like Phase 3: **4a** (a working dock) and **4b** (magnification, menus, dr
 - [x] RunOnce safety net: a `HKCU\...\RunOnce` entry restores the taskbar at the next sign-in after a power loss
       or a crash of both processes; removed after every restore. (Code review, 2026-11-24.)
 
-## Phase 6: profiles, settings, tray, install, autostart
+## Phase 6: look and feel
+
+Added on 2026-11-25 at the author's request: the default look was too bare. **6a** teaches the engine to draw a
+polished, macOS-like interface; **6b** ships a real default theme built on it.
+
+**6a: what the engine can draw** (all from the theme)
+- [x] Rounded highlight behind bar modules: on hover, and stronger while their menu is open (`style.hover`,
+      `pressed`, `highlightRadius`, `highlightInset`).
+- [x] Menus in the theme's style (`menu`): background, border, corner radius, font, item highlight, separators,
+      optional blur (acrylic through `SetWindowCompositionAttribute`, since WPF menus are per-pixel transparent).
+      Without `menu` the Windows 11 look stays. A style WPF cannot use never takes the shell down.
+- [x] The dock's name label above the hovered icon (`label`), instead of a Windows tooltip.
+- [x] Launch bounce of a dock icon (`bounceOnLaunch`).
+- [x] The dock plate stretches with the magnified icons (72 fps in the scripted sweep).
+- [ ] Animated dock auto-hide (slide) and fades for the label.
+
+**6b: the default theme** (style chosen by the author: macOS-like, original artwork)
+- [ ] `themes/aqua` in the repository: top bar and bottom dock, glass, light and dark variants.
+- [ ] Original artwork only: wallpaper, logo and status icons made for Veneer, with a LICENSE.
+- [ ] Used when no theme is chosen; the built-in theme stays only as the emergency fallback.
+- [ ] Screenshots in light and dark, checked with the author.
+
+## Phase 7: profiles, settings, tray, install, autostart
 
 **Profiles**
 - [ ] A profile holds the theme, the variant, the overrides file and which Windows settings to apply.
@@ -261,10 +284,10 @@ Split like Phase 3: **4a** (a working dock) and **4b** (magnification, menus, dr
 **Autostart**
 - [ ] Start with Windows (`HKCU\...\Run`), off by default.
 
-## Phase 7: bundled themes
+## Phase 8: bundled themes
 
 **Bundled themes**
-- [ ] `aqua-like`: top bar and bottom dock, original artwork.
+- [ ] `aqua-like`: done as the default theme `aqua` in Phase 6b.
 - [ ] `strip`: a single bottom bar with apps, clock and status, no dock.
 - [ ] A `LICENSE` / `CREDITS` file for each bundled theme.
 
@@ -272,10 +295,7 @@ Split like Phase 3: **4a** (a working dock) and **4b** (magnification, menus, dr
 - [ ] Tool in `tools/`: convert chosen SVG icons to PNG, with an editable exe → icon map.
 - [ ] Visual fidelity pass against private reference screenshots, with the remaining differences listed. Themes
       that use non-redistributable assets stay local and never enter the repository.
-- [ ] Theme styling for module hover and pressed states (background, corner radius). Found in the Phase 3b
-      comparison.
-- [ ] Theme styling for menus (background, blur, text, corner radius); today they follow the Windows 11 look.
-      Found in the Phase 3b comparison.
+- [x] Theme styling for module hover and pressed states, and for menus: done in Phase 6a.
 
 **Dock items the reference themes need** (FluidWin)
 - [ ] One dot per window (up to 3, theme setting `runningIndicator.mode`) and the app's window list in the dock
@@ -283,7 +303,7 @@ Split like Phase 3: **4a** (a working dock) and **4b** (magnification, menus, dr
 - [ ] Downloads stack: a dock item that shows the latest downloaded files on click.
 - [ ] Recycle Bin: a dock item that shows empty/full and accepts dropped files.
 
-## Phase 8: polish and first release
+## Phase 9: polish and first release
 
 - [ ] Performance pass: idle CPU about 0%, no stutter.
 - [ ] Complete [theme-format.md](theme-format.md).
@@ -352,8 +372,8 @@ look, so every idea taken from it is shown by the theme and can be turned off by
 | Where | Items |
 |-------|-------|
 | Phase 5 | Emergency exit in the watchdog, "End process tree" test, non-blocking calls to other apps' windows. |
-| Phase 6 | Diagnostics report, UI strings in resources (English + Italian), import of the taskbar's pinned apps. |
-| Phase 7 | One dot per window and window list, Downloads stack, Recycle Bin. |
+| Phase 7 | Diagnostics report, UI strings in resources (English + Italian), import of the taskbar's pinned apps. |
+| Phase 8 | One dot per window and window list, Downloads stack, Recycle Bin. |
 | After the first release | Island, volume OSD, control center, launcher/search, dock following the mouse across monitors, live window previews, jump lists, notification badges, update check. |
 
 **Design notes (not separate items):**
