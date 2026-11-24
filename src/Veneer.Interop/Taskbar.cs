@@ -63,7 +63,7 @@ public sealed class Taskbar : ITaskbar
     {
         // Snapshot first, on disk and atomically; an existing file already holds the true original.
         if (!IsHidden)
-            TaskbarState.WriteAtomic(statePath, TaskbarState.Serialize(GetState()));
+            AtomicFile.Write(statePath, TaskbarState.Serialize(GetState()));
         SetRunOnce(true);
 
         keepHidden = true;
@@ -245,6 +245,48 @@ public static class Watchdog
         }
     }
 
+    const int EmergencyHotKey = 1;
+
+    /// <summary>
+    /// Waits for the main process to exit. Meanwhile Ctrl+Alt+Shift+F12 ends it: the emergency exit for a hung
+    /// Veneer, handled here because a hung main process cannot handle its own hotkeys (idea from FluidWin).
+    /// No polling: the thread sleeps until the process exits or a message arrives.
+    /// </summary>
+    static unsafe void WaitWithEmergencyKey(Process process)
+    {
+        var mods = Windows.Win32.UI.Input.KeyboardAndMouse.HOT_KEY_MODIFIERS.MOD_CONTROL
+            | Windows.Win32.UI.Input.KeyboardAndMouse.HOT_KEY_MODIFIERS.MOD_ALT
+            | Windows.Win32.UI.Input.KeyboardAndMouse.HOT_KEY_MODIFIERS.MOD_SHIFT
+            | Windows.Win32.UI.Input.KeyboardAndMouse.HOT_KEY_MODIFIERS.MOD_NOREPEAT;
+        if (!PInvoke.RegisterHotKey(default, EmergencyHotKey, mods, 0x7B /* VK_F12 */))
+            Log.Write("watchdog: emergency hotkey Ctrl+Alt+Shift+F12 is taken by another app");
+
+        var handle = (HANDLE)process.SafeHandle.DangerousGetHandle();
+        const uint WAIT_OBJECT_0 = 0, WAIT_FAILED = 0xFFFFFFFF, WM_HOTKEY = 0x0312;
+        while (true)
+        {
+            uint result = (uint)PInvoke.MsgWaitForMultipleObjects(1, &handle, false, uint.MaxValue /* INFINITE */, QUEUE_STATUS_FLAGS.QS_HOTKEY);
+            if (result is WAIT_OBJECT_0 or WAIT_FAILED)
+                break; // the main process exited (or the wait cannot work: fall back to the plain wait below)
+            while (PInvoke.PeekMessage(out MSG msg, default, 0, 0, PEEK_MESSAGE_REMOVE_TYPE.PM_REMOVE))
+            {
+                if (msg.message != WM_HOTKEY || (int)msg.wParam.Value != EmergencyHotKey)
+                    continue;
+                Log.Write("watchdog: emergency hotkey pressed, ending Veneer");
+                try
+                {
+                    process.Kill();
+                }
+                catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception)
+                {
+                    // already exiting
+                }
+            }
+        }
+
+        process.WaitForExit();
+    }
+
     /// <summary>
     /// Body of the watchdog process. <paramref name="noOtherInstance"/> tells whether a newer Veneer is running (it
     /// then owns the taskbar state, and restoring would undo its work).
@@ -254,7 +296,7 @@ public static class Watchdog
         try
         {
             using var process = Process.GetProcessById(pid);
-            process.WaitForExit();
+            WaitWithEmergencyKey(process);
         }
         catch (ArgumentException)
         {

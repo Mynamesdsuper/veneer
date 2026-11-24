@@ -19,7 +19,8 @@ which components exist, which screen edge they sit on, which modules they show a
 
 **Early. Not usable day to day yet.** The theme engine works and is tested. The app already draws blurred bars
 from a theme with all their modules and a dock with magnification, hides the taskbar and always gives it back.
-Applying wallpaper, accent color and light/dark from themes is next. The checklist of every feature is in [docs/roadmap.md](docs/roadmap.md).
+Themes also set the wallpaper, accent color and light/dark mode, with a full restore. Profiles, the settings
+window and the tray icon are next. The checklist of every feature is in [docs/roadmap.md](docs/roadmap.md).
 
 | What | Status |
 |---|---|
@@ -28,7 +29,6 @@ Applying wallpaper, accent color and light/dark from themes is next. The checkli
 | Real blur behind bars | ✅ In the app: DWM acrylic on a non-activating window ([details](docs/decisions.md#blurred-overlay-windows-spikesoverlayblur)). Rounded corners above 8 px (dock) wait for Phase 4 |
 | Bars on any edge, several at once, with reserved screen space | ✅ In the app, built from the theme and rebuilt on hot reload |
 | Hide the taskbar, always bring it back | ✅ In the app: normal exit, unhandled exception, crash or kill (a watchdog outside Veneer's process tree, so "End process tree" is covered too), next start, Explorer restart, and a RunOnce entry for power loss. One Veneer at a time. Logoff is wired but untested |
-| Accent color API | 🧪 Found and tested with byte-for-byte restore (`SetUserColorPreference`) |
 | Theme engine: parse, validate, tokens, light/dark variants | ✅ Done, unit-tested |
 | Your overrides on top of a theme, with value origins and orphans | ✅ Done, unit-tested |
 | Safe theme files and `.zip` install (path, link, type and size checks) | ✅ Done, unit-tested |
@@ -36,8 +36,8 @@ Applying wallpaper, accent color and light/dark from themes is next. The checkli
 | Bar modules: logo menu, active app, clock, volume, network, battery, spacer | ✅ Done. Status icons use Windows glyphs unless the theme gives its own images |
 | Dock: pinned and running apps, live updates, system or theme icons, click to open or switch | ✅ Done |
 | Dock: hover magnification, context menu, drag to reorder, separators, auto-hide, saved pinned apps | ✅ Done (drag still to be tried by hand) |
-| Wallpaper, accent color, light/dark from the theme, with restore | ⏳ Next (Phase 5) |
-| Profiles, settings window, tray icon, start with Windows | ⏳ Planned (Phase 6) |
+| Wallpaper, accent color, light/dark from the theme, with restore | ✅ Done: each one from the theme or the system, snapshot before the first change, byte-for-byte restore tested |
+| Profiles, settings window, tray icon, start with Windows | ⏳ Next (Phase 6) |
 | Two bundled themes with very different layouts | ⏳ Planned (Phase 7) |
 | First release | ⏳ Planned (Phase 8) |
 | Multi-monitor, display scaling above 100%, ARM64 | ❔ Not verified yet |
@@ -89,8 +89,8 @@ full multi-monitor support.
 | 2 | Theme engine and personalization layers | ✅ |
 | 3 | Layout engine, bars and their modules | ✅ |
 | 4 | Dock | ✅ |
-| 5 | Windows settings from themes (wallpaper, accent, light/dark) with restore | ⏳ next |
-| 6 | Profiles, settings window, tray, theme install, start with Windows | ⏳ |
+| 5 | Windows settings from themes (wallpaper, accent, light/dark) with restore | ✅ |
+| 6 | Profiles, settings window, tray, theme install, start with Windows | ⏳ next |
 | 7 | Bundled themes | ⏳ |
 | 8 | Polish, documentation, first release | ⏳ |
 
@@ -112,7 +112,9 @@ dotnet run --project src/Veneer.App -- --theme <theme folder>
 ```
 
 While Veneer runs, **Ctrl+Alt+Shift+Q** quits and gives the taskbar back. **Ctrl+Alt+Shift+T** restores the
-taskbar without quitting. If anything ever goes wrong, `Veneer.App --restore-taskbar` restores it by hand.
+taskbar without quitting. If Veneer ever hangs, **Ctrl+Alt+Shift+F12** ends it and restores the taskbar. By hand:
+`Veneer.App --restore-taskbar`, and `Veneer.App --restore-windows-settings` for the wallpaper, accent color and
+light/dark mode.
 
 ## Repository layout
 

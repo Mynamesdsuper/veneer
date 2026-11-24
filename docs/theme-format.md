@@ -91,13 +91,21 @@ Every field is optional unless marked **required**. Defaults are listed in paren
 
 ### `windows`
 
-The Windows settings a theme may change. The user can turn each one off.
+The Windows settings a theme may change. The user decides, for each one, whether it comes from the theme (the
+default) or stays as Windows has it; light/dark can also be forced to light or dark.
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `wallpaper` | path | `.png`, `.jpg`, `.jpeg` |
-| `appearance` | `light` \| `dark` \| `system` | |
-| `accentColor` | color | |
+| `wallpaper` | path | `.png`, `.jpg`, `.jpeg`. Set on every monitor, filling the screen. |
+| `appearance` | `light` \| `dark` \| `system` | `system` leaves Windows' mode alone. |
+| `accentColor` | color | The alpha byte is ignored. Title bars follow it when "show accent color" is on. |
+
+**Light and dark variants.** Veneer loads the variant named `dark` in dark mode and `light` in light mode (a
+theme without a `light` variant uses its base in light mode). The mode is the one Veneer sets, or Windows' own
+mode when Veneer follows the system, and the variant switches when that mode changes.
+
+The changes stay when Veneer exits. Before the first change Veneer saves the user's own values, and "Restore
+original Windows settings" puts them back.
 
 ### `fonts`, `tokens`
 

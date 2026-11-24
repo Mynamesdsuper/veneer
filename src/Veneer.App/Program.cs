@@ -8,6 +8,7 @@ namespace Veneer.App;
 /// <code>
 ///   Veneer.App [--theme &lt;folder&gt;] [--variant &lt;name&gt;] [--overrides &lt;file&gt;] [--keep-taskbar]
 ///   Veneer.App --restore-taskbar     give the taskbar back by hand and exit
+///   Veneer.App --restore-windows-settings   put back the wallpaper, accent and light/dark Veneer changed
 ///   Veneer.App --watchdog &lt;pid&gt;     internal: started by Veneer itself
 ///   --self-test "&lt;steps&gt;"          debug builds only, see SelfTest
 /// </code>
@@ -38,6 +39,9 @@ static class Program
                 taskbar.RestoreWhenShellReady("sign-in safety net", TimeSpan.FromSeconds(30));
             return 0;
         }
+
+        if (args.Contains("--restore-windows-settings"))
+            return new WindowsSettingsService().Restore() ? 0 : 1; // the settings window and tray get a button in Phase 6
 
         if (args.Contains("--restore-taskbar"))
         {

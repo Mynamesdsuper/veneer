@@ -50,8 +50,8 @@ public class TaskbarStateTests
         string path = Path.Combine(dir, "state", "taskbar.json");
         try
         {
-            TaskbarState.WriteAtomic(path, TaskbarState.Serialize(1));
-            TaskbarState.WriteAtomic(path, TaskbarState.Serialize(0));
+            AtomicFile.Write(path, TaskbarState.Serialize(1));
+            AtomicFile.Write(path, TaskbarState.Serialize(0));
 
             Assert.Equal(0u, TaskbarState.Parse(File.ReadAllText(path)));
             Assert.Equal(["taskbar.json"], Directory.GetFiles(Path.GetDirectoryName(path)!).Select(Path.GetFileName));

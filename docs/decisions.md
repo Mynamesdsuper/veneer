@@ -6,6 +6,34 @@ Record each decision with its date, context, the options considered and the outc
 
 C# + WPF on .NET 10 (LTS), Windows 11 only. .NET 8 reached end of support on 2026-11-10.
 
+## 2026-11-25: Windows settings from themes (Phase 5)
+
+- **User choices** (author, 2026-11-24): every setting starts "from the theme". Wallpaper and accent: theme or
+  system; light/dark: theme, light, dark or system. "System" means Veneer leaves that setting alone. Switching a
+  setting to "system" does not undo what the theme already changed; "Restore original Windows settings" does.
+  Stored in `profiles\default\windows.json`, read leniently (each bad value falls back alone, with a warning).
+- **Snapshot per setting**, taken right before that setting is first changed and never overwritten while the file
+  exists (`state\windows-settings.json`), so it always holds the user's own values. A damaged snapshot blocks
+  further changes instead of being overwritten.
+- **Wallpaper:** `IDesktopWallpaper`, declared by hand (CsWin32 only exposes it with raw pointers). Set for all
+  monitors with position Fill; restored per monitor, or for all monitors at once when they shared one picture
+  (that also updates the registry value). Explorer writes `Control Panel\Desktop\WallPaper` a few seconds after
+  the change, so a check right after a restore still sees the old value. Slideshows and Spotlight are saved as
+  their current picture (noted in the code).
+- **Accent:** `SetUserColorPreference` (ordinal 122) only while `GetUserColorPreference` is still ordinal 120,
+  otherwise "not supported". `ColorizationColor` and `ColorizationAfterglow` are written too, since the API
+  leaves them alone. The restore calls the API with the saved preference, then writes the saved registry values
+  back, which also puts the palette back byte for byte.
+- **Off the UI thread.** `WM_SETTINGCHANGE "ImmersiveColorSet"` is broadcast with `SMTO_ABORTIFHUNG`, but slow
+  apps still make it take seconds; on the UI thread the bars froze for 4–5 s at startup. Applying runs on the
+  thread pool, one change at a time (lock), and never fatal.
+- **Variant choice:** dark mode loads the `dark` variant, light mode `light` (or the base). The app reloads the theme
+  with the right variant before building the surfaces, and listens for `ImmersiveColorSet` to switch when Windows
+  changes mode. `--variant` on the command line wins.
+- **Emergency exit in the watchdog:** Ctrl+Alt+Shift+F12, registered on the watchdog's thread. The watchdog sleeps
+  in `MsgWaitForMultipleObjects` on the main process handle and its message queue (no polling), ends the main
+  process on the hotkey, then restores the taskbar as after any crash.
+
 ## 2026-11-24: Code review of Phases 2–4
 
 Three read-only reviewers (one per phase); every finding was checked against the code before fixing. The real

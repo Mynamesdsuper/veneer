@@ -65,3 +65,5 @@ GetObject
 BITMAP
 GetDesktopWindow
 ShowWindowAsync
+MsgWaitForMultipleObjects
+PeekMessage

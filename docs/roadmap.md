@@ -20,8 +20,8 @@ Every phase ends with `dotnet build` and `dotnet test` green and one commit.
 - [Phase 2: theme engine and personalization layers](#phase-2-theme-engine-and-personalization-layers): ✅ done
 - [Phase 3: layout engine and bars](#phase-3-layout-engine-and-bars): ✅ done
 - [Phase 4: dock](#phase-4-dock): ✅ done
-- [Phase 5: Windows settings from themes](#phase-5-windows-settings-from-themes): ⏳ next
-- [Phase 6: profiles, settings, tray, install, autostart](#phase-6-profiles-settings-tray-install-autostart)
+- [Phase 5: Windows settings from themes](#phase-5-windows-settings-from-themes): ✅ done
+- [Phase 6: profiles, settings, tray, install, autostart](#phase-6-profiles-settings-tray-install-autostart): ⏳ next
 - [Phase 7: bundled themes](#phase-7-bundled-themes)
 - [Phase 8: polish and first release](#phase-8-polish-and-first-release)
 - [After the first release](#after-the-first-release)
@@ -203,21 +203,27 @@ Split like Phase 3: **4a** (a working dock) and **4b** (magnification, menus, dr
 ## Phase 5: Windows settings from themes
 
 **Settings**
-- [ ] Wallpaper (`IDesktopWallpaper`).
-- [ ] Light/dark mode: `AppsUseLightTheme` / `SystemUsesLightTheme`, then broadcast `ImmersiveColorSet`.
-- [~] Accent color with `SetUserColorPreference`.
-- [ ] Ordinal check, with "not supported on this Windows build" as the fallback.
-- [ ] Decide whether to also write `ColorizationColor` (title bars).
-- [ ] `appearance: system`: pick the light or dark variant from the Windows mode.
+- [x] Wallpaper (`IDesktopWallpaper`), on every monitor, position Fill.
+- [x] Light/dark mode: `AppsUseLightTheme` / `SystemUsesLightTheme`, then broadcast `ImmersiveColorSet`.
+- [x] Accent color with `SetUserColorPreference` (Windows rebuilds the palette apps see).
+- [x] Ordinal check, with "not supported on this Windows build" as the fallback.
+- [x] `ColorizationColor` (title bars with "show accent color") written too, and saved in the snapshot.
+- [x] The theme's light or dark variant follows the mode Veneer sets, or Windows' own mode when following the
+      system, and switches when the mode changes.
 
 **Safety and control**
-- [ ] One switch per setting: the user can turn each one off.
-- [ ] Snapshot of the originals before the first change.
-- [ ] "Restore original Windows settings".
-- [ ] Changes stay after Veneer exits; the wallpaper does not jump back.
+- [x] One choice per setting, all "from the theme" by default: wallpaper and accent from the theme or the system;
+      light/dark from the theme, light, dark or the system. In `profiles\default\windows.json` until the settings
+      window (Phase 6).
+- [x] Snapshot of the originals before the first change of each setting, never overwritten while it exists.
+- [x] "Restore original Windows settings": `Veneer.App --restore-windows-settings` (a button in Phase 6).
+      Tested on the real PC: accent, palette and light/dark come back byte for byte; the wallpaper too.
+- [x] Changes stay after Veneer exits; the wallpaper does not jump back.
+- [x] Applied off the UI thread: the change notification waits for every app (seconds), the bars do not.
 
 **Hardening** (ideas from [FluidWin](#ideas-from-fluidwin))
-- [ ] Emergency exit hotkey registered by the **watchdog**: it kills a hung Veneer and restores Windows.
+- [x] Emergency exit hotkey registered by the **watchdog** (Ctrl+Alt+Shift+F12): it ends a hung Veneer and
+      restores the taskbar. Tested.
 - [x] "End process tree" from Task Manager: check that it does not take the watchdog down too, and fix it if it
       does (the taskbar must come back).
 - [x] Calls to other apps' windows (close, titles, activation) never block: `SendMessageTimeout` or async, so a hung

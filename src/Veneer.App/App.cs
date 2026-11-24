@@ -1,10 +1,12 @@
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using Veneer.Core;
 using Veneer.Core.Layout;
+using Veneer.Core.Settings;
 using Veneer.Core.Themes;
 using Veneer.Interop;
 
@@ -23,6 +25,8 @@ sealed class App : Application
     AppWindowTracker? appWindows;
     bool fullScreen;
     Theme? applied; // the theme the surfaces were last built from
+    string? variant; // the variant the theme is loaded with
+    readonly WindowsSettingsService windowsSettings = new();
     HwndSource? messages;
     HotKeys? hotKeys;
     int cleanedUp;
@@ -53,7 +57,8 @@ sealed class App : Application
         {
             // The folder must exist so the overrides file is watched even before it is first written.
             Directory.CreateDirectory(Path.GetDirectoryName(OverridesPath)!);
-            themes.Apply(options.Theme, options.Variant, OverridesPath);
+            variant = options.Variant;
+            themes.Apply(options.Theme, variant, OverridesPath);
         }
 
         if (!options.KeepTaskbar)
@@ -77,6 +82,8 @@ sealed class App : Application
             Log.Write($"theme: {d}");
         if (!result.Success)
             Log.Write($"theme not loaded, keeping \"{themes.Current.Id}\"");
+        else if (ChooseVariant(result.Theme!))
+            return; // reloading with the right light/dark variant; this handler runs again
         else if (applied is not null && ThemeChanges.OnlyDockPinnedChanged(applied, result.Theme!))
         {
             // Pinning, unpinning or reordering in the dock reloads the theme through the overrides file. Rebuilding
@@ -91,8 +98,69 @@ sealed class App : Application
             return;
         }
 
+        if (result.Success)
+            ApplyWindowsSettings(result.Theme!);
         if (result.Success || bars.Count == 0)
             Rebuild();
+    }
+
+    static string PreferencesPath => Path.Combine(AppPaths.Profiles, "default", WindowsPreferences.FileName);
+
+    WindowsPreferences Preferences()
+    {
+        var warnings = new List<string>();
+        string? json = null;
+        try
+        {
+            if (File.Exists(PreferencesPath))
+                json = File.ReadAllText(PreferencesPath);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            warnings.Add($"{WindowsPreferences.FileName}: {e.Message}");
+        }
+
+        var preferences = WindowsPreferences.Parse(json, warnings);
+        foreach (string w in warnings)
+            Log.Write(w);
+        return preferences;
+    }
+
+    /// <summary>
+    /// Light or dark variant: the mode the preferences or the theme ask for, or Windows' own mode. Returns true when
+    /// the theme is being reloaded with another variant. --variant on the command line wins.
+    /// </summary>
+    bool ChooseVariant(Theme theme)
+    {
+        if (options.Variant is not null || options.Theme is null)
+            return false;
+        bool? desired = WindowsSettingsPlan.DesiredDark(theme.Windows.Appearance, Preferences().Appearance);
+        string wanted = WindowsSettingsPlan.Variant(desired, WindowsSettingsService.WindowsIsDark);
+        if (wanted == variant)
+            return false;
+        variant = wanted;
+        Log.Write($"theme variant: {variant}");
+        themes.Apply(options.Theme, variant, OverridesPath);
+        return true;
+    }
+
+    // Wallpaper, accent, light/dark from the theme, as the preferences allow. Never fatal: a failure is logged and
+    // the shell keeps running with Windows as it is.
+    void ApplyWindowsSettings(Theme theme)
+    {
+        var plan = WindowsSettingsPlan.For(theme, Preferences());
+        // Off the UI thread: each change notification waits for every app to answer (seconds with a slow app).
+        Task.Run(() =>
+        {
+            try
+            {
+                windowsSettings.Apply(plan);
+            }
+            catch (Exception e)
+            {
+                Log.Write($"windows settings not applied: {e}");
+            }
+        });
     }
 
     void OnDisplayChanged(object? sender, EventArgs e) => Dispatcher.BeginInvoke(Rebuild);
@@ -183,7 +251,13 @@ sealed class App : Application
 
     nint MessageHook(nint hwnd, int msg, nint wParam, nint lParam, ref bool handled)
     {
-        if (msg == Taskbar.TaskbarCreatedMessage)
+        const int WM_SETTINGCHANGE = 0x001A;
+        if (msg == WM_SETTINGCHANGE && lParam != 0 && Marshal.PtrToStringUni(lParam) == "ImmersiveColorSet" && themes.LastResult?.Theme is { } loaded)
+        {
+            // Light/dark changed in Windows (or by us): when following Windows, switch the theme variant.
+            Dispatcher.BeginInvoke(() => ChooseVariant(loaded));
+        }
+        else if (msg == Taskbar.TaskbarCreatedMessage)
         {
             Log.Write("Explorer restarted");
             taskbar.OnShellRestarted();
