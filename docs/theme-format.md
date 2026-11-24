@@ -140,9 +140,17 @@ both sides of the module). Missing values come from the bar's `style`.
 
 | Module | Options |
 |--------|---------|
+| `logo-menu` | `icon`: theme image. A click opens the system menu: About this PC, Settings, Sleep, Restart, Shut Down (these three ask for confirmation), Lock Screen. |
+| `active-app` | `desktopName` (`"Desktop"`): shown when the desktop or the taskbar is in front. `names`: exe → display name, e.g. `{ "explorer.exe": "Files" }`. A click opens Close Window, Minimize, Quit. The app's own menus are never read. |
 | `clock` | `format`: a .NET date/time format (`"HH:mm"`). Uses the Windows regional language. |
+| `volume` | `showPercent` (`false`). Click mutes, the mouse wheel changes the level. `icons` states: `muted`, `off`, `low`, `medium`, `high`. |
+| `network` | Click opens the network settings. `icons` states: `wifi`, `ethernet`, `offline`. |
+| `battery` | `showPercent` (`true`). Hidden on PCs without a battery. `icons` states: `empty`, `low`, `medium`, `high`, `full`, `charging`. |
 | `spacer` | `size`: number 0–1000 (`8`), empty space along the bar. |
-| `logo-menu`, `active-app`, `volume`, `network`, `battery` | Coming in Phase 3b. |
+
+Status modules show a glyph from the Windows icon font in the text color. A theme can replace it with its own
+image per state: `"icons": { "muted": "assets/volume-muted.png", "high": "assets/volume-high.png" }`. Unknown
+state names are ignored with a warning; missing states keep the glyph.
 
 **Dock** (`"type": "dock"`):
 

@@ -18,8 +18,8 @@ Every phase ends with `dotnet build` and `dotnet test` green and one commit.
 - [Phase 1: repository skeleton](#phase-1-repository-skeleton): ✅ done
 - [Phase 0: technical spikes](#phase-0-technical-spikes): ✅ done
 - [Phase 2: theme engine and personalization layers](#phase-2-theme-engine-and-personalization-layers): ✅ done
-- [Phase 3: layout engine and bars](#phase-3-layout-engine-and-bars): 🚧 3a done, 3b next
-- [Phase 4: dock](#phase-4-dock)
+- [Phase 3: layout engine and bars](#phase-3-layout-engine-and-bars): ✅ done
+- [Phase 4: dock](#phase-4-dock): ⏳ next
 - [Phase 5: Windows settings from themes](#phase-5-windows-settings-from-themes)
 - [Phase 6: profiles, settings, tray, install, autostart](#phase-6-profiles-settings-tray-install-autostart)
 - [Phase 7: bundled themes](#phase-7-bundled-themes)
@@ -100,7 +100,7 @@ Code: [`src/Veneer.Core/Themes`](../src/Veneer.Core/Themes). Format: [theme-form
 
 ## Phase 3: layout engine and bars
 
-Split in two steps: **3a** (foundations and the first visible bars) is done; **3b** (the remaining modules) is next.
+Split in two steps: **3a** (foundations and the first visible bars) and **3b** (the remaining modules). Both are done.
 
 **Interop: spike code moved into [`Veneer.Interop`](../src/Veneer.Interop)** (3a)
 - [x] `AppBar`: register, position, pin the rect, `ABN_POSCHANGED`, remove on exit, re-register after an Explorer restart.
@@ -130,13 +130,17 @@ Split in two steps: **3a** (foundations and the first visible bars) is done; **3
 **Modules**
 - [x] `clock`: format from the theme; wakes once per minute (per second if the format shows seconds). (3a)
 - [x] `spacer`. (3a)
-- [ ] `logo-menu`: theme icon and a system menu (About this PC, Settings, Sleep, Restart, Shut down, Lock).
-      Destructive actions ask for confirmation. (3b)
-- [ ] `active-app`: name of the foreground app and a fixed menu (Close window, Minimize, Quit). Real app menus
-      are never read. (3b)
-- [ ] `volume`: level and mute, with Core Audio. (3b)
-- [ ] `network`: connection state. (3b)
-- [ ] `battery`: shown only on devices with a battery. (3b)
+- [x] `logo-menu`: theme icon and a system menu (About this PC, Settings, Sleep, Restart, Shut Down, Lock).
+      Sleep, Restart and Shut Down ask for confirmation. (3b)
+- [x] `active-app`: name of the foreground app (WinEvent hook), theme name overrides, and a fixed menu (Close
+      Window, Minimize, Quit; Quit asks the app's windows to close, never kills). Real app menus are never read. (3b)
+- [x] `volume`: level and mute through Core Audio callbacks (no polling), follows the default device; click
+      mutes, wheel changes the level. (3b)
+- [x] `network`: Wi-Fi / Ethernet / offline from .NET network events. (3b)
+- [x] `battery`: level and charging from power events, hidden without a battery. Untested on real battery
+      hardware (the test PC has none). (3b)
+- [x] Per-state images from the theme (`icons`), with Windows icon-font glyphs as the fallback. (3b)
+- [x] Menus with the Windows 11 look (WPF Fluent theme, follows light/dark). (3b)
 
 **Safety, verified in the app** (3a)
 - [x] Taskbar restored on normal exit (hotkey), unhandled exception (debug hotkey), `taskkill /f` (watchdog),
@@ -146,7 +150,9 @@ Split in two steps: **3a** (foundations and the first visible bars) is done; **3
 **Tools** (3a)
 - [x] Hotkeys (Ctrl+Alt+Shift): **Q** quit, **R** reload theme, **T** restore taskbar; debug builds also **S**
       screenshot to `artifacts/screenshots/` and **X** simulated crash.
-- [ ] Visual comparison with the reference screenshots. (3b)
+- [x] Debug `--self-test "<steps>"`: drives the app (open/close menus, change the foreground app, screenshot,
+      quit) without simulated input. (3b)
+- [x] Visual comparison with the reference screenshots: the remaining gaps are listed under Phase 7. (3b)
 
 ## Phase 4: dock
 
@@ -222,6 +228,10 @@ Split in two steps: **3a** (foundations and the first visible bars) is done; **3
 - [ ] Tool in `tools/`: convert chosen SVG icons to PNG, with an editable exe → icon map.
 - [ ] Visual fidelity pass against private reference screenshots, with the remaining differences listed. Themes
       that use non-redistributable assets stay local and never enter the repository.
+- [ ] Theme styling for module hover and pressed states (background, corner radius). Found in the Phase 3b
+      comparison.
+- [ ] Theme styling for menus (background, blur, text, corner radius); today they follow the Windows 11 look.
+      Found in the Phase 3b comparison.
 
 ## Phase 8: polish and first release
 

@@ -113,7 +113,14 @@ public sealed record Magnification(bool Enabled, double MaxScale, int Radius);
 public sealed record RunningIndicator(IndicatorShape Shape, ThemeColor? Color, double Size);
 
 /// <summary>
-/// A module in a bar. <see cref="Options"/> holds the module's own settings (already token-resolved);
-/// each module validates them itself. <see cref="Icon"/> is the resolved absolute path of an <c>icon</c> option.
+/// A module in a bar. <see cref="Options"/> holds the module's own settings (already token-resolved and checked).
+/// <see cref="Icon"/> is the resolved absolute path of an <c>icon</c> option; <see cref="StateIcons"/> maps a
+/// state name (e.g. <c>muted</c>, <c>wifi</c>) to the resolved path of the theme's image for it.
 /// </summary>
-public sealed record ModuleSpec(string Module, string Path, string? Icon, ModuleStyle Style, JsonObject Options);
+public sealed record ModuleSpec(
+    string Module,
+    string Path,
+    string? Icon,
+    IReadOnlyDictionary<string, string> StateIcons,
+    ModuleStyle Style,
+    JsonObject Options);

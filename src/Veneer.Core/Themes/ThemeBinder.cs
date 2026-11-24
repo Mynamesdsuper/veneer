@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using Veneer.Core.Modules;
 
 namespace Veneer.Core.Themes;
 
@@ -37,9 +38,10 @@ internal sealed partial class ThemeBinder(string root, List<Diagnostic> diagnost
             windowsObj is null ? null : Enum<Appearance>(windowsObj, "appearance", "windows"),
             windowsObj is null ? null : Color(windowsObj, "accentColor", "windows"));
 
-        var fonts = AssetMap(Obj(o, "fonts", ""), "fonts", AssetPaths.FontExtensions, key => true);
+        var fonts = AssetMap(Obj(o, "fonts", ""), "fonts", AssetPaths.FontExtensions, key => true, "");
         var icons = AssetMap(Obj(o, "iconOverrides", ""), "iconOverrides", AssetPaths.ImageExtensions,
-            key => key.StartsWith("exe:", StringComparison.Ordinal) || key.StartsWith("aumid:", StringComparison.Ordinal));
+            key => key.StartsWith("exe:", StringComparison.Ordinal) || key.StartsWith("aumid:", StringComparison.Ordinal),
+            "use \"exe:name.exe\" or \"aumid:AppUserModelId\"");
         string? iconFolder = Folder(o, "iconFolder", "");
         var surfaces = Surfaces(o["surfaces"]);
 
@@ -181,7 +183,10 @@ internal sealed partial class ThemeBinder(string root, List<Diagnostic> diagnost
                         ? new ModuleStyle(null, new TextStyle(null, null, null), null)
                         : new ModuleStyle(Color(styleObj, "foreground", sp), Text(styleObj, sp), Num(styleObj, "padding", sp, 0, 200));
                     ModuleOptions(module, m, mp);
-                    list.Add(new ModuleSpec(module, mp, icon, style, (JsonObject)m.DeepClone()));
+                    var stateIcons = ModuleStates.IconStates.TryGetValue(module, out var states)
+                        ? AssetMap(Obj(m, "icons", mp), ThemeLayers.Join(mp, "icons"), AssetPaths.ImageExtensions, key => states.Contains(key), $"allowed: {string.Join(", ", states)}")
+                        : [];
+                    list.Add(new ModuleSpec(module, mp, icon, stateIcons, style, (JsonObject)m.DeepClone()));
                 }
 
                 return list;
@@ -233,10 +238,19 @@ internal sealed partial class ThemeBinder(string root, List<Diagnostic> diagnost
             case "spacer":
                 Num(m, "size", p, 0, 1000);
                 break;
+            case "active-app":
+                Str(m, "desktopName", p);
+                if (Obj(m, "names", p) is { } names && names.Any(kv => kv.Value is not JsonValue v || v.GetValueKind() != JsonValueKind.String))
+                    Error(ThemeLayers.Join(p, "names"), "must map exe names to display names, e.g. { \"explorer.exe\": \"Files\" }");
+                break;
+            case "volume":
+            case "battery":
+                Bool(m, "showPercent", p);
+                break;
         }
     }
 
-    Dictionary<string, string> AssetMap(JsonObject? map, string p, IReadOnlySet<string> extensions, Func<string, bool> validKey)
+    Dictionary<string, string> AssetMap(JsonObject? map, string p, IReadOnlySet<string> extensions, Func<string, bool> validKey, string keyHint)
     {
         var result = new Dictionary<string, string>();
         if (map is null)
@@ -245,7 +259,7 @@ internal sealed partial class ThemeBinder(string root, List<Diagnostic> diagnost
         {
             if (!validKey(key))
             {
-                Warning(ThemeLayers.Join(p, key), "key ignored: use \"exe:name.exe\" or \"aumid:AppUserModelId\"");
+                Warning(ThemeLayers.Join(p, key), $"key ignored ({keyHint})");
                 continue;
             }
 

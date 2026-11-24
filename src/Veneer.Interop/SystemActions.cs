@@ -1,0 +1,131 @@
+using System.Diagnostics;
+using Veneer.Core;
+using Windows.Win32;
+using Windows.Win32.Foundation;
+using Windows.Win32.System.Threading;
+using Windows.Win32.UI.WindowsAndMessaging;
+
+namespace Veneer.Interop;
+
+/// <summary>Power and session actions for the logo menu. Callers must confirm the destructive ones with the user first.</summary>
+public static class SystemActions
+{
+    public static void Lock() => PInvoke.LockWorkStation();
+
+    public static void Sleep() => PInvoke.SetSuspendState(false, false, false);
+
+    // shutdown.exe enables the shutdown privilege itself; ExitWindowsEx would need it adjusted on our token.
+    public static void Restart() => Run("shutdown.exe", "/r /t 0");
+
+    public static void ShutDown() => Run("shutdown.exe", "/s /t 0");
+
+    /// <summary>Opens a URI such as <c>ms-settings:about</c> with its registered handler.</summary>
+    public static void Open(string uri) => Start(new ProcessStartInfo(uri) { UseShellExecute = true });
+
+    static void Run(string exe, string args) => Start(new ProcessStartInfo(exe, args) { UseShellExecute = false, CreateNoWindow = true });
+
+    static void Start(ProcessStartInfo info)
+    {
+        try
+        {
+            Process.Start(info)?.Dispose();
+        }
+        catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            Log.Write($"could not start {info.FileName}: {e.Message}");
+        }
+    }
+}
+
+/// <summary>What <c>active-app</c> needs to know about a top-level window.</summary>
+public sealed record WindowDetails(nint Handle, int ProcessId, string? ExePath, string? Description, string ClassName, string Title);
+
+public static class WindowTools
+{
+    const uint WM_CLOSE = 0x0010;
+
+    public static unsafe WindowDetails Describe(nint hwnd)
+    {
+        var h = (HWND)hwnd;
+        uint pid;
+        PInvoke.GetWindowThreadProcessId(h, &pid);
+        string? exe = ExePath(pid);
+        string? description = null;
+        if (exe is not null)
+        {
+            try
+            {
+                description = FileVersionInfo.GetVersionInfo(exe).FileDescription;
+            }
+            catch (FileNotFoundException)
+            {
+            }
+        }
+
+        return new WindowDetails(hwnd, (int)pid, exe, description, ClassName(h), Title(h));
+    }
+
+    /// <summary>Full exe path; works for elevated processes too (limited query rights).</summary>
+    static string? ExePath(uint pid)
+    {
+        using var process = PInvoke.OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+        if (process.IsInvalid)
+            return null;
+        Span<char> buffer = stackalloc char[1024];
+        uint length = (uint)buffer.Length;
+        return PInvoke.QueryFullProcessImageName(process, PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32, buffer, ref length)
+            ? new string(buffer[..(int)length])
+            : null;
+    }
+
+    static unsafe string ClassName(HWND h)
+    {
+        Span<char> buffer = stackalloc char[256];
+        fixed (char* p = buffer)
+        {
+            int n = PInvoke.GetClassName(h, p, buffer.Length);
+            return new string(p, 0, n);
+        }
+    }
+
+    static unsafe string Title(HWND h)
+    {
+        int length = PInvoke.GetWindowTextLength(h);
+        if (length == 0)
+            return "";
+        var buffer = new char[length + 1];
+        fixed (char* p = buffer)
+        {
+            int n = PInvoke.GetWindowText(h, p, buffer.Length);
+            return new string(p, 0, n);
+        }
+    }
+
+    /// <summary>Asks the window to close, exactly like its close button (the app may ask to save).</summary>
+    public static void Close(nint hwnd) => PInvoke.PostMessage((HWND)hwnd, WM_CLOSE, 0, 0);
+
+    public static void Minimize(nint hwnd) => PInvoke.ShowWindow((HWND)hwnd, SHOW_WINDOW_CMD.SW_MINIMIZE);
+
+    /// <summary>
+    /// Asks every visible top-level window of the process to close. Never kills the process: the app decides
+    /// (and can ask to save), like closing it by hand.
+    /// </summary>
+    public static void Quit(int processId)
+    {
+        var windows = new List<HWND>();
+        PInvoke.EnumWindows((h, _) =>
+        {
+            unsafe
+            {
+                uint pid;
+                PInvoke.GetWindowThreadProcessId(h, &pid);
+                if (pid == processId && PInvoke.IsWindowVisible(h) && PInvoke.GetWindow(h, GET_WINDOW_CMD.GW_OWNER).IsNull)
+                    windows.Add(h);
+            }
+
+            return true;
+        }, 0);
+        foreach (var h in windows)
+            PInvoke.PostMessage(h, WM_CLOSE, 0, 0);
+    }
+}

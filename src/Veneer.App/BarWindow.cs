@@ -56,6 +56,21 @@ sealed class BarWindow : Window
         };
     }
 
+    public T? FindModule<T>() where T : FrameworkElement => Find<T>((DependencyObject)Content);
+
+    static T? Find<T>(DependencyObject node) where T : FrameworkElement
+    {
+        if (node is T match)
+            return match;
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++)
+        {
+            if (Find<T>(VisualTreeHelper.GetChild(node, i)) is { } found)
+                return found;
+        }
+
+        return null;
+    }
+
     public void Place() => appBar?.Place(bar.Edge, rect, bar.ReserveSpace);
 
     public void RemoveAppBar() => appBar?.Remove();
@@ -124,7 +139,7 @@ sealed class BarWindow : Window
         };
         foreach (var spec in modules)
         {
-            if (Modules.Create(spec, horizontal) is not { } element)
+            if (Modules.Create(spec, new ModuleContext(theme, bar.Edge)) is not { } element)
                 continue;
             double pad = spec.Style.Padding ?? 0;
             double gap = panel.Children.Count == 0 ? 0 : bar.Style.Spacing;

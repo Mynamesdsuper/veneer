@@ -6,6 +6,25 @@ Record each decision with its date, context, the options considered and the outc
 
 C# + WPF on .NET 10 (LTS), Windows 11 only. .NET 8 reached end of support on 2026-11-10.
 
+## 2026-11-24: Bar modules (Phase 3b)
+
+- **Menus use the WPF Fluent theme** (`Application.ThemeMode = System`, still marked experimental, `WPF0001`
+  suppressed). It gives the Windows 11 look and follows light/dark for free. Theme-styled menus come later
+  (roadmap, Phase 7).
+- **Confirmation** for Sleep, Restart and Shut Down is a plain Windows message box with "No" as the default.
+  Restart and shut down run `shutdown.exe`, which enables the shutdown privilege by itself.
+- **"Quit" never kills.** It posts `WM_CLOSE` to the app's visible top-level windows, like closing them by
+  hand, so the app can ask to save.
+- **Volume** uses Core Audio through CsWin32 COM interfaces with change callbacks, and re-binds when the default
+  device changes. No audio library was needed.
+- **Network state** comes from `NetworkChange` events. Virtual adapters (Hyper-V, VPN, VM software) are
+  excluded by name, a heuristic noted in the code.
+- **Status icons** are glyphs from Segoe Fluent Icons in the text color by default. A theme can give one image
+  per state (`icons`), so a theme can match any look without code changes.
+- **Debug self-test** (`--self-test "wait:2,menu,..."`): Claude Code's auto mode refuses commands that simulate
+  keyboard and mouse input on the user's session, so the app drives itself instead. It also makes the checks
+  repeatable.
+
 ## 2026-11-24: Bars in the app (Phase 3a)
 
 - **Target framework `net10.0-windows10.0.22621.0`** for `Veneer.Interop` and `Veneer.App` (Windows 11 22H2), and

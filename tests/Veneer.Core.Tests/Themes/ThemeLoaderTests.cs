@@ -306,6 +306,26 @@ public class ThemeLoaderTests
     }
 
     [Fact]
+    public void Module_state_icons_and_names_are_read()
+    {
+        string json = Replace("{ \"module\": \"volume\" }", "{ \"module\": \"volume\", \"showPercent\": true, \"icons\": { \"muted\": \"assets/logo.png\", \"loud\": \"assets/logo.png\" } }")
+            .Replace("{ \"module\": \"active-app\", \"bold\": true }", "{ \"module\": \"active-app\", \"names\": { \"explorer.exe\": \"Files\" } }");
+        var r = LoadSample(json: json);
+
+        Assert.True(r.Success, string.Join(Environment.NewLine, r.Diagnostics));
+        var volume = ((BarSurface)r.Theme!.Surfaces[0]).End[0];
+        Assert.Equal(["muted"], volume.StateIcons.Keys);
+        Assert.Contains(r.Warnings, w => w.Path == "surfaces[id=menubar].end[0].icons.loud");
+    }
+
+    [Fact]
+    public void Active_app_names_must_be_strings()
+    {
+        var r = LoadSample(json: Replace("{ \"module\": \"active-app\", \"bold\": true }", "{ \"module\": \"active-app\", \"names\": { \"a.exe\": 1 } }"));
+        Assert.Contains(r.Errors, e => e.Path == "surfaces[id=menubar].start[1].names");
+    }
+
+    [Fact]
     public void Built_in_theme_is_valid()
     {
         Assert.Equal("veneer.fallback", BuiltInTheme.Theme.Id);

@@ -40,6 +40,8 @@ public sealed class ForegroundWatcher : IDisposable
 
     public event Action<nint>? Changed;
 
+    public static nint Current => PInvoke.GetForegroundWindow();
+
     public void Dispose() => hook.Dispose();
 }
 
@@ -107,5 +109,19 @@ public static class ScreenCapture
             PInvoke.DeleteDC(memory);
             PInvoke.ReleaseDC(default, screen);
         }
+    }
+}
+
+public readonly record struct BatteryStatus(bool Present, int Percent, bool Charging);
+
+public static class Power
+{
+    public static BatteryStatus Battery()
+    {
+        if (!PInvoke.GetSystemPowerStatus(out var s))
+            return default;
+        const byte NoSystemBattery = 128, UnknownStatus = 255, UnknownPercent = 255;
+        bool present = s.BatteryFlag != UnknownStatus && (s.BatteryFlag & NoSystemBattery) == 0 && s.BatteryLifePercent != UnknownPercent;
+        return new BatteryStatus(present, s.BatteryLifePercent, s.ACLineStatus == 1 && s.BatteryLifePercent < 100);
     }
 }

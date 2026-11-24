@@ -9,6 +9,7 @@ namespace Veneer.App;
 ///   Veneer.App [--theme &lt;folder&gt;] [--variant &lt;name&gt;] [--overrides &lt;file&gt;] [--keep-taskbar]
 ///   Veneer.App --restore-taskbar     give the taskbar back by hand and exit
 ///   Veneer.App --watchdog &lt;pid&gt;     internal: started by Veneer itself
+///   --self-test "&lt;steps&gt;"          debug builds only, see SelfTest
 /// </code>
 /// Without <c>--theme</c> the built-in theme is used. Profiles replace these options in Phase 6.
 /// </summary>
@@ -36,9 +37,12 @@ static class Program
             Value(args, "--theme"),
             Value(args, "--variant"),
             Value(args, "--overrides"),
-            KeepTaskbar: args.Contains("--keep-taskbar"));
+            KeepTaskbar: args.Contains("--keep-taskbar"),
+            SelfTest: Value(args, "--self-test"));
         Log.Write($"start: {string.Join(' ', args)}");
-        return new App(options, taskbar).Run();
+        int code = new App(options, taskbar).Run();
+        Log.Write("main returned");
+        return code;
     }
 
     static string? Value(string[] args, string name)
@@ -48,4 +52,4 @@ static class Program
     }
 }
 
-sealed record Options(string? Theme, string? Variant, string? Overrides, bool KeepTaskbar);
+sealed record Options(string? Theme, string? Variant, string? Overrides, bool KeepTaskbar, string? SelfTest);

@@ -13,7 +13,7 @@ namespace Veneer.App;
 /// <summary>Owns the theme, the surface windows and the taskbar. Every exit path goes through <see cref="Cleanup"/>.</summary>
 sealed class App : Application
 {
-    const int HotKeyQuit = 1, HotKeyReload = 2, HotKeyRestoreTaskbar = 3, HotKeyScreenshot = 4, HotKeyCrash = 5;
+    const int HotKeyQuit = 1, HotKeyReload = 2, HotKeyRestoreTaskbar = 3, HotKeyScreenshot = 4, HotKeyCrash = 5, HotKeyLogoMenu = 6;
 
     readonly Options options;
     readonly ITaskbar taskbar;
@@ -28,6 +28,9 @@ sealed class App : Application
         this.options = options;
         this.taskbar = taskbar;
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
+#pragma warning disable WPF0001 // Fluent theme is marked experimental; it gives menus the Windows 11 look.
+        ThemeMode = ThemeMode.System;
+#pragma warning restore WPF0001
         DispatcherUnhandledException += (_, e) => Crash("dispatcher", e.Exception);
         AppDomain.CurrentDomain.UnhandledException += (_, e) => Crash("appdomain", e.ExceptionObject as Exception);
         SessionEnding += (_, e) => { Log.Write($"session ending: {e.ReasonSessionEnding}"); Cleanup(); };
@@ -50,6 +53,10 @@ sealed class App : Application
         }
 
         SystemEvents.DisplaySettingsChanged += OnDisplayChanged;
+#if DEBUG
+        if (options.SelfTest is not null)
+            SelfTest.Run(options.SelfTest, this);
+#endif
         if (options.Theme is null)
             Rebuild(); // otherwise the Loaded event of Apply() above builds the surfaces
     }
@@ -107,6 +114,7 @@ sealed class App : Application
 #if DEBUG
         RegisterHotKey(HotKeyScreenshot, 'S');
         RegisterHotKey(HotKeyCrash, 'X'); // tests the crash path: the taskbar must come back
+        RegisterHotKey(HotKeyLogoMenu, 'M'); // opens the first logo menu, for tests without the mouse
 #endif
     }
 
@@ -150,13 +158,18 @@ sealed class App : Application
             case HotKeyScreenshot:
                 SaveScreenshot();
                 break;
+            case HotKeyLogoMenu:
+                OpenLogoMenu();
+                break;
             case HotKeyCrash:
                 throw new InvalidOperationException("simulated crash (debug hotkey)");
         }
     }
 
+    public void OpenLogoMenu() => bars.Select(b => b.FindModule<LogoMenuModule>()).FirstOrDefault(m => m is not null)?.Open();
+
     /// <summary>Debug aid: the whole primary monitor as composed by DWM (blur included), for comparison with references/.</summary>
-    void SaveScreenshot()
+    public void SaveScreenshot()
     {
         var area = Monitors.Primary().Bounds;
         var pixels = ScreenCapture.Capture(area);
@@ -201,6 +214,7 @@ sealed class App : Application
         foreach (var bar in bars)
             bar.RemoveAppBar();
         taskbar.Restore("exit");
+        Modules.Shutdown();
         hotKeys?.Dispose();
         themes.Dispose();
         Log.Write("exit");
