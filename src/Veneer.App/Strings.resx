@@ -35,6 +35,8 @@
   <data name="DockRemove" xml:space="preserve"><value>Remove from Dock</value></data>
   <data name="DockClose" xml:space="preserve"><value>Close</value></data>
   <data name="DockCloseAll" xml:space="preserve"><value>Close All Windows</value></data>
+  <data name="AppsPin" xml:space="preserve"><value>Pin to Bar</value></data>
+  <data name="AppsUnpin" xml:space="preserve"><value>Unpin from Bar</value></data>
   <data name="SettingsTitle" xml:space="preserve"><value>Veneer Settings</value></data>
   <data name="PageGeneral" xml:space="preserve"><value>General</value></data>
   <data name="PageProfiles" xml:space="preserve"><value>Profiles</value></data>
@@ -126,15 +128,15 @@
   <data name="Copied" xml:space="preserve"><value>Copied.</value></data>
   <data name="Refresh" xml:space="preserve"><value>Refresh</value></data>
   <data name="PinImportTitle" xml:space="preserve"><value>Veneer</value></data>
-  <data name="PinImportHeading" xml:space="preserve"><value>Bring your taskbar apps to the dock?</value></data>
-  <data name="PinImportNote" xml:space="preserve"><value>These apps are pinned to the Windows taskbar. Importing them replaces the apps in the dock. You can do it later from Settings › Customize.</value></data>
+  <data name="PinImportHeading" xml:space="preserve"><value>Bring your taskbar apps to Veneer?</value></data>
+  <data name="PinImportNote" xml:space="preserve"><value>These apps are pinned to the Windows taskbar. Importing them replaces the apps pinned in Veneer. You can do it later from Settings › Customize.</value></data>
   <data name="PinImportImport" xml:space="preserve"><value>Import</value></data>
   <data name="PinImportNotNow" xml:space="preserve"><value>Not now</value></data>
   <data name="PinImportSection" xml:space="preserve"><value>Apps from the Windows taskbar</value></data>
-  <data name="PinImportSettingsNote" xml:space="preserve"><value>Put the apps pinned to the Windows taskbar in the dock, in the same order. They replace the apps in the dock now.</value></data>
+  <data name="PinImportSettingsNote" xml:space="preserve"><value>Pin the apps of the Windows taskbar in Veneer's dock or bar, in the same order. They replace the apps pinned there now.</value></data>
   <data name="PinImportButton" xml:space="preserve"><value>Import from the taskbar…</value></data>
-  <data name="PinImportNothing" xml:space="preserve"><value>No apps the dock can use are pinned to the Windows taskbar.</value></data>
-  <data name="PinImportDone" xml:space="preserve"><value>{0} apps imported into the dock.</value></data>
+  <data name="PinImportNothing" xml:space="preserve"><value>No apps Veneer can use are pinned to the Windows taskbar.</value></data>
+  <data name="PinImportDone" xml:space="preserve"><value>{0} apps imported.</value></data>
   <data name="CaptionMinimize" xml:space="preserve"><value>Minimize</value></data>
   <data name="CaptionMaximize" xml:space="preserve"><value>Maximize</value></data>
   <data name="CaptionRestore" xml:space="preserve"><value>Restore</value></data>

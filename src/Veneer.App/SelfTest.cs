@@ -50,6 +50,20 @@ static class SelfTest
                 case ["screenshot"]:
                     app.SaveScreenshot();
                     break;
+                case ["bar-unpin", var key]:
+                    app.Bars.Select(b => b.FindModule<AppsModule>()).FirstOrDefault(m => m is not null)?.UnpinItem(key);
+                    break;
+                case ["bar-shot"]:
+                    // Only the bars and a few pixels around them: the real glass and corners, no other window.
+                    foreach (var bar in app.Bars)
+                    {
+                        var b = bar.Bounds;
+                        var screen = Veneer.Interop.Monitors.Primary().Bounds;
+                        app.SaveScreenshot(new Veneer.Core.Layout.PixelRect(Math.Max(screen.Left, b.Left - 4), Math.Max(screen.Top, b.Top - 4),
+                            Math.Min(screen.Right, b.Right + 4), Math.Min(screen.Bottom, b.Bottom + 4)));
+                    }
+
+                    break;
                 case ["app"]:
                     started = Process.Start("winver.exe");
                     break;

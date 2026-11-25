@@ -101,14 +101,19 @@ public sealed record PopupStyle(
     bool Shadow,
     ThemeColor? BorderHighlight = null);
 
-/// <summary>A module's own look. Null values inherit from the surface.</summary>
-public sealed record ModuleStyle(ThemeColor? Foreground, TextStyle Text, double? Padding);
+/// <summary>
+/// A module's own look. Null values inherit from the surface. <see cref="Background"/> puts the module on a tile of
+/// that color, with <see cref="CornerRadius"/> corners.
+/// </summary>
+public sealed record ModuleStyle(ThemeColor? Foreground, TextStyle Text, double? Padding, ThemeColor? Background = null, double CornerRadius = 0);
 
 public abstract record Surface(string Id, Edge Edge, string Monitor, SurfaceStyle Style);
 
 /// <summary>
 /// <see cref="Thickness"/> is the size across the edge in device-independent pixels: height for top/bottom bars,
-/// width for left/right.
+/// width for left/right. A <see cref="Margin"/> above 0 makes the bar float: it keeps that distance from the screen
+/// edge and from the two screen sides next to it. <see cref="DefaultPinned"/> is the pinned list of its
+/// <c>apps</c> modules (kept on the surface, like a dock's, so the user's changes are one override key).
 /// </summary>
 public sealed record BarSurface(
     string Id,
@@ -119,7 +124,16 @@ public sealed record BarSurface(
     bool ReserveSpace,
     IReadOnlyList<ModuleSpec> Start,
     IReadOnlyList<ModuleSpec> Center,
-    IReadOnlyList<ModuleSpec> End) : Surface(Id, Edge, Monitor, Style);
+    IReadOnlyList<ModuleSpec> End,
+    double Margin = 0,
+    double CornerRadius = 0,
+    IReadOnlyList<string>? DefaultPinned = null) : Surface(Id, Edge, Monitor, Style)
+{
+    public IEnumerable<ModuleSpec> Modules => Start.Concat(Center).Concat(End);
+
+    /// <summary>The strip the bar takes from the screen edge: its thickness plus its margin from that edge.</summary>
+    public double Strip => Thickness + Margin;
+}
 
 public sealed record DockSurface(
     string Id,

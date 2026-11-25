@@ -6,6 +6,28 @@ Record each decision with its date, context, the options considered and the outc
 
 C# + WPF on .NET 10 (LTS), Windows 11 only. .NET 8 reached end of support on 2026-11-10.
 
+## 2026-11-25: The Strip theme, the apps module and floating bars (Phase 8a)
+
+- **Strip = one floating bar, no dock.** Menu on a tile at the start, pinned and running apps in the center, status
+  and clock (on a tile) at the end. Original art from the same generator as Aqua, now `tools/theme-art`
+  (`-Theme aqua|strip`): dusk and dawn hills. From the author's taskbar inspiration only the cheap, data-only parts
+  were taken (a floating pill and per-module tiles); widgets, folder tiles and the glass material stay for later.
+- **The `apps` module shares the dock's logic.** Pinned + running apps, activation, pin/unpin/close and the overrides
+  write moved from `DockWindow` to `AppList`, used by the dock and the module. The module's pinned list is the bar's
+  `defaultPinned` (a surface key, not a module option): module lists are arrays and an override would replace the
+  whole `start`/`center`/`end` list, freezing the theme's modules. `ThemeChanges.OnlyPinnedChanged` covers bars, so
+  pinning in a bar updates it in place. The taskbar import fills docks and apps bars; its texts no longer say "dock".
+- **Floating bars.** `margin` > 0: the shell reserves `thickness + margin` and the window sits `margin` away from the
+  edge and both ends (`SurfaceLayout.Float`), through `AppBar.Place`'s fit callback. `cornerRadius` ≤ 8 uses DWM
+  rounding and keeps the DWM shadow; above 8 the bar is drawn like the dock: per-pixel transparent window plus a
+  `GlassPlate`. A `GlassPlate` hides its own window's WPF content, so then the modules live in a second transparent
+  window owned by the bar and laid over it (the dock does the same with its icons); it follows the bar on shell moves
+  (`AppBar.Moved`) and hides with it for full-screen apps.
+- **Tiles.** A module `style.background` (+ `style.cornerRadius`) wraps it in a tile that spans the bar minus
+  `highlightInset`; a clickable module's hover fills the tile.
+- **Not done here:** drag to reorder in the `apps` module, a distinct indicator for the app in front.
+- Self-test steps: `bar-shot` (screen copy of the bars only, plus 4 px), `bar-unpin:<text>`.
+
 ## 2026-11-25: Settings polish and Veneer's own window frame (Phase 7d)
 
 - **One fixed Veneer frame, not a themed one** (the author's choice). Veneer's windows (settings, the taskbar import

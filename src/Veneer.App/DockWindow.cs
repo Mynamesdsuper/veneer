@@ -1,4 +1,3 @@
-using System.Text.Json.Nodes;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -24,14 +23,13 @@ sealed class DockWindow : Window
     readonly PixelRect area;
     readonly uint dpi;
     readonly AppWindowTracker tracker;
-    readonly string? overridesPath;
+    readonly AppList apps;
     readonly DispatcherTimer debounce = new() { Interval = TimeSpan.FromMilliseconds(150) };
     readonly DockIconsWindow icons;
     EdgeTrigger? trigger;
     AppBar? appBar;
     GlassPlate? plate;
     nint hwnd;
-    string signature = "";
     bool revealed = true;
     bool fullScreen;
     bool closed;
@@ -44,8 +42,7 @@ sealed class DockWindow : Window
         this.area = area;
         this.dpi = dpi;
         this.tracker = tracker;
-        this.overridesPath = overridesPath;
-        Pinned = dock.DefaultPinned.ToList();
+        apps = new AppList(dock.Id, dock.DefaultPinned, tracker, overridesPath, dock.SeparateRunning, () => Refresh(force: true));
         Title = $"Veneer {dock.Id}";
         ResizeMode = ResizeMode.NoResize;
         ShowInTaskbar = false;
@@ -119,6 +116,7 @@ sealed class DockWindow : Window
             // A rebuild closes this window: nothing queued may touch it afterwards (a pending debounce tick would
             // call Show on a closed window, which throws).
             closed = true;
+            apps.Closed = true;
             debounce.Stop();
             tracker.Changed -= OnWindowsChanged;
             icons.Close();
@@ -133,9 +131,9 @@ sealed class DockWindow : Window
     public uint Dpi => dpi;
 
     /// <summary>The pinned list in use: the theme's, with the user's changes from the overrides file.</summary>
-    public List<string> Pinned { get; private set; }
+    public List<string> Pinned => apps.Pinned;
 
-    public List<DockItem> Items { get; private set; } = [];
+    public List<DockItem> Items => apps.Items;
 
     public event Action<bool>? FullScreenChanged;
 
@@ -175,41 +173,14 @@ sealed class DockWindow : Window
     {
         if (closed)
             return;
-        var list = DockModel.Build(Pinned, Running(), dock.SeparateRunning);
-        string sig = string.Join('|', list.Select(i => $"{i.Key}:{i.IsRunning}"));
-        Items = list;
-        if (sig == signature && !force)
+        if (!apps.Update(force))
             return; // same icons; the items now carry the new window handles
-        signature = sig;
-#if DEBUG
-        Log.Write($"dock: {sig}");
-#endif
         Place();
         icons.Rebuild();
     }
 
     /// <summary>Debug self-test "demo": ignore running apps, so public screenshots show only the theme's pinned apps.</summary>
     public static bool Demo { get; set; }
-
-    // Running apps grouped by AUMID (or exe), in the order their first window appears; windows most recent first.
-    List<RunningApp> Running()
-    {
-        if (Demo)
-            return [];
-        var groups = new List<(string Key, string? Aumid, string? Exe, List<nint> Windows)>();
-        foreach (var w in tracker.Enumerate())
-        {
-            string key = DockModel.KeyFor(w.Aumid, w.ExePath);
-            var group = groups.FirstOrDefault(g => g.Key == key);
-            if (group.Key is null)
-                groups.Add(group = (key, w.Aumid, w.ExePath, []));
-            group.Windows.Add(w.Handle);
-        }
-
-        return groups
-            .Select(g => new RunningApp(g.Key, g.Aumid, g.Exe, g.Windows.OrderByDescending(tracker.LastActive).ToList()))
-            .ToList();
-    }
 
     void Place()
     {
@@ -322,10 +293,8 @@ sealed class DockWindow : Window
     /// </summary>
     public void UpdatePinned(IReadOnlyList<string> pinned)
     {
-        if (closed || pinned.SequenceEqual(Pinned))
-            return;
-        Pinned = pinned.ToList();
-        Refresh(force: true);
+        if (!closed && apps.SetPinned(pinned))
+            Refresh(force: true);
     }
 
     public void RemoveAppBar() => appBar?.Remove();
@@ -349,67 +318,17 @@ sealed class DockWindow : Window
 
     public void Activate(DockItem item)
     {
-        if (item.Running is { Windows.Count: > 0 } app)
-        {
-            // The window used most recently, looked up now (foreground changes do not trigger a refresh).
-            Log.Write($"dock: activate {item.Key}");
-            WindowTools.Activate(app.Windows.MaxBy(tracker.LastActive));
-        }
-        else if (item.Pinned is { } entry && !item.IsSeparator)
-        {
-            Log.Write($"dock: launch {entry}");
-            SystemActions.Launch(entry, DockModel.IsAumid(entry));
-            if (dock.BounceOnLaunch && Items.IndexOf(item) is >= 0 and var index)
-                icons.Bounce(index);
-        }
+        if (apps.Activate(item) && dock.BounceOnLaunch && Items.IndexOf(item) is >= 0 and var index)
+            icons.Bounce(index);
     }
 
-    public void CloseWindows(DockItem item)
-    {
-        foreach (nint w in item.Running?.Windows ?? [])
-            WindowTools.Close(w);
-    }
+    public void CloseWindows(DockItem item) => apps.CloseWindows(item);
 
-    public void KeepInDock(DockItem item)
-    {
-        if (item.Running is { } app && DockModel.EntryFor(app) is { } entry)
-            SavePinned(DockModel.Pin(Pinned, entry));
-    }
+    public void KeepInDock(DockItem item) => apps.Pin(item);
 
-    public void RemoveFromDock(DockItem item)
-    {
-        if (item.Pinned is { } entry)
-            SavePinned(DockModel.Unpin(Pinned, entry));
-    }
+    public void RemoveFromDock(DockItem item) => apps.Unpin(item);
 
-    public void MovePinned(int from, int to) => SavePinned(DockModel.Move(Pinned, from, to));
-
-    /// <summary>
-    /// Shows the new list at once and writes it to the user's overrides, so it survives theme switches. The theme
-    /// then reloads from the overrides file by itself.
-    /// </summary>
-    void SavePinned(List<string> list)
-    {
-        if (closed)
-            return; // a menu or drag that outlived a rebuild must not write a stale list
-        var previous = Pinned;
-        Pinned = list;
-        Refresh(force: true);
-        if (overridesPath is null)
-        {
-            Log.Write("dock: pinned apps not saved (no theme folder in use)");
-            return;
-        }
-
-        var json = new JsonArray(list.Select(p => (JsonNode?)JsonValue.Create(p)).ToArray());
-        if (!OverridesFile.TrySetSurfaceValue(overridesPath, dock.Id, "defaultPinned", json, out string? error))
-        {
-            // Show what is really saved rather than a change that would vanish at the next reload.
-            Log.Write($"dock: pinned apps not saved, change undone: {error}");
-            Pinned = previous;
-            Refresh(force: true);
-        }
-    }
+    public void MovePinned(int from, int to) => apps.Move(from, to);
 
     // ----- debug self-test hooks -----
 

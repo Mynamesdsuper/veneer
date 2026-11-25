@@ -12,7 +12,7 @@ public class ThemeChangesTests
         var a = ThemeLoader.Load(t.Root).Theme!;
         var b = ThemeLoader.Load(t.Root).Theme!;
 
-        Assert.True(ThemeChanges.OnlyDockPinnedChanged(a, b));
+        Assert.True(ThemeChanges.OnlyPinnedChanged(a, b));
     }
 
     [Fact]
@@ -24,7 +24,24 @@ public class ThemeChangesTests
         try
         {
             var after = ThemeLoader.Load(t.Root, overridesPath: overrides).Theme!;
-            Assert.True(ThemeChanges.OnlyDockPinnedChanged(before, after));
+            Assert.True(ThemeChanges.OnlyPinnedChanged(before, after));
+        }
+        finally
+        {
+            File.Delete(overrides);
+        }
+    }
+
+    [Fact]
+    public void A_bar_pinned_list_change_alone_is_recognized()
+    {
+        using var t = new TempTheme();
+        var before = ThemeLoader.Load(t.Root).Theme!;
+        string overrides = t.Write("../" + Path.GetFileName(t.Root) + ".ov.json", """{ "surfaces": [ { "id": "menubar", "defaultPinned": [ "code.exe" ] } ] }""");
+        try
+        {
+            var after = ThemeLoader.Load(t.Root, overridesPath: overrides).Theme!;
+            Assert.True(ThemeChanges.OnlyPinnedChanged(before, after));
         }
         finally
         {
@@ -33,6 +50,7 @@ public class ThemeChangesTests
     }
 
     [Theory]
+    [InlineData("""{ "surfaces": [ { "id": "menubar", "margin": 6 } ] }""")]
     [InlineData("""{ "surfaces": [ { "id": "dock", "iconSize": 56 } ] }""")]
     [InlineData("""{ "surfaces": [ { "id": "menubar", "thickness": 30 } ] }""")]
     [InlineData("""{ "tokens": { "text": "#FF000000" } }""")]
@@ -45,7 +63,7 @@ public class ThemeChangesTests
         try
         {
             var after = ThemeLoader.Load(t.Root, overridesPath: path).Theme!;
-            Assert.False(ThemeChanges.OnlyDockPinnedChanged(before, after));
+            Assert.False(ThemeChanges.OnlyPinnedChanged(before, after));
         }
         finally
         {
@@ -61,6 +79,6 @@ public class ThemeChangesTests
         t.Write("theme.json", TempTheme.Sample.Replace("\"format\": \"ddd d MMM HH:mm\"", "\"format\": \"HH:mm\""));
         var after = ThemeLoader.Load(t.Root).Theme!;
 
-        Assert.False(ThemeChanges.OnlyDockPinnedChanged(before, after));
+        Assert.False(ThemeChanges.OnlyPinnedChanged(before, after));
     }
 }

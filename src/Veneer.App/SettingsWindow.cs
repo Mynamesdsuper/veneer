@@ -350,7 +350,7 @@ sealed class SettingsWindow : VeneerWindow
                 page.Children.Add(SettingRow(setting));
         }
 
-        if (theme.Surfaces.OfType<DockSurface>().Any())
+        if (App.PinnedSurfaces(theme).Any())
         {
             page.Children.Add(Section(Strings.PinImportSection));
             page.Children.Add(Note(Strings.PinImportSettingsNote));

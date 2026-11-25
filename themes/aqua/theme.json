@@ -1,7 +1,7 @@
 {
   // Veneer's default theme. Layout: a glass menu bar on top and a magnifying dock at the bottom (macOS-like).
   // Look: smoked slate glass with thin light-catching edges, large radii, monochrome text and icons
-  // (the author's reference aesthetic). Original artwork: tools/aqua-art. Follows Windows light/dark mode.
+  // (the author's reference aesthetic). Original artwork: tools/theme-art. Follows Windows light/dark mode.
   "schemaVersion": 1,
   "id": "veneer.aqua",
   "name": "Aqua",

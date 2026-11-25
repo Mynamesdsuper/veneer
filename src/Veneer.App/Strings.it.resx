@@ -35,6 +35,8 @@
   <data name="DockRemove" xml:space="preserve"><value>Rimuovi dal Dock</value></data>
   <data name="DockClose" xml:space="preserve"><value>Chiudi</value></data>
   <data name="DockCloseAll" xml:space="preserve"><value>Chiudi tutte le finestre</value></data>
+  <data name="AppsPin" xml:space="preserve"><value>Fissa sulla barra</value></data>
+  <data name="AppsUnpin" xml:space="preserve"><value>Togli dalla barra</value></data>
   <data name="SettingsTitle" xml:space="preserve"><value>Impostazioni di Veneer</value></data>
   <data name="PageGeneral" xml:space="preserve"><value>Generale</value></data>
   <data name="PageProfiles" xml:space="preserve"><value>Profili</value></data>
@@ -126,15 +128,15 @@
   <data name="Copied" xml:space="preserve"><value>Copiato.</value></data>
   <data name="Refresh" xml:space="preserve"><value>Aggiorna</value></data>
   <data name="PinImportTitle" xml:space="preserve"><value>Veneer</value></data>
-  <data name="PinImportHeading" xml:space="preserve"><value>Portare nel dock le app della barra delle applicazioni?</value></data>
-  <data name="PinImportNote" xml:space="preserve"><value>Queste app sono fissate sulla barra delle applicazioni di Windows. Importarle sostituisce le app del dock. Puoi farlo anche dopo da Impostazioni › Personalizza.</value></data>
+  <data name="PinImportHeading" xml:space="preserve"><value>Portare in Veneer le app della barra delle applicazioni?</value></data>
+  <data name="PinImportNote" xml:space="preserve"><value>Queste app sono fissate sulla barra delle applicazioni di Windows. Importarle sostituisce le app fissate in Veneer. Puoi farlo anche dopo da Impostazioni › Personalizza.</value></data>
   <data name="PinImportImport" xml:space="preserve"><value>Importa</value></data>
   <data name="PinImportNotNow" xml:space="preserve"><value>Non ora</value></data>
   <data name="PinImportSection" xml:space="preserve"><value>App dalla barra delle applicazioni</value></data>
-  <data name="PinImportSettingsNote" xml:space="preserve"><value>Metti nel dock le app fissate sulla barra delle applicazioni di Windows, nello stesso ordine. Sostituiscono le app che ci sono ora nel dock.</value></data>
+  <data name="PinImportSettingsNote" xml:space="preserve"><value>Fissa nel dock o nella barra di Veneer le app della barra delle applicazioni di Windows, nello stesso ordine. Sostituiscono le app fissate ora.</value></data>
   <data name="PinImportButton" xml:space="preserve"><value>Importa dalla barra…</value></data>
-  <data name="PinImportNothing" xml:space="preserve"><value>Sulla barra delle applicazioni non ci sono app fissate che il dock può usare.</value></data>
-  <data name="PinImportDone" xml:space="preserve"><value>{0} app importate nel dock.</value></data>
+  <data name="PinImportNothing" xml:space="preserve"><value>Sulla barra delle applicazioni non ci sono app fissate che Veneer può usare.</value></data>
+  <data name="PinImportDone" xml:space="preserve"><value>{0} app importate.</value></data>
   <data name="CaptionMinimize" xml:space="preserve"><value>Riduci a icona</value></data>
   <data name="CaptionMaximize" xml:space="preserve"><value>Ingrandisci</value></data>
   <data name="CaptionRestore" xml:space="preserve"><value>Ripristina giù</value></data>

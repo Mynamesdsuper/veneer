@@ -1,7 +1,9 @@
-# Generates the original artwork of the bundled "aqua" theme (wallpapers and logo) into themes/aqua/assets.
-# Everything is drawn here from shapes and gradients, so the theme carries no third-party art.
-# Usage (from the repository root): pwsh -File tools/aqua-art/make-art.ps1
-param([string]$Out = (Join-Path $PSScriptRoot '../../themes/aqua/assets'))
+# Generates the original artwork of a bundled theme (wallpapers and logo) into themes/<theme>/assets.
+# Everything is drawn here from shapes and gradients, so the themes carry no third-party art.
+# Usage (from the repository root): pwsh -File tools/theme-art/make-art.ps1 -Theme aqua|strip
+param(
+    [ValidateSet('aqua', 'strip')][string]$Theme = 'aqua',
+    [string]$Out = (Join-Path $PSScriptRoot "../../themes/$Theme/assets"))
 
 Add-Type -AssemblyName System.Drawing
 $ErrorActionPreference = 'Stop'
@@ -67,10 +69,18 @@ function New-Wallpaper([string]$file, [hashtable]$p) {
     $g.FillRectangle($base, 0, 0, $w, $h); $base.Dispose()
     Add-Glow $g ($w * 0.22) ($h * 0.18) ($w * 0.45) ($h * 0.55) $p.Glow 110
     Add-Glow $g ($w * 0.85) ($h * 0.9) ($w * 0.4) ($h * 0.45) $p.Glow2 90
-    Add-Ribbon $g $w $h ($h * 0.30) ($h * 0.20) ($h * 0.06) 0.3 -14 $p.Silk 70
-    Add-Ribbon $g $w $h ($h * 0.52) ($h * 0.16) ($h * 0.05) 1.9 -14 $p.Silk 95
-    Add-Ribbon $g $w $h ($h * 0.70) ($h * 0.22) ($h * 0.07) 3.4 -14 $p.Silk 60
-    Add-Ribbon $g $w $h ($h * 0.42) ($h * 0.08) ($h * 0.03) 5.0 -14 $p.Shine 80
+    if ($p.Waves) {
+        # Strip: low rolling hills of color under the bar.
+        Add-Wave $g $w $h ($h * 0.58) ($h * 0.05) 0.4 $p.Wave1 $p.Bottom 150
+        Add-Wave $g $w $h ($h * 0.70) ($h * 0.06) 2.1 $p.Wave2 $p.Bottom 170
+        Add-Wave $g $w $h ($h * 0.82) ($h * 0.04) 4.0 $p.Wave3 $p.Bottom 200
+    }
+    else {
+        Add-Ribbon $g $w $h ($h * 0.30) ($h * 0.20) ($h * 0.06) 0.3 -14 $p.Silk 70
+        Add-Ribbon $g $w $h ($h * 0.52) ($h * 0.16) ($h * 0.05) 1.9 -14 $p.Silk 95
+        Add-Ribbon $g $w $h ($h * 0.70) ($h * 0.22) ($h * 0.07) 3.4 -14 $p.Silk 60
+        Add-Ribbon $g $w $h ($h * 0.42) ($h * 0.08) ($h * 0.03) 5.0 -14 $p.Shine 80
+    }
     $codec = [System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() | Where-Object MimeType -eq 'image/jpeg'
     $params = New-Object System.Drawing.Imaging.EncoderParameters 1
     $params.Param[0] = New-Object System.Drawing.Imaging.EncoderParameter ([System.Drawing.Imaging.Encoder]::Quality), 92L
@@ -78,12 +88,25 @@ function New-Wallpaper([string]$file, [hashtable]$p) {
     $g.Dispose(); $bmp.Dispose()
 }
 
-# Dark: slate blue-grey with silky folds (the look the author picked as reference). Light: the same folds in ice.
-New-Wallpaper (Join-Path $Out 'wallpaper-dark.jpg') @{
-    Top = '#263142'; Bottom = '#10151D'; Glow = '#46597A'; Glow2 = '#2C3A52'; Silk = '#8FA6C4'; Shine = '#D6E2F2'
+if ($Theme -eq 'aqua') {
+    # Dark: slate blue-grey with silky folds (the look the author picked as reference). Light: the same folds in ice.
+    New-Wallpaper (Join-Path $Out 'wallpaper-dark.jpg') @{
+        Top = '#263142'; Bottom = '#10151D'; Glow = '#46597A'; Glow2 = '#2C3A52'; Silk = '#8FA6C4'; Shine = '#D6E2F2'
+    }
+    New-Wallpaper (Join-Path $Out 'wallpaper-light.jpg') @{
+        Top = '#E4EAF1'; Bottom = '#AFBCCB'; Glow = '#FFFFFF'; Glow2 = '#C9D5E2'; Silk = '#FFFFFF'; Shine = '#FFFFFF'
+    }
 }
-New-Wallpaper (Join-Path $Out 'wallpaper-light.jpg') @{
-    Top = '#E4EAF1'; Bottom = '#AFBCCB'; Glow = '#FFFFFF'; Glow2 = '#C9D5E2'; Silk = '#FFFFFF'; Shine = '#FFFFFF'
+else {
+    # Dark: dusk, deep teal hills under a violet sky. Light: the same hills at dawn, peach and sage.
+    New-Wallpaper (Join-Path $Out 'wallpaper-dark.jpg') @{
+        Waves = $true; Top = '#2A2442'; Bottom = '#0C1519'; Glow = '#6B4E8C'; Glow2 = '#1F4A4F'
+        Wave1 = '#2E5A5E'; Wave2 = '#2A5C5F'; Wave3 = '#1F474B'
+    }
+    New-Wallpaper (Join-Path $Out 'wallpaper-light.jpg') @{
+        Waves = $true; Top = '#F6E3D3'; Bottom = '#9DB5A4'; Glow = '#FFF6EC'; Glow2 = '#F2C9AE'
+        Wave1 = '#C9D8C5'; Wave2 = '#AFC5B0'; Wave3 = '#8FAA95'
+    }
 }
 
 # Logo: a rounded "V" made of two strokes, in the bar's text color (one file per variant).

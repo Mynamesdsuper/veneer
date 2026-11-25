@@ -16,6 +16,23 @@ public class SurfaceLayoutTests
         Assert.Equal(new PixelRect(0, 1040, 1920, 1080), r["bottom"]);
     }
 
+    [Theory]
+    [InlineData(Edge.Bottom, 8, 1032, 1912, 1072)]
+    [InlineData(Edge.Top, 8, 8, 1912, 48)]
+    public void A_floating_bar_keeps_its_margin_from_the_edge_and_the_sides(Edge edge, int left, int top, int right, int bottom)
+    {
+        var strip = SurfaceLayout.Compute(Screen, [new("bar", edge, 48)])["bar"]; // thickness 40 + margin 8
+
+        Assert.Equal(new PixelRect(left, top, right, bottom), SurfaceLayout.Float(strip, edge, 8));
+    }
+
+    [Fact]
+    public void A_floating_side_bar_keeps_its_margin_along_its_length()
+    {
+        Assert.Equal(new PixelRect(8, 8, 48, 1072), SurfaceLayout.Float(new PixelRect(0, 0, 48, 1080), Edge.Left, 8));
+        Assert.Equal(new PixelRect(1872, 8, 1912, 1072), SurfaceLayout.Float(new PixelRect(1872, 0, 1920, 1080), Edge.Right, 8));
+    }
+
     [Fact]
     public void Bars_on_the_same_edge_stack_in_theme_order()
     {

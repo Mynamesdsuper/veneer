@@ -230,6 +230,8 @@ sealed class App : Application
 
     internal IReadOnlyList<ThemeEntry> InstalledThemes() => ThemeFolders.List(ThemeRoots);
 
+    internal IReadOnlyList<BarWindow> Bars => bars;
+
     internal void RestoreTaskbar() => taskbar.Restore("settings");
 
     /// <summary>Raised on the UI thread after every theme load: the settings window refreshes.</summary>
@@ -274,7 +276,7 @@ sealed class App : Application
             Log.Write($"theme not loaded, keeping \"{themes.Current.Id}\"");
         else if (ChooseVariant(result.Theme!))
             return; // reloading with the right light/dark variant; this handler runs again
-        else if (applied is not null && ThemeChanges.OnlyDockPinnedChanged(applied, result.Theme!))
+        else if (applied is not null && ThemeChanges.OnlyPinnedChanged(applied, result.Theme!))
         {
             // Pinning, unpinning or reordering in the dock reloads the theme through the overrides file. Rebuilding
             // every surface would release and reserve the screen strips and resize every maximized window twice.
@@ -283,6 +285,12 @@ sealed class App : Application
             {
                 if (applied.Surfaces.OfType<DockSurface>().FirstOrDefault(d => d.Id == dock.Dock.Id) is { } updated)
                     dock.UpdatePinned(updated.DefaultPinned);
+            }
+
+            foreach (var bar in bars)
+            {
+                if (applied.Surfaces.OfType<BarSurface>().FirstOrDefault(b => b.Id == bar.Bar.Id) is { } updated)
+                    bar.UpdatePinned(updated.DefaultPinned ?? []);
             }
 
             Changed?.Invoke();
@@ -303,14 +311,14 @@ sealed class App : Application
 
     internal PinImportWindow? PinImportOffer => pinImport;
 
-    /// <summary>The first time Veneer runs with a dock: offer the Windows taskbar's pinned apps, once.</summary>
+    /// <summary>The first time Veneer runs with a dock or an apps bar: offer the Windows taskbar's pinned apps, once.</summary>
     void OfferPinImportOnFirstRun()
     {
         if (pinOfferChecked)
             return;
         pinOfferChecked = true;
         // Not with --theme (profiles off) nor in self-tests (a window waiting for a click would hold them up).
-        if (session.Profile is null || session.ThemeFolder is null || docks.Count == 0 || options.SelfTest is not null || profiles.PinImportOffered)
+        if (session.Profile is null || session.ThemeFolder is null || !PinnedSurfaces(themes.Current).Any() || options.SelfTest is not null || profiles.PinImportOffered)
             return;
         if (!OfferPinImport(firstRun: true))
             Try("save the first-run flag", () => profiles.PinImportOffered = true); // nothing to offer: do not look again
@@ -330,7 +338,7 @@ sealed class App : Application
 
         var entries = PinImport.Entries(TaskbarPins.Read().Select(p => (p.Aumid, p.TargetPath, p.Arguments)));
         Log.Write($"taskbar pins: {entries.Count} app(s) the dock can use");
-        if (entries.Count == 0 || session.ThemeFolder is null || !themes.Current.Surfaces.OfType<DockSurface>().Any())
+        if (entries.Count == 0 || session.ThemeFolder is null || !PinnedSurfaces(themes.Current).Any())
             return false;
         pinImport = new PinImportWindow(themes.Current, entries, () => ImportPins(entries));
         pinImport.Closed += (_, _) =>
@@ -348,16 +356,20 @@ sealed class App : Application
     /// <summary>Raised after an import: the number of apps, and the first save error (null when all was saved).</summary>
     internal event Action<int, string?>? PinsImported;
 
-    // Replaces every dock's pinned list in the user's overrides; hot reload then updates the docks.
+    /// <summary>The surfaces that show pinned apps: docks, and bars with an <c>apps</c> module.</summary>
+    internal static IEnumerable<Surface> PinnedSurfaces(Theme theme) =>
+        theme.Surfaces.Where(s => s is DockSurface || (s is BarSurface b && b.Modules.Any(m => m.Module == "apps")));
+
+    // Replaces the pinned list of every dock and apps bar in the user's overrides; hot reload then updates them.
     void ImportPins(IReadOnlyList<string> entries)
     {
         string? failure = null;
-        foreach (var dock in themes.Current.Surfaces.OfType<DockSurface>())
+        foreach (var surface in PinnedSurfaces(themes.Current))
         {
             var json = new JsonArray(entries.Select(e => (JsonNode?)JsonValue.Create(e)).ToArray());
-            if (!OverridesFile.TrySetSurfaceValue(session.OverridesPath, dock.Id, "defaultPinned", json, out string? error))
+            if (!OverridesFile.TrySetSurfaceValue(session.OverridesPath, surface.Id, "defaultPinned", json, out string? error))
             {
-                Log.Write($"dock \"{dock.Id}\": imported apps not saved: {error}");
+                Log.Write($"surface \"{surface.Id}\": imported apps not saved: {error}");
                 failure ??= error ?? "?";
             }
         }
@@ -450,12 +462,21 @@ sealed class App : Application
         ThemeVisuals.Current = theme;
         var monitor = Monitors.Primary();
         var barSurfaces = theme.Surfaces.OfType<BarSurface>().ToList();
-        var edgeItems = barSurfaces.Select(b => new EdgeItem(b.Id, b.Edge, SurfaceLayout.ToPhysical(b.Thickness, monitor.Dpi))).ToList();
+        var edgeItems = barSurfaces.Select(b => new EdgeItem(b.Id, b.Edge, SurfaceLayout.ToPhysical(b.Strip, monitor.Dpi))).ToList();
         var rects = SurfaceLayout.Compute(monitor.Bounds, edgeItems);
+        if (PinnedSurfaces(theme).Any())
+            appWindows ??= new AppWindowTracker();
+        else
+        {
+            // No dock and no apps bar: drop the system-wide window hooks, they would only cost CPU.
+            appWindows?.Dispose();
+            appWindows = null;
+        }
 
+        string? overrides = session.ThemeFolder is null ? null : session.OverridesPath;
         foreach (var surface in barSurfaces)
         {
-            var window = new BarWindow(theme, surface, rects[surface.Id], monitor.Dpi);
+            var window = new BarWindow(theme, surface, rects[surface.Id], monitor.Dpi, appWindows, overrides);
             window.FullScreenChanged += OnFullScreenChanged;
             window.Show();
             window.Place();
@@ -465,18 +486,9 @@ sealed class App : Application
         }
 
         var remaining = SurfaceLayout.Remaining(monitor.Bounds, edgeItems);
-        var dockSurfaces = theme.Surfaces.OfType<DockSurface>().ToList();
-        if (dockSurfaces.Count == 0)
+        foreach (var surface in theme.Surfaces.OfType<DockSurface>())
         {
-            // No dock: drop the system-wide window hooks, they would only cost CPU.
-            appWindows?.Dispose();
-            appWindows = null;
-        }
-
-        foreach (var surface in dockSurfaces)
-        {
-            appWindows ??= new AppWindowTracker();
-            var window = new DockWindow(theme, surface, remaining, monitor.Dpi, appWindows, session.ThemeFolder is null ? null : session.OverridesPath);
+            var window = new DockWindow(theme, surface, remaining, monitor.Dpi, appWindows!, overrides);
             window.FullScreenChanged += OnFullScreenChanged;
             window.Show();
             window.Start();

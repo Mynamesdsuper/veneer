@@ -9,7 +9,7 @@ namespace Veneer.Core.Themes;
 internal sealed partial class ThemeBinder(string root, List<Diagnostic> diagnostics)
 {
     public static readonly IReadOnlySet<string> KnownModules =
-        new HashSet<string> { "logo-menu", "active-app", "clock", "volume", "network", "battery", "spacer" };
+        new HashSet<string> { "logo-menu", "active-app", "clock", "volume", "network", "battery", "spacer", "apps" };
 
     static readonly HashSet<string> ReservedNames =
         ["con", "prn", "aux", "nul", .. Enumerable.Range(1, 9).SelectMany(i => new[] { $"com{i}", $"lpt{i}" })];
@@ -136,7 +136,10 @@ internal sealed partial class ThemeBinder(string root, List<Diagnostic> diagnost
         Bool(s, "reserveSpace", p) ?? true,
         Modules(s, "start", p),
         Modules(s, "center", p),
-        Modules(s, "end", p));
+        Modules(s, "end", p),
+        Num(s, "margin", p, 0, 200) ?? 0,
+        Num(s, "cornerRadius", p, 0, 100) ?? 0,
+        StringList(s, "defaultPinned", p));
 
     DockSurface Dock(JsonObject s, string p, string id, Edge edge, string monitor, SurfaceStyle style)
     {
@@ -196,7 +199,8 @@ internal sealed partial class ThemeBinder(string root, List<Diagnostic> diagnost
                     string sp = ThemeLayers.Join(mp, "style");
                     var style = styleObj is null
                         ? new ModuleStyle(null, new TextStyle(null, null, null), null)
-                        : new ModuleStyle(Color(styleObj, "foreground", sp), Text(styleObj, sp), Num(styleObj, "padding", sp, 0, 200));
+                        : new ModuleStyle(Color(styleObj, "foreground", sp), Text(styleObj, sp), Num(styleObj, "padding", sp, 0, 200),
+                            Color(styleObj, "background", sp), Num(styleObj, "cornerRadius", sp, 0, 100) ?? 0);
                     ModuleOptions(module, m, mp);
                     var stateIcons = ModuleStates.IconStates.TryGetValue(module, out var states)
                         ? AssetMap(Obj(m, "icons", mp), ThemeLayers.Join(mp, "icons"), AssetPaths.ImageExtensions, key => states.Contains(key), $"allowed: {string.Join(", ", states)}")
@@ -275,6 +279,19 @@ internal sealed partial class ThemeBinder(string root, List<Diagnostic> diagnost
             case "volume":
             case "battery":
                 Bool(m, "showPercent", p);
+                break;
+            case "apps":
+                Int(m, "iconSize", p, 12, 64);
+                Num(m, "itemPadding", p, 0, 50);
+                Bool(m, "separateRunning", p);
+                if (Obj(m, "runningIndicator", p) is { } ind)
+                {
+                    string ip = ThemeLayers.Join(p, "runningIndicator");
+                    Enum<IndicatorShape>(ind, "shape", ip);
+                    Color(ind, "color", ip);
+                    Num(ind, "size", ip, 1, 20);
+                }
+
                 break;
         }
     }

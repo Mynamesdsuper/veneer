@@ -124,7 +124,7 @@ Each surface has:
 | `type` | `bar` \| `dock` | **Required.** Unknown types are skipped with a warning, so newer themes still load. |
 | `edge` | `top` \| `bottom` \| `left` \| `right` | **Required.** A dock cannot use `top`. |
 | `monitor` | string | Only `primary` for now. |
-| `style.background`, `style.foreground`, `style.border` | color | On a bar, the border is a 1 px line on the side facing the desktop. |
+| `style.background`, `style.foreground`, `style.border` | color | On a bar, the border is a 1 px line on the side facing the desktop (all around a floating bar). |
 | `style.blur` | boolean (`false`) | Real blur behind the surface. Without blur, a translucent background shows the desktop unblurred. |
 | `style.font` | string | A key of `fonts` (a font file in the theme) or an installed font family. Default: the Windows 11 UI font. |
 | `style.fontSize` | number 4–200 (`12`) | In device-independent pixels. |
@@ -142,13 +142,18 @@ Each surface has:
 |-------|------|-------|
 | `thickness` | integer 8–200 (`28`) | Height for top/bottom bars, width for left/right bars. |
 | `reserveSpace` | boolean (`true`) | Maximized windows stay clear of the bar. |
+| `margin` | number 0–200 (`0`) | Above 0 the bar floats: it keeps this distance from the screen edge and from both ends of its edge. The space it reserves is `thickness` + `margin`. A floating bar is outlined all around and keeps its window shadow. |
+| `cornerRadius` | number 0–100 (`0`) | Up to 8 physical pixels (8 at 100% scaling) uses native Windows rounding, which rounds to 4 or 8 px only. Larger values draw the bar like the dock's plate, blur included (no shadow). |
+| `defaultPinned` | array of strings | The pinned apps of the bar's `apps` modules. Same entries and user changes as a dock's (see below). |
 | `start`, `center`, `end` | array of modules | Each module is `{ "module": "<name>", ...options }`. |
 
-Modules: `logo-menu`, `active-app`, `clock`, `volume`, `network`, `battery`, `spacer`. Unknown modules
-are skipped with a warning. A module's `icon` option is a theme path (`.png`, `.ico`, `.jpg`, `.jpeg`).
+Modules: `logo-menu`, `active-app`, `clock`, `volume`, `network`, `battery`, `spacer`, `apps`. Unknown
+modules are skipped with a warning. A module's `icon` option is a theme path (`.png`, `.ico`, `.jpg`, `.jpeg`).
 
 Every module accepts a `style` with `foreground`, `font`, `fontSize`, `fontWeight` and `padding` (space on
-both sides of the module). Missing values come from the bar's `style`.
+both sides of the module). Missing values come from the bar's `style`. A `style.background` puts the module on a
+tile of that color (`style.cornerRadius`, number 0–100, rounds it); the tile spans the bar minus
+`highlightInset`, and a clickable module's hover background fills it.
 
 | Module | Options |
 |--------|---------|
@@ -159,6 +164,7 @@ both sides of the module). Missing values come from the bar's `style`.
 | `network` | Click opens the network settings. `icons` states: `wifi`, `ethernet`, `offline`. |
 | `battery` | `showPercent` (`true`). Hidden on PCs without a battery. `icons` states: `empty`, `low`, `medium`, `high`, `full`, `charging`. |
 | `spacer` | `size`: number 0–1000 (`8`), empty space along the bar. |
+| `apps` | Pinned apps (the bar's `defaultPinned`) and running apps, like a taskbar. `iconSize`: integer 12–64 (`24`). `itemPadding`: number 0–50 (`6`), space on both sides of each icon. `runningIndicator`: `shape`, `color`, `size` as on a dock (default: a 3 px dot in the text color), on the screen-edge side. `separateRunning` (`false`). A click shows the app's last used window or starts it; a right click opens Pin to Bar / Unpin from Bar / Close. Not reorderable by dragging yet. |
 
 Status modules show a glyph from the Windows icon font in the text color. A theme can replace it with its own
 image per state: `"icons": { "muted": "assets/volume-muted.png", "high": "assets/volume-high.png" }`. Unknown
@@ -201,7 +207,8 @@ The user can change the pinned apps from the dock (right click: Keep in Dock, Re
 reorder), or import the apps pinned to the Windows taskbar (offered on first run, and from Settings ›
 Customize; the import replaces the list). The new list goes to the user's overrides as
 `surfaces[id=<dock id>].defaultPinned`, so it survives theme updates, and other themes with a dock of the same `id`
-use it too.
+use it too. A bar with an `apps` module works the same way, with its own `id`: right click Pin to Bar / Unpin from
+Bar, and the taskbar import fills it too.
 
 Running apps that are not pinned follow the pinned ones, in the order they were opened. Windows of the same
 app are grouped by AppUserModelID, or by exe when the app has none.

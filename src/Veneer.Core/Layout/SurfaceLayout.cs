@@ -57,6 +57,22 @@ public static class SurfaceLayout
         return result;
     }
 
+    /// <summary>
+    /// A floating bar inside its <paramref name="strip"/>: <paramref name="margin"/> pixels away from the screen edge
+    /// and from both ends of the strip. The side facing the desktop keeps no gap (the strip is thickness + margin).
+    /// </summary>
+    public static PixelRect Float(PixelRect strip, Edge edge, int margin)
+    {
+        var r = new PixelRect(strip.Left + margin, strip.Top + margin, strip.Right - margin, strip.Bottom - margin);
+        return edge switch
+        {
+            Edge.Top => r with { Bottom = strip.Bottom },
+            Edge.Bottom => r with { Top = strip.Top },
+            Edge.Left => r with { Right = strip.Right },
+            _ => r with { Left = strip.Left },
+        };
+    }
+
     /// <summary>What is left of the monitor once the edge surfaces are placed (where a dock goes).</summary>
     public static PixelRect Remaining(PixelRect monitor, IEnumerable<EdgeItem> items)
     {

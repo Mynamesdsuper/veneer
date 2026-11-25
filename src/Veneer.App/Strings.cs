@@ -73,6 +73,10 @@ static class Strings
 
     public static string DockCloseAll => Get();
 
+    public static string AppsPin => Get();
+
+    public static string AppsUnpin => Get();
+
     public static string SettingsTitle => Get();
 
     public static string PageGeneral => Get();

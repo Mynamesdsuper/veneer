@@ -18,8 +18,11 @@ using Veneer.Interop;
 
 namespace Veneer.App;
 
-/// <summary>Where a module lives: the theme (fonts) and the edge of its bar (menus open away from the edge).</summary>
-sealed record ModuleContext(Theme Theme, Edge Edge)
+/// <summary>
+/// Where a module lives: the theme (fonts) and the edge of its bar (menus open away from the edge). The <c>apps</c>
+/// module also needs its bar, the window tracker, where the user's overrides go and the monitor DPI.
+/// </summary>
+sealed record ModuleContext(Theme Theme, Edge Edge, BarSurface? Bar = null, AppWindowTracker? Apps = null, string? OverridesPath = null, uint Dpi = 96)
 {
     public bool Horizontal => Edge is Edge.Top or Edge.Bottom;
 }
@@ -30,8 +33,9 @@ sealed record ModuleContext(Theme Theme, Edge Edge)
 /// </summary>
 static class Modules
 {
-    static readonly Dictionary<string, Func<ModuleSpec, ModuleContext, FrameworkElement>> Factories = new()
+    static readonly Dictionary<string, Func<ModuleSpec, ModuleContext, FrameworkElement?>> Factories = new()
     {
+        ["apps"] = (spec, ctx) => ctx is { Bar: { } bar, Apps: { } tracker } ? new AppsModule(spec, ctx, bar, tracker) : null,
         ["clock"] = (spec, _) => new ClockModule(spec),
         ["spacer"] = (spec, ctx) => Spacer(spec, ctx.Horizontal),
         ["logo-menu"] = (spec, ctx) => new LogoMenuModule(spec, ctx),
@@ -63,8 +67,14 @@ static class Modules
     public static FrameworkElement? Create(ModuleSpec spec, ModuleContext ctx)
     {
         if (Factories.TryGetValue(spec.Module, out var create))
-            return create(spec, ctx);
+            return create(spec, ctx) ?? LogSkipped(spec);
         Log.Write($"module \"{spec.Module}\" has no view, skipped");
+        return null;
+    }
+
+    static FrameworkElement? LogSkipped(ModuleSpec spec)
+    {
+        Log.Write($"module \"{spec.Module}\" ({spec.Path}) cannot run here, skipped");
         return null;
     }
 

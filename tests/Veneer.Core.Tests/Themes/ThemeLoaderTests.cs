@@ -499,6 +499,54 @@ public class ThemeLoaderTests
         Assert.Contains(r.Errors, e => e.Path == path);
     }
 
+    const string AppsModule = """
+        "center": [ { "module": "apps", "iconSize": 24, "separateRunning": false, "runningIndicator": { "shape": "line", "color": "$text", "size": 3 },
+                      "style": { "background": "#33FFFFFF", "cornerRadius": 8 } } ],
+        """;
+
+    [Fact]
+    public void A_bar_can_float_and_hold_pinned_apps_on_tiles()
+    {
+        var r = LoadSample(json: Replace("\"thickness\": 24,", "\"thickness\": 24, \"margin\": 8, \"cornerRadius\": 12, \"defaultPinned\": [ \"code.exe\" ],")
+            .Replace("\"center\": [],", AppsModule));
+
+        Assert.Empty(r.Diagnostics);
+        var bar = (BarSurface)r.Theme!.Surfaces[0];
+        Assert.Equal(8, bar.Margin);
+        Assert.Equal(12, bar.CornerRadius);
+        Assert.Equal(32, bar.Strip);
+        Assert.Equal(["code.exe"], bar.DefaultPinned);
+        var apps = Assert.Single(bar.Center);
+        Assert.Equal("apps", apps.Module);
+        Assert.NotNull(apps.Style.Background);
+        Assert.Equal(8, apps.Style.CornerRadius);
+    }
+
+    [Fact]
+    public void A_bar_without_the_new_fields_does_not_float()
+    {
+        var bar = (BarSurface)LoadSample().Theme!.Surfaces[0];
+
+        Assert.Equal(0, bar.Margin);
+        Assert.Equal(0, bar.CornerRadius);
+        Assert.Empty(bar.DefaultPinned!);
+        Assert.Equal(24, bar.Strip);
+    }
+
+    [Theory]
+    [InlineData("\"thickness\": 24,", "\"thickness\": 24, \"margin\": -1,", "surfaces[id=menubar].margin")]
+    [InlineData("\"thickness\": 24,", "\"thickness\": 24, \"cornerRadius\": 500,", "surfaces[id=menubar].cornerRadius")]
+    [InlineData("\"thickness\": 24,", "\"thickness\": 24, \"defaultPinned\": \"code.exe\",", "surfaces[id=menubar].defaultPinned")]
+    [InlineData("\"center\": [],", "\"center\": [ { \"module\": \"apps\", \"iconSize\": 100 } ],", "surfaces[id=menubar].center[0].iconSize")]
+    [InlineData("\"center\": [],", "\"center\": [ { \"module\": \"apps\", \"runningIndicator\": { \"shape\": \"star\" } } ],", "surfaces[id=menubar].center[0].runningIndicator.shape")]
+    [InlineData("\"center\": [],", "\"center\": [ { \"module\": \"clock\", \"style\": { \"background\": \"red\" } } ],", "surfaces[id=menubar].center[0].style.background")]
+    public void Bad_floating_bar_and_apps_values_are_errors(string from, string to, string path)
+    {
+        var r = LoadSample(json: Replace(from, to));
+
+        Assert.Contains(r.Errors, e => e.Path == path);
+    }
+
     static string RepoThemes()
     {
         for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
@@ -514,6 +562,9 @@ public class ThemeLoaderTests
     [InlineData("aqua", null)]
     [InlineData("aqua", "dark")]
     [InlineData("aqua", "light")]
+    [InlineData("strip", null)]
+    [InlineData("strip", "dark")]
+    [InlineData("strip", "light")]
     public void Bundled_themes_load_without_errors_or_warnings(string folder, string? variant)
     {
         var r = ThemeLoader.Load(Path.Combine(RepoThemes(), folder), variant);
@@ -522,9 +573,22 @@ public class ThemeLoaderTests
         Assert.Empty(r.Diagnostics);
         Assert.NotNull(r.Theme!.Windows.Wallpaper);
         Assert.NotNull(((BarSurface)r.Theme.Surfaces[0]).Start[0].Icon);
-        Assert.NotNull(r.Theme.Surfaces.OfType<DockSurface>().Single().Style.BorderHighlight);
+        Assert.All(r.Theme.Surfaces.OfType<DockSurface>(), d => Assert.NotNull(d.Style.BorderHighlight));
         Assert.NotNull(r.Theme.Menu!.BorderHighlight);
         Assert.True(File.Exists(Path.Combine(RepoThemes(), folder, "LICENSE")));
+        Assert.True(File.Exists(Path.Combine(RepoThemes(), folder, "CREDITS.md")));
+    }
+
+    [Fact]
+    public void Strip_is_one_floating_bar_with_apps_and_no_dock()
+    {
+        var theme = ThemeLoader.Load(Path.Combine(RepoThemes(), "strip")).Theme!;
+
+        var bar = Assert.IsType<BarSurface>(Assert.Single(theme.Surfaces));
+        Assert.Equal(Edge.Bottom, bar.Edge);
+        Assert.True(bar.Margin > 0);
+        Assert.Contains(bar.Center, m => m.Module == "apps");
+        Assert.NotEmpty(bar.DefaultPinned!);
     }
 
     [Fact]

@@ -1,0 +1,89 @@
+{
+  // A single floating bar at the bottom, like a taskbar, and no dock. Left: Veneer's menu on its own tile. Middle:
+  // pinned and running apps. Right: status icons and the clock on a tile. Original artwork: tools/theme-art
+  // (-Theme strip). Follows Windows light/dark mode.
+  "schemaVersion": 1,
+  "id": "veneer.strip",
+  "name": "Strip",
+  "author": "Veneer",
+  "version": "1.0.0",
+  "license": "MIT",
+
+  "windows": {
+    "wallpaper": "assets/wallpaper-light.jpg",
+    "appearance": "system"
+  },
+
+  // Light ("dawn") values here; the "dark" variant below swaps them for dusk.
+  "tokens": {
+    "text": "#E6151A22",
+    "bar": "#8CF7F4F0",
+    "edge": "#1F000000",
+    "edgeLight": "#CCFFFFFF",
+    "tile": "#14000000",
+    "hover": "#14000000",
+    "pressed": "#26000000",
+    "running": "#B3151A22",
+    "menu": "#D9F7F4F0",
+    "menuHighlight": "#1F000000",
+    "separator": "#1A000000",
+    "logo": "assets/logo-light.png"
+  },
+
+  "surfaces": [
+    {
+      "id": "strip",
+      "type": "bar",
+      "edge": "bottom",
+      "thickness": 44,
+      "margin": 8,
+      "cornerRadius": 14,
+      "reserveSpace": true,
+      "style": {
+        "background": "$bar", "foreground": "$text", "border": "$edge", "borderHighlight": "$edgeLight", "blur": true,
+        "font": "Segoe UI Variable Text", "fontSize": 12,
+        "padding": 6, "spacing": 4,
+        "hover": "$hover", "pressed": "$pressed", "highlightRadius": 8, "highlightInset": 5
+      },
+      "start": [
+        { "module": "logo-menu", "icon": "$logo", "style": { "padding": 12, "background": "$tile", "cornerRadius": 8 } }
+      ],
+      "center": [
+        { "module": "apps", "iconSize": 24, "itemPadding": 8, "runningIndicator": { "shape": "line", "color": "$running", "size": 3 } }
+      ],
+      "end": [
+        { "module": "network", "style": { "padding": 7 } },
+        { "module": "volume", "style": { "padding": 7 } },
+        { "module": "battery", "showPercent": false, "style": { "padding": 7 } },
+        { "module": "clock", "format": "ddd d MMM  HH:mm", "style": { "padding": 12, "fontWeight": "semibold", "background": "$tile", "cornerRadius": 8 } }
+      ],
+      "defaultPinned": [ "explorer.exe", "msedge.exe", "Microsoft.WindowsTerminal_8wekyb3d8bbwe!App", "ms-settings:" ]
+    }
+  ],
+
+  "menu": {
+    "background": "$menu", "foreground": "$text", "border": "$edge", "borderHighlight": "$edgeLight", "blur": true,
+    "cornerRadius": 10, "padding": 5, "fontSize": 13,
+    "highlight": "$menuHighlight", "highlightForeground": "$text", "separator": "$separator"
+  },
+
+  "variants": {
+    "dark": {
+      "windows": { "wallpaper": "assets/wallpaper-dark.jpg" },
+      "tokens": {
+        "text": "#F2FFFFFF",
+        "bar": "#8C161A24",
+        "edge": "#14FFFFFF",
+        "edgeLight": "#40FFFFFF",
+        "tile": "#14FFFFFF",
+        "hover": "#1FFFFFFF",
+        "pressed": "#33FFFFFF",
+        "running": "#B3FFFFFF",
+        "menu": "#D1161A24",
+        "menuHighlight": "#29FFFFFF",
+        "separator": "#1FFFFFFF",
+        "logo": "assets/logo-dark.png"
+      }
+    }
+  }
+}
