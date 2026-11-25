@@ -306,6 +306,11 @@ polished, macOS-like interface; **6b** ships a real default theme built on it.
 - [x] Squirrel apps (Discord) pinned by their stub exe, which matches the running versioned copy; "Keep in Dock"
       on apps whose id has no `!` (Zen, Steam) pins the exe instead of an id the dock could not read back.
 
+**7d: settings polish** (planned for 2026-11-26, at the author's request)
+- [ ] Polish the settings window: layout, spacing, controls, page by page.
+- [ ] Replace the native Windows window frame (title bar, borders) with Veneer's own, drawn in the app's style.
+      Must keep: move, resize, snap layouts, minimize/maximize/close, keyboard access, per-monitor DPI.
+
 ## Phase 8: bundled themes
 
 **Bundled themes**
