@@ -15,7 +15,7 @@ namespace Veneer.App;
 /// <c>settings-reset:&lt;surface&gt;:&lt;key&gt;</c>, <c>settings-install:&lt;zip, with | for the drive colon&gt;</c>,
 /// <c>settings-report</c> (first report lines to the log), <c>settings-rename:&lt;old&gt;:&lt;new&gt;</c>, <c>settings-close</c>,
 /// <c>pin-offer[:first]</c> (the taskbar import offer; <c>first</c> saves the first-run flag on close), <c>pin-offer-shot</c>,
-/// <c>pin-offer-import</c>, <c>pin-offer-close</c>, <c>quit</c>.
+/// <c>pin-offer-import</c>, <c>pin-offer-close</c>, <c>culture:&lt;name&gt;</c> (e.g. <c>en-US</c>: UI texts and clock), <c>quit</c>.
 /// Example: <c>--self-test "wait:2,menu,wait:1,screenshot,close-menu,wait:1,quit"</c>.
 /// </summary>
 static class SelfTest
@@ -139,6 +139,12 @@ static class SelfTest
                     break;
                 case ["settings-close"]:
                     app.Settings?.Close();
+                    break;
+                case ["culture", var name]:
+                    // Screenshots for the public (English) README on a PC in another language: texts and clock.
+                    var culture = System.Globalization.CultureInfo.GetCultureInfo(name);
+                    System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.CurrentUICulture = culture;
+                    System.Globalization.CultureInfo.DefaultThreadCurrentCulture = System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = culture;
                     break;
                 case ["pin-offer"]:
                 case ["pin-offer", "first"]:

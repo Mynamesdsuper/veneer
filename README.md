@@ -27,6 +27,10 @@ The logo menu and the magnifying dock with its label:
 
 ![Aqua details](docs/screenshots/aqua-details.png)
 
+The settings window, in the Windows 11 style (dark and light):
+
+![Veneer settings](docs/screenshots/settings.png)
+
 ## Project status
 
 **Early. Not usable day to day yet.** The theme engine works and is tested. The app already draws blurred bars
