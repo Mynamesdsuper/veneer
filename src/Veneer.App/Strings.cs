@@ -203,6 +203,14 @@ static class Strings
 
     public static string OriginDefault => Get();
 
+    public static string CaptionMinimize => Get();
+
+    public static string CaptionMaximize => Get();
+
+    public static string CaptionRestore => Get();
+
+    public static string CaptionClose => Get();
+
     public static string Reset => Get();
 
     public static string ResetTip => Get();

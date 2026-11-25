@@ -2,8 +2,10 @@ using System.IO;
 using System.Reflection;
 using System.Text.Json.Nodes;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.Win32;
@@ -19,12 +21,45 @@ namespace Veneer.App;
 /// goes through the same files as the menus (the profile's <c>overrides.json</c> and <c>windows.json</c>, the profile
 /// store), so hot reload applies it and the window rebuilds its page on <see cref="App.Changed"/>.
 /// </summary>
-sealed class SettingsWindow : Window
+sealed class SettingsWindow : VeneerWindow
 {
     readonly App app;
-    readonly ListBox nav = new() { BorderThickness = new Thickness(0), Background = Brushes.Transparent, Margin = new Thickness(8, 16, 0, 16) };
-    readonly ScrollViewer content = new() { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Padding = new Thickness(32, 20, 32, 32) };
-    readonly (string Id, string Title, Func<UIElement> Build)[] pages;
+    // Selection like the Windows 11 navigation pane: a subtle fill and a small accent bar, not a solid accent block.
+    static readonly Style ListItemStyle = (Style)XamlReader.Parse("""
+        <Style TargetType="ListBoxItem" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+          <Setter Property="Padding" Value="12,0,12,0"/>
+          <Setter Property="MinHeight" Value="36"/>
+          <Setter Property="Margin" Value="0,1,0,1"/>
+          <Setter Property="Template">
+            <Setter.Value>
+              <ControlTemplate TargetType="ListBoxItem">
+                <Border x:Name="Back" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" CornerRadius="4" Background="Transparent">
+                  <Grid>
+                    <Border x:Name="Bar" Width="3" Height="16" CornerRadius="1.5" HorizontalAlignment="Left" Visibility="Collapsed"
+                            Background="{DynamicResource AccentFillColorDefaultBrush}"/>
+                    <ContentPresenter Margin="{TemplateBinding Padding}" VerticalAlignment="Center"/>
+                  </Grid>
+                </Border>
+                <ControlTemplate.Triggers>
+                  <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="Back" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
+                  </Trigger>
+                  <Trigger Property="IsSelected" Value="True">
+                    <Setter TargetName="Back" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
+                    <Setter TargetName="Bar" Property="Visibility" Value="Visible"/>
+                  </Trigger>
+                </ControlTemplate.Triggers>
+              </ControlTemplate>
+            </Setter.Value>
+          </Setter>
+        </Style>
+        """);
+
+    static readonly FontFamily IconFont = new("Segoe Fluent Icons, Segoe MDL2 Assets");
+
+    readonly ListBox nav = new() { BorderThickness = new Thickness(0), Background = Brushes.Transparent, Margin = new Thickness(8, 4, 8, 16), ItemContainerStyle = ListItemStyle };
+    readonly ScrollViewer content = new() { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Padding = new Thickness(28, 4, 32, 32) };
+    readonly (string Id, string Title, string Icon, Func<UIElement> Build)[] pages;
     (string Text, bool Error)? status; // a line shown once at the top of the page: an error, "Copied."
     string? selectedProfile;
     ThemeInstallResult? installResult;
@@ -42,15 +77,21 @@ sealed class SettingsWindow : Window
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         pages =
         [
-            ("general", Strings.PageGeneral, General),
-            ("profiles", Strings.PageProfiles, ProfilesPage),
-            ("theme", Strings.PageTheme, ThemePage),
-            ("customize", Strings.PageCustomize, Customize),
-            ("windows", Strings.PageWindows, WindowsPage),
-            ("diagnostics", Strings.PageDiagnostics, DiagnosticsPage),
+            ("general", Strings.PageGeneral, "\uE713", General),
+            ("profiles", Strings.PageProfiles, "\uE77B", ProfilesPage),
+            ("theme", Strings.PageTheme, "\uE790", ThemePage),
+            ("customize", Strings.PageCustomize, "\uE771", Customize),
+            ("windows", Strings.PageWindows, "\uE7F4", WindowsPage),
+            ("diagnostics", Strings.PageDiagnostics, "\uE9D9", DiagnosticsPage),
         ];
         foreach (var page in pages)
-            nav.Items.Add(new ListBoxItem { Content = page.Title, Tag = page.Id, Padding = new Thickness(12, 8, 12, 8) });
+        {
+            var item = new StackPanel { Orientation = Orientation.Horizontal };
+            item.Children.Add(new TextBlock { Text = page.Icon, FontFamily = IconFont, FontSize = 16, Margin = new Thickness(0, 0, 14, 0), VerticalAlignment = VerticalAlignment.Center });
+            item.Children.Add(new TextBlock { Text = page.Title, VerticalAlignment = VerticalAlignment.Center });
+            nav.Items.Add(new ListBoxItem { Content = item, Tag = page.Id });
+            AutomationProperties.SetName((ListBoxItem)nav.Items[^1]!, page.Title);
+        }
         nav.SelectionChanged += (_, _) =>
         {
             status = null;
@@ -58,12 +99,12 @@ sealed class SettingsWindow : Window
         };
 
         var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(200) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(220) });
         grid.ColumnDefinitions.Add(new ColumnDefinition());
         grid.Children.Add(nav);
         Grid.SetColumn(content, 1);
         grid.Children.Add(content);
-        Content = grid;
+        Body = grid;
 
         app.Changed += Build;
         app.PinsImported += OnPinsImported;
@@ -93,8 +134,8 @@ sealed class SettingsWindow : Window
         if (nav.SelectedIndex < 0)
             return;
         var page = pages[nav.SelectedIndex];
-        var panel = new StackPanel { MaxWidth = 760 };
-        panel.Children.Add(new TextBlock { Text = page.Title, FontSize = 28, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 12) });
+        var panel = new StackPanel();
+        panel.Children.Add(new TextBlock { Text = page.Title, FontSize = 28, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 16) });
         if (status is { } s)
         {
             var line = Note(s.Text);
@@ -105,29 +146,52 @@ sealed class SettingsWindow : Window
         }
 
         panel.Children.Add(page.Build());
-        content.Content = panel;
+        // Full width up to 820, kept on the left like Windows Settings (a MaxWidth alone would center the page).
+        var column = new Grid();
+        column.ColumnDefinitions.Add(new ColumnDefinition { MaxWidth = 820 });
+        column.Children.Add(panel);
+        content.Content = column;
     }
 
     // ----- pages -----
 
     UIElement General()
     {
-        var autostart = new CheckBox { Content = Strings.StartWithWindows, IsChecked = Autostart.IsEnabled, Margin = new Thickness(0, 4, 0, 4) };
+        var autostart = new CheckBox { IsChecked = Autostart.IsEnabled, VerticalAlignment = VerticalAlignment.Center };
+        AutomationProperties.SetName(autostart, Strings.StartWithWindows);
         autostart.Click += (_, _) => Act(() => Autostart.Set(autostart.IsChecked == true));
         bool snapshot = app.HasWindowsSnapshot;
         return Stack(
-            autostart,
+            Card(Labeled(Strings.StartWithWindows), autostart, null),
             Section(Strings.TaskbarSection),
-            Note(Strings.TaskbarNote),
-            Button(Strings.TaskbarShow, app.RestoreTaskbar),
+            Card(Labeled(Strings.TaskbarNote), null, Button(Strings.TaskbarShow, app.RestoreTaskbar)),
             Section(Strings.WindowsSettingsSection),
-            Note(snapshot ? Strings.WindowsSettingsNote : Strings.WindowsSettingsNothing),
-            Button(Strings.MenuRestoreWindowsSettings, () => app.RestoreWindowsSettings().ContinueWith(_ => Dispatcher.BeginInvoke(Build)), snapshot),
+            Card(Labeled(snapshot ? Strings.WindowsSettingsNote : Strings.WindowsSettingsNothing), null,
+                Button(Strings.MenuRestoreWindowsSettings, () => app.RestoreWindowsSettings().ContinueWith(_ => Dispatcher.BeginInvoke(Build)), snapshot)),
             Section(Strings.ShortcutsSection),
-            Note(Strings.ShortcutQuit),
-            Note(Strings.ShortcutTaskbar),
-            Note(Strings.ShortcutProfile),
-            Note(Strings.ShortcutEmergency));
+            Shortcuts(Strings.ShortcutQuit, Strings.ShortcutTaskbar, Strings.ShortcutProfile, Strings.ShortcutEmergency));
+    }
+
+    // "Keys: what they do" lines as a two-column card: the keys line up on the left.
+    static Border Shortcuts(params string[] lines)
+    {
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition());
+        for (int i = 0; i < lines.Length; i++)
+        {
+            int colon = lines[i].IndexOf(": ", StringComparison.Ordinal);
+            grid.RowDefinitions.Add(new RowDefinition());
+            var keys = new TextBlock { Text = colon < 0 ? "" : lines[i][..colon], FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 4, 24, 4) };
+            var what = new TextBlock { Text = colon < 0 ? lines[i] : lines[i][(colon + 2)..], TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 4) };
+            Grid.SetRow(keys, i);
+            Grid.SetRow(what, i);
+            Grid.SetColumn(what, 1);
+            grid.Children.Add(keys);
+            grid.Children.Add(what);
+        }
+
+        return CardBorder(grid);
     }
 
     UIElement ProfilesPage()
@@ -136,7 +200,7 @@ sealed class SettingsWindow : Window
         if (active is null)
             return Stack(Note(Strings.ProfilesOff));
 
-        var list = new ListBox { MinHeight = 120, MaxHeight = 300, Margin = new Thickness(0, 8, 0, 8) };
+        var list = List(300);
         var names = app.Profiles.Names();
         if (selectedProfile is null || !names.Contains(selectedProfile))
             selectedProfile = active;
@@ -144,6 +208,7 @@ sealed class SettingsWindow : Window
             list.Items.Add(new ListBoxItem { Content = name == active ? Strings.ProfileActive(name) : name, Tag = name, IsSelected = name == selectedProfile });
 
         var use = Button(Strings.ProfileUse, () => app.SwitchProfile(selectedProfile!));
+        use.SetResourceReference(StyleProperty, "AccentButtonStyle");
         var delete = Button(Strings.ProfileDelete, () =>
         {
             if (Modules.Confirm(Strings.ProfileDeleteConfirm(selectedProfile!)))
@@ -196,7 +261,8 @@ sealed class SettingsWindow : Window
     UIElement ThemePage()
     {
         string? profile = app.ActiveProfile;
-        var list = new ListBox { MinHeight = 80, MaxHeight = 260, Margin = new Thickness(0, 8, 0, 8), IsEnabled = profile is not null };
+        var list = List(260);
+        list.IsEnabled = profile is not null;
         var themes = app.InstalledThemes();
         foreach (var theme in themes)
         {
@@ -303,7 +369,7 @@ sealed class SettingsWindow : Window
         foreach (string path in orphans)
         {
             string id = path["surfaces[id=".Length..^1];
-            page.Children.Add(Card(new TextBlock { Text = id, VerticalAlignment = VerticalAlignment.Center }, null, null,
+            page.Children.Add(Card(Labeled(id), null,
                 Button(Strings.OrphanRemove, () => Saved(OverridesFile.TryRemoveSurface(app.OverridesPath, id, out string? error), error))));
         }
 
@@ -324,16 +390,16 @@ sealed class SettingsWindow : Window
             null => Strings.OriginDefault,
             _ => Strings.OriginTheme,
         };
-        var reset = Button(Strings.Reset, () => Set(setting, null), setting.IsYours);
-        reset.ToolTip = Strings.ResetTip;
-        reset.Margin = new Thickness(0);
-        return Card(new TextBlock { Text = Label(setting.Key), VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap },
-            control, new TextBlock { Text = origin, Opacity = 0.7, VerticalAlignment = VerticalAlignment.Center }, reset);
+        // Reset only where there is something to reset: a column of disabled buttons said nothing.
+        var reset = setting.IsYours ? Button(Strings.Reset, () => Set(setting, null)) : null;
+        reset?.ToolTip = Strings.ResetTip;
+        return Card(Labeled(Label(setting.Key), origin), control, reset);
     }
 
     FrameworkElement Toggle(SurfaceSetting setting)
     {
         var box = new CheckBox { IsChecked = (bool)setting.Value, VerticalAlignment = VerticalAlignment.Center };
+        AutomationProperties.SetName(box, Label(setting.Key));
         box.Click += (_, _) => Set(setting, box.IsChecked == true);
         return box;
     }
@@ -341,6 +407,7 @@ sealed class SettingsWindow : Window
     FrameworkElement Choice(SurfaceSetting setting)
     {
         var combo = new ComboBox { MinWidth = 160 };
+        AutomationProperties.SetName(combo, Label(setting.Key));
         foreach (string choice in setting.Choices!)
             combo.Items.Add(new ComboBoxItem { Content = EdgeLabel(choice), Tag = choice, IsSelected = choice == (string)setting.Value });
         combo.SelectionChanged += (_, _) =>
@@ -366,6 +433,7 @@ sealed class SettingsWindow : Window
             Width = 170,
             VerticalAlignment = VerticalAlignment.Center,
         };
+        AutomationProperties.SetName(slider, Label(setting.Key));
         string Text(double v) => v.ToString(setting.Step < 1 ? "0.0" : "0", System.Globalization.CultureInfo.CurrentCulture);
         var value = new TextBlock { Text = Text(initial), Width = 44, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
 
@@ -469,10 +537,8 @@ sealed class SettingsWindow : Window
                 });
             }
         };
-        var name = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        name.Children.Add(new TextBlock { Text = label });
-        name.Children.Add(new TextBlock { Text = themeValue is null ? Strings.ThemeSetsNothing : Strings.ThemeSets(themeValue), Opacity = 0.7, FontSize = 12, TextWrapping = TextWrapping.Wrap });
-        return Card(name, combo, null, null);
+        AutomationProperties.SetName(combo, label);
+        return Card(Labeled(label, themeValue is null ? Strings.ThemeSetsNothing : Strings.ThemeSets(themeValue)), combo, null);
     }
 
     UIElement DiagnosticsPage()
@@ -515,8 +581,11 @@ sealed class SettingsWindow : Window
     /// <summary>The window's area on screen in physical pixels (for the self-test's screenshots).</summary>
     public Veneer.Core.Layout.PixelRect ScreenBounds()
     {
-        var scale = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformToDevice ?? Matrix.Identity;
-        return new((int)(Left * scale.M11), (int)(Top * scale.M22), (int)((Left + ActualWidth) * scale.M11), (int)((Top + ActualHeight) * scale.M22));
+        // The drawn area (title bar included), also when maximized, where Left and Top keep the restored position.
+        var content = (FrameworkElement)Content;
+        var topLeft = content.PointToScreen(new Point(0, 0));
+        var bottomRight = content.PointToScreen(new Point(content.ActualWidth, content.ActualHeight));
+        return new((int)topLeft.X, (int)topLeft.Y, (int)bottomRight.X, (int)bottomRight.Y);
     }
 
     /// <summary>The diagnostics report, with personal paths and names hidden.</summary>
@@ -581,11 +650,11 @@ sealed class SettingsWindow : Window
         panel.Children.Add(new TextBlock { Text = Strings.ProfileNamePrompt });
         panel.Children.Add(box);
         panel.Children.Add(buttons);
-        var dialog = new Window
+        var dialog = new VeneerWindow
         {
             Title = title,
             Owner = this,
-            Content = panel,
+            Body = panel,
             SizeToContent = SizeToContent.WidthAndHeight,
             ResizeMode = ResizeMode.NoResize,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
@@ -630,7 +699,7 @@ sealed class SettingsWindow : Window
     }
 
     static TextBlock Section(string text) =>
-        new() { Text = text, FontSize = 18, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 20, 0, 6) };
+        new() { Text = text, FontSize = 16, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 24, 0, 8) };
 
     static TextBlock Note(string text) =>
         new() { Text = text, TextWrapping = TextWrapping.Wrap, Opacity = 0.75, Margin = new Thickness(0, 2, 0, 6) };
@@ -655,29 +724,58 @@ sealed class SettingsWindow : Window
         return button;
     }
 
-    /// <summary>A settings row on a card: name, control, where the value comes from, and an action.</summary>
-    static Border Card(FrameworkElement name, FrameworkElement? control, FrameworkElement? origin, FrameworkElement? action)
+    /// <summary>A settings row on a card: name (with its description), control, and an action button.</summary>
+    static Border Card(FrameworkElement name, FrameworkElement? control, FrameworkElement? action)
     {
-        var grid = new Grid();
+        var grid = new Grid { MinHeight = 44 };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(240) }); // controls line up from row to row
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        FrameworkElement?[] cells = [name, control, origin, action];
+        // Controls line up from row to row; a row without one gives the space to its text.
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = control is null ? new GridLength(0) : new GridLength(260) });
+        // Room for Reset on every row with a control, so a row that shows it does not push its control left.
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto, MinWidth = control is null ? 0 : 110 });
+        FrameworkElement?[] cells = [name, control, action];
         for (int i = 0; i < cells.Length; i++)
         {
             if (cells[i] is not { } cell)
                 continue;
-            cell.Margin = new Thickness(i == 0 ? 0 : 12, 0, 0, 0);
-            if (i == 1)
-                cell.HorizontalAlignment = HorizontalAlignment.Left;
+            cell.Margin = new Thickness(i == 0 ? 0 : 16, 0, 0, 0);
+            cell.VerticalAlignment = VerticalAlignment.Center;
+            if (i > 0)
+                cell.HorizontalAlignment = i == 1 ? HorizontalAlignment.Left : HorizontalAlignment.Right;
             Grid.SetColumn(cell, i);
             grid.Children.Add(cell);
         }
 
-        var card = new Border { Child = grid, Padding = new Thickness(16, 10, 16, 10), Margin = new Thickness(0, 0, 0, 4), CornerRadius = new CornerRadius(6), BorderThickness = new Thickness(1) };
+        return CardBorder(grid);
+    }
+
+    static Border CardBorder(UIElement child)
+    {
+        var card = new Border { Child = child, Padding = new Thickness(16, 10, 16, 10), Margin = new Thickness(0, 0, 0, 4), CornerRadius = new CornerRadius(6), BorderThickness = new Thickness(1) };
         card.SetResourceReference(Border.BackgroundProperty, "CardBackgroundFillColorDefaultBrush");
         card.SetResourceReference(Border.BorderBrushProperty, "CardStrokeColorDefaultBrush");
         return card;
+    }
+
+    /// <summary>A row's name, with an optional smaller line under it (where the value comes from, what it does).</summary>
+    static StackPanel Labeled(string title, string? description = null)
+    {
+        var panel = new StackPanel();
+        panel.Children.Add(new TextBlock { Text = title, TextWrapping = TextWrapping.Wrap });
+        if (description is not null)
+        {
+            panel.Children.Add(new TextBlock { Text = description, FontSize = 12, Opacity = 0.7, TextWrapping = TextWrapping.Wrap });
+        }
+
+        return panel;
+    }
+
+    /// <summary>A list on a card, for profiles and themes: as tall as its items, up to <paramref name="maxHeight"/>.</summary>
+    static ListBox List(double maxHeight)
+    {
+        var list = new ListBox { MaxHeight = maxHeight, Margin = new Thickness(0, 4, 0, 8), Padding = new Thickness(4), BorderThickness = new Thickness(1), ItemContainerStyle = ListItemStyle };
+        list.SetResourceReference(BackgroundProperty, "CardBackgroundFillColorDefaultBrush");
+        list.SetResourceReference(BorderBrushProperty, "CardStrokeColorDefaultBrush");
+        return list;
     }
 }

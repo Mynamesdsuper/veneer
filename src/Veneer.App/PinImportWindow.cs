@@ -9,7 +9,7 @@ namespace Veneer.App;
 /// The offer to replace the dock's pinned apps with the Windows taskbar's: each app with its icon and name, then
 /// Import or Not now. Not modal, so the shell keeps running while it is open.
 /// </summary>
-sealed class PinImportWindow : Window
+sealed class PinImportWindow : VeneerWindow
 {
     readonly Action import;
 
@@ -46,7 +46,7 @@ sealed class PinImportWindow : Window
         panel.Children.Add(new TextBlock { Text = Strings.PinImportNote, TextWrapping = TextWrapping.Wrap, Opacity = 0.75, Margin = new Thickness(0, 8, 0, 12) });
         panel.Children.Add(new ScrollViewer { Content = apps, MaxHeight = 320, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
         panel.Children.Add(buttons);
-        Content = panel;
+        Body = panel;
     }
 
     /// <summary>Imports and closes (the Import button, and the self-test).</summary>

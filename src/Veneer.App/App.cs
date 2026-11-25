@@ -603,7 +603,21 @@ sealed class App : Application
     {
         var area = only ?? Monitors.Primary().Bounds;
         var pixels = ScreenCapture.Capture(area);
-        var image = BitmapSource.Create(area.Width, area.Height, 96, 96, System.Windows.Media.PixelFormats.Bgr32, null, pixels, area.Width * 4);
+        SaveImage(BitmapSource.Create(area.Width, area.Height, 96, 96, System.Windows.Media.PixelFormats.Bgr32, null, pixels, area.Width * 4));
+    }
+
+    /// <summary>Debug aid: an element drawn by WPF alone, never the screen, so no other window can be in the picture.</summary>
+    public void SaveRendering(FrameworkElement element)
+    {
+        var scale = PresentationSource.FromVisual(element)?.CompositionTarget?.TransformToDevice ?? System.Windows.Media.Matrix.Identity;
+        var image = new RenderTargetBitmap((int)Math.Ceiling(element.ActualWidth * scale.M11), (int)Math.Ceiling(element.ActualHeight * scale.M22),
+            96 * scale.M11, 96 * scale.M22, System.Windows.Media.PixelFormats.Pbgra32);
+        image.Render(element);
+        SaveImage(image);
+    }
+
+    void SaveImage(BitmapSource image)
+    {
         string folder = ScreenshotFolder();
         Directory.CreateDirectory(folder);
         string path = Path.Combine(folder, $"veneer-{DateTime.Now:yyyyMMdd-HHmmss}.png");

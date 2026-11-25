@@ -306,10 +306,17 @@ polished, macOS-like interface; **6b** ships a real default theme built on it.
 - [x] Squirrel apps (Discord) pinned by their stub exe, which matches the running versioned copy; "Keep in Dock"
       on apps whose id has no `!` (Zen, Steam) pins the exe instead of an id the dock could not read back.
 
-**7d: settings polish** (planned for 2026-11-26, at the author's request)
-- [ ] Polish the settings window: layout, spacing, controls, page by page.
-- [ ] Replace the native Windows window frame (title bar, borders) with Veneer's own, drawn in the app's style.
-      Must keep: move, resize, snap layouts, minimize/maximize/close, keyboard access, per-monitor DPI.
+**7d: settings polish** (done 2026-11-25, at the author's request)
+- [x] Polish the settings window: layout, spacing, controls, page by page. Navigation with icons and a Windows 11
+      selection; every page on cards; "Reset" only on the values you changed, with where each value comes from under
+      its name; keyboard shortcuts in two columns.
+- [x] Replace the native Windows window frame (title bar, borders) with Veneer's own, drawn in the app's style
+      (`VeneerWindow`: settings, the taskbar import offer, the profile name dialog). Keeps move, resize, snap layouts
+      (checked by hit test), minimize/maximize/close, Alt+Space, Win+arrows, rounded corners and the shadow.
+- [ ] By hand (no simulated input here): the snap layouts flyout over Maximize, dragging the title bar, resizing
+      from the edges, a monitor above 100% scaling.
+- [ ] Later, if wanted: the window frame styled by the theme (for example Aqua-style buttons). Needs a theme format
+      section; the frame now has one fixed Veneer style.
 
 ## Phase 8: bundled themes
 

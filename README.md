@@ -58,6 +58,7 @@ polished macOS-like desktop out of the box. Profiles switch theme, overrides and
 | Profiles, Veneer menu (bar and notification area), start with Windows | ✅ Done (Phase 7a) |
 | Settings window: profiles, theme install, your values with "reset to theme value", Windows choices, diagnostics; English and Italian | ✅ Done (Phase 7b) |
 | First-run import of the taskbar's pinned apps (Store apps included, no duplicates) | ✅ Done (Phase 7c) |
+| Settings window polish and Veneer's own window frame (title bar, caption buttons, snap layouts kept) | ✅ Done (Phase 7d; snap flyout and drag still to be tried by hand) |
 | Two bundled themes with very different layouts | ⏳ Next (Phase 8) |
 | First release | ⏳ Planned (Phase 9) |
 | Multi-monitor, display scaling above 100%, ARM64 | ❔ Not verified yet |
@@ -111,8 +112,8 @@ full multi-monitor support.
 | 4 | Dock | ✅ |
 | 5 | Windows settings from themes (wallpaper, accent, light/dark) with restore | ✅ |
 | 6 | Look and feel: what the engine can draw, and a real default theme | ✅ |
-| 7 | Profiles, settings window, tray, theme install, start with Windows | ⏳ next |
-| 8 | Bundled themes | ⏳ |
+| 7 | Profiles, settings window, tray, theme install, start with Windows | ✅ |
+| 8 | Bundled themes | ⏳ next |
 | 9 | Polish, documentation, first release | ⏳ |
 
 Every feature, phase by phase, with its checkbox: [docs/roadmap.md](docs/roadmap.md).

@@ -52,6 +52,24 @@ public sealed record WindowDetails(nint Handle, int ProcessId, string? ExePath, 
 public static class WindowTools
 {
     const uint WM_CLOSE = 0x0010;
+    const uint WM_NCHITTEST = 0x0084;
+
+    /// <summary>
+    /// Asks DWM for the Windows 11 rounded corners on a window that draws its own frame: DWM does not round a window
+    /// whose client area covers the whole frame unless asked.
+    /// </summary>
+    public static unsafe void RoundCorners(nint hwnd)
+    {
+        var corner = Windows.Win32.Graphics.Dwm.DWM_WINDOW_CORNER_PREFERENCE.DWMWCP_ROUND;
+        PInvoke.DwmSetWindowAttribute((HWND)hwnd, Windows.Win32.Graphics.Dwm.DWMWINDOWATTRIBUTE.DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(Windows.Win32.Graphics.Dwm.DWM_WINDOW_CORNER_PREFERENCE));
+    }
+
+    /// <summary>
+    /// What a window says is at a screen point, in physical pixels (an <c>HT*</c> value: 2 caption, 9 maximize button),
+    /// as Windows asks it before a hover or a click. Self-tests use it to check a custom title bar without a mouse.
+    /// </summary>
+    public static int HitTest(nint hwnd, int x, int y) =>
+        (int)PInvoke.SendMessage((HWND)hwnd, WM_NCHITTEST, 0, (nint)((y << 16) | (x & 0xFFFF))).Value;
 
     public static unsafe WindowDetails Describe(nint hwnd)
     {

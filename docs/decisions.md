@@ -6,6 +6,35 @@ Record each decision with its date, context, the options considered and the outc
 
 C# + WPF on .NET 10 (LTS), Windows 11 only. .NET 8 reached end of support on 2026-11-10.
 
+## 2026-11-25: Settings polish and Veneer's own window frame (Phase 7d)
+
+- **One fixed Veneer frame, not a themed one** (the author's choice). Veneer's windows (settings, the taskbar import
+  offer, the profile name dialog) share `VeneerWindow`: a 40 px title bar with the app icon, the title and Windows
+  11-style caption buttons (Segoe Fluent Icons; Close turns red). A frame styled by the theme would need a theme
+  format section; it can come later.
+- **WindowChrome, glass frame 0.** WPF's `WindowChrome` keeps the native frame's behavior (move, resize edges, Aero
+  snap, Win+arrows, Alt+Space system menu, double-click to maximize). With the DWM glass extended into the window
+  (`GlassFrameThickness -1`), DWM paints its own caption under Veneer's: the accent-colored strip and the old
+  caption buttons show through, and the window background turns black. With glass 0 the window is opaque and draws
+  the Fluent `ApplicationBackgroundBrush` itself; no Mica.
+- **Rounded corners must be asked for.** With the client area covering the whole frame, Windows 11 drew square
+  corners and no border; `DWMWA_WINDOW_CORNER_PREFERENCE = ROUND` brings the rounded corners and the 1 px border
+  back. The DWM shadow stays (pixels just outside the edge are darker than with the window closed).
+- **Snap layouts.** Windows 11 shows the snap layouts flyout only where `WM_NCHITTEST` answers `HTMAXBUTTON`. The
+  window answers it over its Maximize button; the clicks then arrive as non-client messages WPF never routes, so
+  hover, press, click and double click of that one button are handled in the window procedure. Checked by the
+  self-test step `frame-hittest` (sends `WM_NCHITTEST`: 9 on Maximize, 2 on the title bar, normal and maximized); the
+  flyout itself needs a real mouse.
+- **Maximized**: a maximized window is larger than the screen by its invisible resize edges, so the content gets
+  that margin (`SystemParameters.WindowResizeBorderThickness`).
+- **Settings layout.** Windows 11 navigation (icons, a subtle fill and a small accent bar instead of a solid accent
+  block); every page on cards; pages fill up to 820 px and stay on the left. Where a value comes from is a small line
+  under its name, and "Reset" shows only on the values you changed (a column of disabled buttons said nothing).
+- **Screenshots without the screen.** `settings-render` draws the window with WPF instead of copying the screen, so no
+  other window (the author's chats, games) can end up in a picture; `settings-mode:light|dark` switches that window
+  only, so the README picture of both modes no longer changes the Windows mode. Renders have no shadow or rounded
+  corners.
+
 ## 2026-11-25: Importing the taskbar's pinned apps (Phase 7c)
 
 - **Source: the taskbar's own record.** Store apps pinned to the taskbar have no shortcut file; only

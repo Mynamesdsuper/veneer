@@ -98,7 +98,7 @@
   <data name="EdgeLeft" xml:space="preserve"><value>A sinistra</value></data>
   <data name="EdgeRight" xml:space="preserve"><value>A destra</value></data>
   <data name="OriginTheme" xml:space="preserve"><value>Dal tema</value></data>
-  <data name="OriginYours" xml:space="preserve"><value>Tuo</value></data>
+  <data name="OriginYours" xml:space="preserve"><value>Cambiato da te</value></data>
   <data name="OriginDefault" xml:space="preserve"><value>Predefinito di Veneer</value></data>
   <data name="Reset" xml:space="preserve"><value>Ripristina</value></data>
   <data name="ResetTip" xml:space="preserve"><value>Torna al valore del tema</value></data>
@@ -135,4 +135,8 @@
   <data name="PinImportButton" xml:space="preserve"><value>Importa dalla barra…</value></data>
   <data name="PinImportNothing" xml:space="preserve"><value>Sulla barra delle applicazioni non ci sono app fissate che il dock può usare.</value></data>
   <data name="PinImportDone" xml:space="preserve"><value>{0} app importate nel dock.</value></data>
+  <data name="CaptionMinimize" xml:space="preserve"><value>Riduci a icona</value></data>
+  <data name="CaptionMaximize" xml:space="preserve"><value>Ingrandisci</value></data>
+  <data name="CaptionRestore" xml:space="preserve"><value>Ripristina giù</value></data>
+  <data name="CaptionClose" xml:space="preserve"><value>Chiudi</value></data>
 </root>

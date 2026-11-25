@@ -11,9 +11,12 @@ namespace Veneer.App;
 /// <c>dock-click</c>, <c>dock-close</c>, <c>dock-pin</c>, <c>dock-unpin</c>, <c>dock-menu</c> with <c>:&lt;text&gt;</c>
 /// (the first dock icon whose key contains the text), <c>demo</c> (dock shows pinned apps only), <c>dock-hover:&lt;0..1|off&gt;</c>, <c>dock-reveal:on|off</c>, <c>dock-sweep</c> (magnification frame rate), <c>app</c> (start winver.exe so the foreground app changes; it holds no user data), <c>close-app</c>, <c>crash</c> (unhandled exception), <c>menu-item:&lt;text&gt;</c> (clicks the open menu's first item containing the text), <c>veneer-menu</c> (Veneer's own menu at the mouse, as from the notification-area icon),
 /// <c>profile:&lt;name&gt;</c>, <c>theme:&lt;folder name&gt;</c>, <c>autostart:on|off</c> (writes HKCU Run),
-/// <c>settings[:&lt;page id&gt;]</c>, <c>settings-shot</c> (the settings window only), <c>settings-set:&lt;surface&gt;:&lt;key&gt;:&lt;value&gt;</c>,
+/// <c>settings[:&lt;page id&gt;]</c>, <c>settings-shot</c> (the settings window only), <c>settings-render</c> (the same, drawn by WPF
+/// instead of copied from the screen: no other window can show in it; no frame shadow or rounded corners),
+/// <c>settings-mode:light|dark</c> (that window only, the Windows mode stays), <c>settings-set:&lt;surface&gt;:&lt;key&gt;:&lt;value&gt;</c>,
 /// <c>settings-reset:&lt;surface&gt;:&lt;key&gt;</c>, <c>settings-install:&lt;zip, with | for the drive colon&gt;</c>,
 /// <c>settings-report</c> (first report lines to the log), <c>settings-rename:&lt;old&gt;:&lt;new&gt;</c>, <c>settings-close</c>,
+/// <c>settings-maximize</c> (maximize or restore), <c>frame-hittest</c> (the title bar's hit-test answers to the log),
 /// <c>pin-offer[:first]</c> (the taskbar import offer; <c>first</c> saves the first-run flag on close), <c>pin-offer-shot</c>,
 /// <c>pin-offer-import</c>, <c>pin-offer-close</c>, <c>culture:&lt;name&gt;</c> (e.g. <c>en-US</c>: UI texts and clock), <c>quit</c>.
 /// Example: <c>--self-test "wait:2,menu,wait:1,screenshot,close-menu,wait:1,quit"</c>.
@@ -121,6 +124,16 @@ static class SelfTest
                     if (app.Settings is { } shown)
                         app.SaveScreenshot(shown.ScreenBounds());
                     break;
+                case ["settings-mode", var mode]:
+                    // Light or dark for this window only, to picture both without changing the Windows mode.
+#pragma warning disable WPF0001 // Fluent ThemeMode is marked experimental
+                    app.Settings?.ThemeMode = mode == "light" ? System.Windows.ThemeMode.Light : System.Windows.ThemeMode.Dark;
+#pragma warning restore WPF0001
+                    break;
+                case ["settings-render"]:
+                    if (app.Settings is { } drawn)
+                        app.SaveRendering(drawn);
+                    break;
                 case ["settings-set", var surface, var key, var value]:
                     SetSetting(app, surface, key, value);
                     break;
@@ -139,6 +152,21 @@ static class SelfTest
                     break;
                 case ["settings-close"]:
                     app.Settings?.Close();
+                    break;
+                case ["settings-maximize"]:
+                    if (app.Settings is { } toMaximize)
+                        toMaximize.WindowState = toMaximize.WindowState == System.Windows.WindowState.Maximized ? System.Windows.WindowState.Normal : System.Windows.WindowState.Maximized;
+                    break;
+                case ["frame-hittest"]:
+                    if (app.Settings is { } framed)
+                    {
+                        // The answers Windows gets from Veneer's title bar: 9 = maximize button (snap layouts), 2 = caption (drag).
+                        nint hwnd = new System.Windows.Interop.WindowInteropHelper(framed).Handle;
+                        var max = framed.MaximizeCenterOnScreen();
+                        var bar = framed.TitleBarPointOnScreen();
+                        Log.Write($"self-test: hit test maximize = {Veneer.Interop.WindowTools.HitTest(hwnd, (int)max.X, (int)max.Y)}, title bar = {Veneer.Interop.WindowTools.HitTest(hwnd, (int)bar.X, (int)bar.Y)}, state = {framed.WindowState}");
+                    }
+
                     break;
                 case ["culture", var name]:
                     // Screenshots for the public (English) README on a PC in another language: texts and clock.

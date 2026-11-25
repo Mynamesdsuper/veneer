@@ -98,7 +98,7 @@
   <data name="EdgeLeft" xml:space="preserve"><value>Left</value></data>
   <data name="EdgeRight" xml:space="preserve"><value>Right</value></data>
   <data name="OriginTheme" xml:space="preserve"><value>From the theme</value></data>
-  <data name="OriginYours" xml:space="preserve"><value>Yours</value></data>
+  <data name="OriginYours" xml:space="preserve"><value>Changed by you</value></data>
   <data name="OriginDefault" xml:space="preserve"><value>Veneer default</value></data>
   <data name="Reset" xml:space="preserve"><value>Reset</value></data>
   <data name="ResetTip" xml:space="preserve"><value>Go back to the theme&apos;s value</value></data>
@@ -135,4 +135,8 @@
   <data name="PinImportButton" xml:space="preserve"><value>Import from the taskbar…</value></data>
   <data name="PinImportNothing" xml:space="preserve"><value>No apps the dock can use are pinned to the Windows taskbar.</value></data>
   <data name="PinImportDone" xml:space="preserve"><value>{0} apps imported into the dock.</value></data>
+  <data name="CaptionMinimize" xml:space="preserve"><value>Minimize</value></data>
+  <data name="CaptionMaximize" xml:space="preserve"><value>Maximize</value></data>
+  <data name="CaptionRestore" xml:space="preserve"><value>Restore</value></data>
+  <data name="CaptionClose" xml:space="preserve"><value>Close</value></data>
 </root>
