@@ -177,5 +177,70 @@ public class PinnedListTests
     {
         Assert.Equal("A!B", DockModel.EntryFor(new RunningApp("k", "A!B", @"C:\a.exe", [])));
         Assert.Equal(@"C:\a.exe", DockModel.EntryFor(new RunningApp("k", null, @"C:\a.exe", [])));
+        // An id without "!" would read back as an exe name: the exe path is pinned instead.
+        Assert.Equal(@"C:\zen\zen.exe", DockModel.EntryFor(new RunningApp("k", "F0DC299D809B9700", @"C:\zen\zen.exe", [])));
+    }
+}
+
+public class PinImportTests : IDisposable
+{
+    readonly string dir = Path.Combine(Path.GetTempPath(), "veneer-tests", Guid.NewGuid().ToString("N"));
+
+    public void Dispose()
+    {
+        if (Directory.Exists(dir))
+            Directory.Delete(dir, recursive: true);
+    }
+
+    string Squirrel()
+    {
+        Directory.CreateDirectory(Path.Combine(dir, "Discord", "app-1.0.9269"));
+        File.WriteAllText(Path.Combine(dir, "Discord", "Discord.exe"), "");
+        return Path.Combine(dir, "Discord");
+    }
+
+    [Fact]
+    public void Store_apps_by_id_desktop_apps_by_exe_path()
+    {
+        Assert.Equal("A.B_x!App", PinImport.EntryFor("A.B_x!App", null, null));
+        Assert.Equal(@"C:\Zen\zen.exe", PinImport.EntryFor("F0DC299D809B9700", @"C:\Zen\zen.exe", null));
+        Assert.Equal(@"C:\FL\FL64.exe", PinImport.EntryFor(null, @"C:\FL\FL64.exe", null));
+        Assert.Equal("explorer.exe", PinImport.EntryFor("Microsoft.Windows.Explorer", null, null));
+        Assert.Null(PinImport.EntryFor("Some.Unknown.Id", null, null));
+        Assert.Null(PinImport.EntryFor(null, @"C:\docs\readme.txt", null));
+        Assert.Null(PinImport.EntryFor(null, "relative.exe", null));
+    }
+
+    [Fact]
+    public void Squirrel_apps_are_pinned_by_their_stub_and_match_the_running_version()
+    {
+        string root = Squirrel();
+        string update = Path.Combine(root, "Update.exe");
+        string stub = Path.Combine(root, "Discord.exe");
+        Assert.Equal(stub, PinImport.EntryFor("com.squirrel.Discord.Discord", update, "--processStart Discord.exe"));
+        Assert.Equal(stub, PinImport.EntryFor(null, update, "--processStart \"Discord.exe\" --flag"));
+        Assert.Null(PinImport.EntryFor(null, update, "--processStart Missing.exe"));
+        Assert.Null(PinImport.EntryFor(null, update, @"--processStart ..\..\evil.exe")); // never outside its folder
+        Assert.Null(PinImport.EntryFor(null, update, "--other"));
+
+        var running = new RunningApp("k", null, Path.Combine(root, "app-1.0.9269", "Discord.exe"), []);
+        Assert.True(DockModel.Matches(stub, running));
+        Assert.False(DockModel.Matches(Path.Combine(root, "Other.exe"), running));
+        Assert.Equal(stub, DockModel.EntryFor(running));
+        Assert.Null(DockModel.SquirrelStub(@"C:\Windows\System32\cmd.exe"));
+    }
+
+    [Fact]
+    public void Entries_keep_taskbar_order_and_drop_duplicates_and_unusable_pins()
+    {
+        var entries = PinImport.Entries([
+            ("A.B_x!App", null, null),
+            (null, @"C:\FL\FL64.exe", null),
+            ("a.b_X!app", null, null),
+            ("Some.Unknown.Id", null, null),
+            (null, @"c:\fl\fl64.exe", null),
+            ("Microsoft.Windows.Explorer", null, null),
+        ]);
+        Assert.Equal(["A.B_x!App", @"C:\FL\FL64.exe", "explorer.exe"], entries);
     }
 }

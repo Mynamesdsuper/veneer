@@ -53,8 +53,8 @@ polished macOS-like desktop out of the box. Profiles switch theme, overrides and
 | A real default theme, **Aqua** (macOS-like, original artwork, light and dark) | ✅ Done, used when no theme is chosen |
 | Profiles, Veneer menu (bar and notification area), start with Windows | ✅ Done (Phase 7a) |
 | Settings window: profiles, theme install, your values with "reset to theme value", Windows choices, diagnostics; English and Italian | ✅ Done (Phase 7b) |
-| First-run import of the taskbar's pinned apps | ⏳ Next (Phase 7c) |
-| Two bundled themes with very different layouts | ⏳ Planned (Phase 8) |
+| First-run import of the taskbar's pinned apps (Store apps included, no duplicates) | ✅ Done (Phase 7c) |
+| Two bundled themes with very different layouts | ⏳ Next (Phase 8) |
 | First release | ⏳ Planned (Phase 9) |
 | Multi-monitor, display scaling above 100%, ARM64 | ❔ Not verified yet |
 

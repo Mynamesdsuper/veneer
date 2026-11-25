@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Veneer.Core.Settings;
 
 namespace Veneer.Core.Profiles;
@@ -41,28 +42,43 @@ public sealed class ProfileStore(string root)
     {
         get
         {
-            string? name = null;
-            try
-            {
-                if (File.Exists(SettingsPath))
-                {
-                    using var doc = JsonDocument.Parse(File.ReadAllText(SettingsPath), new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
-                    if (doc.RootElement.ValueKind == JsonValueKind.Object && doc.RootElement.TryGetProperty("profile", out var p) && p.ValueKind == JsonValueKind.String)
-                        name = p.GetString();
-                }
-            }
-            catch (Exception e) when (e is JsonException or IOException or UnauthorizedAccessException)
-            {
-                Log.Write($"{SettingsFileName}: {e.Message}; using the \"{DefaultName}\" profile");
-            }
-
+            string? name = ReadSettings()?["profile"] is JsonValue p && p.TryGetValue(out string? s) ? s : null;
             // The folder's own spelling, so the name shown matches the one on disk.
             return Names().FirstOrDefault(n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase)) ?? DefaultName;
         }
     }
 
-    public void SetActive(string name) =>
-        AtomicFile.Write(SettingsPath, JsonSerializer.Serialize(new { profile = name }, new JsonSerializerOptions { WriteIndented = true }));
+    public void SetActive(string name) => WriteSetting("profile", name);
+
+    /// <summary>Whether the first-run offer to import the Windows taskbar's pinned apps was already made.</summary>
+    public bool PinImportOffered
+    {
+        get => ReadSettings()?["pinImportOffered"] is JsonValue v && v.TryGetValue(out bool b) && b;
+        set => WriteSetting("pinImportOffered", value);
+    }
+
+    JsonObject? ReadSettings()
+    {
+        try
+        {
+            return File.Exists(SettingsPath)
+                ? JsonNode.Parse(File.ReadAllText(SettingsPath), documentOptions: new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true }) as JsonObject
+                : null;
+        }
+        catch (Exception e) when (e is JsonException or IOException or UnauthorizedAccessException)
+        {
+            Log.Write($"{SettingsFileName}: {e.Message}; using the defaults (profile \"{DefaultName}\")");
+            return null;
+        }
+    }
+
+    // Keeps the other settings; an unreadable file is replaced, as it was before there were other settings.
+    void WriteSetting(string key, JsonNode? value)
+    {
+        var settings = ReadSettings() ?? [];
+        settings[key] = value;
+        AtomicFile.Write(SettingsPath, settings.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+    }
 
     public Profile Load(string name, List<string> warnings)
     {

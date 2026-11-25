@@ -298,9 +298,13 @@ polished, macOS-like interface; **6b** ships a real default theme built on it.
       English and Italian ship; the language follows Windows. A test checks every key is translated and used.
       (FluidWin)
 
-**7c: first run**
-- [ ] Offer to import the Windows taskbar's pinned apps into the dock (user overrides), Store apps included,
+**7c: first run** (2026-11-25)
+- [x] Offer to import the Windows taskbar's pinned apps into the dock (user overrides), Store apps included,
       deduplicated by AppUserModelID (Discord changes its exe folder on every update). (FluidWin)
+      Read from the taskbar's own record (`Taskband\FavoritesResolve`), in taskbar order; the import replaces the
+      dock's list. Offered once on first run, and any time from Settings › Customize.
+- [x] Squirrel apps (Discord) pinned by their stub exe, which matches the running versioned copy; "Keep in Dock"
+      on apps whose id has no `!` (Zen, Steam) pins the exe instead of an id the dock could not read back.
 
 ## Phase 8: bundled themes
 

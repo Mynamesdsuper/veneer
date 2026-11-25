@@ -125,4 +125,14 @@
   <data name="Copy" xml:space="preserve"><value>Copia</value></data>
   <data name="Copied" xml:space="preserve"><value>Copiato.</value></data>
   <data name="Refresh" xml:space="preserve"><value>Aggiorna</value></data>
+  <data name="PinImportTitle" xml:space="preserve"><value>Veneer</value></data>
+  <data name="PinImportHeading" xml:space="preserve"><value>Portare nel dock le app della barra delle applicazioni?</value></data>
+  <data name="PinImportNote" xml:space="preserve"><value>Queste app sono fissate sulla barra delle applicazioni di Windows. Importarle sostituisce le app del dock. Puoi farlo anche dopo da Impostazioni › Personalizza.</value></data>
+  <data name="PinImportImport" xml:space="preserve"><value>Importa</value></data>
+  <data name="PinImportNotNow" xml:space="preserve"><value>Non ora</value></data>
+  <data name="PinImportSection" xml:space="preserve"><value>App dalla barra delle applicazioni</value></data>
+  <data name="PinImportSettingsNote" xml:space="preserve"><value>Metti nel dock le app fissate sulla barra delle applicazioni di Windows, nello stesso ordine. Sostituiscono le app che ci sono ora nel dock.</value></data>
+  <data name="PinImportButton" xml:space="preserve"><value>Importa dalla barra…</value></data>
+  <data name="PinImportNothing" xml:space="preserve"><value>Sulla barra delle applicazioni non ci sono app fissate che il dock può usare.</value></data>
+  <data name="PinImportDone" xml:space="preserve"><value>{0} app importate nel dock.</value></data>
 </root>

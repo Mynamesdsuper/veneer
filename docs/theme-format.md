@@ -188,7 +188,9 @@ state names are ignored with a warning; missing states keep the glyph.
 
 Pinned entries can be:
 
-- an exe file name (`"explorer.exe"`, found like the Run dialog does) or a full path;
+- an exe file name (`"explorer.exe"`, found like the Run dialog does) or a full path. A full path to an app
+  installed by Squirrel (`...\Discord\Discord.exe`, the stub next to `Update.exe`) also matches the copy that
+  runs from its versioned folder (`...\Discord\app-1.0.9269\Discord.exe`), so the pin survives updates;
 - an AppUserModelID for Store and packaged apps (`"Microsoft.WindowsTerminal_8wekyb3d8bbwe!App"`). Pin
   Store apps this way: a Store app's exe name does not match its running windows (`calc.exe` starts the
   Calculator app, which runs as `Microsoft.WindowsCalculator_8wekyb3d8bbwe!App`);
@@ -196,8 +198,10 @@ Pinned entries can be:
 - `"---"`, a separator line.
 
 The user can change the pinned apps from the dock (right click: Keep in Dock, Remove from Dock; drag to
-reorder). The new list goes to the user's overrides as `surfaces[id=<dock id>].defaultPinned`, so it survives
-theme updates, and other themes with a dock of the same `id` use it too.
+reorder), or import the apps pinned to the Windows taskbar (offered on first run, and from Settings ›
+Customize; the import replaces the list). The new list goes to the user's overrides as
+`surfaces[id=<dock id>].defaultPinned`, so it survives theme updates, and other themes with a dock of the same `id`
+use it too.
 
 Running apps that are not pinned follow the pinned ones, in the order they were opened. Windows of the same
 app are grouped by AppUserModelID, or by exe when the app has none.

@@ -47,9 +47,25 @@ public static class DockModel
         if (app.ExePath is null)
             return false;
         // Fully qualified only: "C:foo.exe" is relative to a drive's current folder and is treated as a file name.
-        return Path.IsPathFullyQualified(pinned)
-            ? string.Equals(Path.GetFullPath(pinned), app.ExePath, StringComparison.OrdinalIgnoreCase)
-            : string.Equals(pinned, Path.GetFileName(app.ExePath), StringComparison.OrdinalIgnoreCase);
+        if (!Path.IsPathFullyQualified(pinned))
+            return string.Equals(pinned, Path.GetFileName(app.ExePath), StringComparison.OrdinalIgnoreCase);
+        string full = Path.GetFullPath(pinned);
+        return string.Equals(full, app.ExePath, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(full, SquirrelStub(app.ExePath), StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// For an exe a Squirrel installer runs from a versioned folder (<c>...\Discord\app-1.0.9269\Discord.exe</c>):
+    /// the stub with the same name one folder up (<c>...\Discord\Discord.exe</c>), which starts the newest version.
+    /// Only the path is computed; null for any other exe.
+    /// </summary>
+    public static string? SquirrelStub(string exePath)
+    {
+        string? folder = Path.GetDirectoryName(exePath);
+        string? parent = folder is null ? null : Path.GetDirectoryName(folder);
+        return parent is not null && Path.GetFileName(folder)!.StartsWith("app-", StringComparison.OrdinalIgnoreCase)
+            ? Path.Combine(parent, Path.GetFileName(exePath))
+            : null;
     }
 
     /// <summary>
@@ -83,8 +99,15 @@ public static class DockModel
         return items;
     }
 
-    /// <summary>The pinned-list entry for a running app: its AppUserModelID when it has one, else its exe path.</summary>
-    public static string? EntryFor(RunningApp app) => app.Aumid ?? app.ExePath;
+    /// <summary>
+    /// The pinned-list entry for a running app: its AppUserModelID when it is a packaged app's, else its exe path (a
+    /// Squirrel app's stub when there is one, so the pin survives the app's updates). Ids without "!" (Zen, Steam)
+    /// would be read back as exe names, so they are not used.
+    /// </summary>
+    public static string? EntryFor(RunningApp app) =>
+        app.Aumid is { } id && IsAumid(id) ? id
+        : app.ExePath is { } exe && SquirrelStub(exe) is { } stub && File.Exists(stub) ? stub
+        : app.ExePath;
 
     /// <summary>Pins <paramref name="entry"/> at <paramref name="index"/> (the end when out of range). No duplicates.</summary>
     public static List<string> Pin(IReadOnlyList<string> pinned, string entry, int index = int.MaxValue)

@@ -125,4 +125,14 @@
   <data name="Copy" xml:space="preserve"><value>Copy</value></data>
   <data name="Copied" xml:space="preserve"><value>Copied.</value></data>
   <data name="Refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="PinImportTitle" xml:space="preserve"><value>Veneer</value></data>
+  <data name="PinImportHeading" xml:space="preserve"><value>Bring your taskbar apps to the dock?</value></data>
+  <data name="PinImportNote" xml:space="preserve"><value>These apps are pinned to the Windows taskbar. Importing them replaces the apps in the dock. You can do it later from Settings › Customize.</value></data>
+  <data name="PinImportImport" xml:space="preserve"><value>Import</value></data>
+  <data name="PinImportNotNow" xml:space="preserve"><value>Not now</value></data>
+  <data name="PinImportSection" xml:space="preserve"><value>Apps from the Windows taskbar</value></data>
+  <data name="PinImportSettingsNote" xml:space="preserve"><value>Put the apps pinned to the Windows taskbar in the dock, in the same order. They replace the apps in the dock now.</value></data>
+  <data name="PinImportButton" xml:space="preserve"><value>Import from the taskbar…</value></data>
+  <data name="PinImportNothing" xml:space="preserve"><value>No apps the dock can use are pinned to the Windows taskbar.</value></data>
+  <data name="PinImportDone" xml:space="preserve"><value>{0} apps imported into the dock.</value></data>
 </root>

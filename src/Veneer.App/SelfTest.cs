@@ -13,7 +13,9 @@ namespace Veneer.App;
 /// <c>profile:&lt;name&gt;</c>, <c>theme:&lt;folder name&gt;</c>, <c>autostart:on|off</c> (writes HKCU Run),
 /// <c>settings[:&lt;page id&gt;]</c>, <c>settings-shot</c> (the settings window only), <c>settings-set:&lt;surface&gt;:&lt;key&gt;:&lt;value&gt;</c>,
 /// <c>settings-reset:&lt;surface&gt;:&lt;key&gt;</c>, <c>settings-install:&lt;zip, with | for the drive colon&gt;</c>,
-/// <c>settings-report</c> (first report lines to the log), <c>settings-rename:&lt;old&gt;:&lt;new&gt;</c>, <c>settings-close</c>, <c>quit</c>.
+/// <c>settings-report</c> (first report lines to the log), <c>settings-rename:&lt;old&gt;:&lt;new&gt;</c>, <c>settings-close</c>,
+/// <c>pin-offer[:first]</c> (the taskbar import offer; <c>first</c> saves the first-run flag on close), <c>pin-offer-shot</c>,
+/// <c>pin-offer-import</c>, <c>pin-offer-close</c>, <c>quit</c>.
 /// Example: <c>--self-test "wait:2,menu,wait:1,screenshot,close-menu,wait:1,quit"</c>.
 /// </summary>
 static class SelfTest
@@ -137,6 +139,28 @@ static class SelfTest
                     break;
                 case ["settings-close"]:
                     app.Settings?.Close();
+                    break;
+                case ["pin-offer"]:
+                case ["pin-offer", "first"]:
+                    Log.Write($"self-test: pin offer shown = {app.OfferPinImport(firstRun: step.EndsWith(":first"))}");
+                    if (app.PinImportOffer is { } offer)
+                        offer.Topmost = true;
+                    break;
+                case ["pin-offer-shot"]:
+                    if (app.PinImportOffer is { } window)
+                    {
+                        var scale = System.Windows.PresentationSource.FromVisual(window)?.CompositionTarget?.TransformToDevice ?? System.Windows.Media.Matrix.Identity;
+                        app.SaveScreenshot(new((int)(window.Left * scale.M11), (int)(window.Top * scale.M22),
+                            (int)((window.Left + window.ActualWidth) * scale.M11), (int)((window.Top + window.ActualHeight) * scale.M22)));
+                    }
+
+                    break;
+                case ["pin-offer-import"]:
+                    app.PinImportOffer?.Import();
+                    break;
+                case ["pin-offer-close"]:
+                    app.PinImportOffer?.Close();
+                    Log.Write($"self-test: pin import offered = {app.Profiles.PinImportOffered}");
                     break;
                 case ["quit"]:
                     app.Quit();

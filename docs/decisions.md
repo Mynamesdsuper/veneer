@@ -6,6 +6,29 @@ Record each decision with its date, context, the options considered and the outc
 
 C# + WPF on .NET 10 (LTS), Windows 11 only. .NET 8 reached end of support on 2026-11-10.
 
+## 2026-11-25: Importing the taskbar's pinned apps (Phase 7c)
+
+- **Source: the taskbar's own record.** Store apps pinned to the taskbar have no shortcut file; only
+  `HKCU\...\Explorer\Taskband\FavoritesResolve` lists every pin, in taskbar order. It is a run of serialized shell
+  links, each after its 4-byte size; Windows' own `ShellLink` object reads each one (`IPersistStream.Load`), so no
+  undocumented format is decoded by hand. Desktop pins point at the shortcut files of `User Pinned\TaskBar` (or
+  `ImplicitAppShortcuts`), which are read in turn. If the record cannot be read, the shortcut files are the fallback
+  (desktop apps only, logged). Nothing on the system is written.
+- **Which entry each pin becomes.** Running windows of desktop apps often do not carry the id their shortcut sets
+  (Discord, Spotify, Explorer windows have none; Zen and Steam carry ids without `!`, which the pinned-list format
+  reads as exe names). So: Store apps by AppUserModelID; desktop apps by the full path of their exe; Explorer (whose
+  pin is a shell folder) as `explorer.exe`; other id-only desktop pins are skipped and logged.
+- **Squirrel apps (Discord).** Their shortcut starts `Update.exe --processStart Discord.exe`, and the app runs from
+  `app-<version>\`, a folder that changes on every update. The pin is the stub `...\Discord\Discord.exe`, which
+  starts the newest version, and a full-path pin also matches the same exe one `app-*` folder below it. The name
+  from the arguments may not leave the updater's folder. "Keep in Dock" on a running Squirrel app pins the stub too.
+- **Replace, not merge** (the author's choice): the import replaces the dock's pinned list in the user's overrides
+  (every dock of the theme), without duplicates; the theme's own list stays in the theme.
+- **Offered once.** A small Fluent window (icons and names, Import / Not now) after the first theme load, when the
+  profile's theme has a dock and the taskbar has something to import. The answer is stored as `pinImportOffered` in
+  `settings.json`, next to the active profile; quitting Veneer with the window open is no answer. Not shown with
+  `--theme` or during self-tests. Settings › Customize can run the import again.
+
 ## 2026-11-24: Settings window and translations (Phase 7b)
 
 - **Built in code, in the Fluent style.** Like the bars and the dock, the window is built in C# (no XAML), and the

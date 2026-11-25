@@ -1,10 +1,12 @@
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text.Json.Nodes;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using Veneer.Core;
+using Veneer.Core.Dock;
 using Veneer.Core.Layout;
 using Veneer.Core.Profiles;
 using Veneer.Core.Settings;
@@ -292,6 +294,76 @@ sealed class App : Application
         if (result.Success || bars.Count == 0)
             Rebuild();
         Changed?.Invoke(); // after a failed load too: the settings window lists its problems
+        if (result.Success && !pinOfferChecked)
+            Dispatcher.BeginInvoke(OfferPinImportOnFirstRun, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+    }
+
+    bool pinOfferChecked;
+    PinImportWindow? pinImport;
+
+    internal PinImportWindow? PinImportOffer => pinImport;
+
+    /// <summary>The first time Veneer runs with a dock: offer the Windows taskbar's pinned apps, once.</summary>
+    void OfferPinImportOnFirstRun()
+    {
+        if (pinOfferChecked)
+            return;
+        pinOfferChecked = true;
+        // Not with --theme (profiles off) nor in self-tests (a window waiting for a click would hold them up).
+        if (session.Profile is null || session.ThemeFolder is null || docks.Count == 0 || options.SelfTest is not null || profiles.PinImportOffered)
+            return;
+        if (!OfferPinImport(firstRun: true))
+            Try("save the first-run flag", () => profiles.PinImportOffered = true); // nothing to offer: do not look again
+    }
+
+    /// <summary>
+    /// Shows the offer to replace the dock's pinned apps with the Windows taskbar's. False when the taskbar has no app
+    /// the dock can use (nothing is shown then).
+    /// </summary>
+    internal bool OfferPinImport(bool firstRun = false)
+    {
+        if (pinImport is not null)
+        {
+            pinImport.Activate();
+            return true;
+        }
+
+        var entries = PinImport.Entries(TaskbarPins.Read().Select(p => (p.Aumid, p.TargetPath, p.Arguments)));
+        Log.Write($"taskbar pins: {entries.Count} app(s) the dock can use");
+        if (entries.Count == 0 || session.ThemeFolder is null || !themes.Current.Surfaces.OfType<DockSurface>().Any())
+            return false;
+        pinImport = new PinImportWindow(themes.Current, entries, () => ImportPins(entries));
+        pinImport.Closed += (_, _) =>
+        {
+            pinImport = null;
+            // Quitting Veneer closes it too; that is no answer, so the offer comes back next time.
+            if (firstRun && !Dispatcher.HasShutdownStarted)
+                Try("save the first-run flag", () => profiles.PinImportOffered = true);
+        };
+        pinImport.Show();
+        pinImport.Activate();
+        return true;
+    }
+
+    /// <summary>Raised after an import: the number of apps, and the first save error (null when all was saved).</summary>
+    internal event Action<int, string?>? PinsImported;
+
+    // Replaces every dock's pinned list in the user's overrides; hot reload then updates the docks.
+    void ImportPins(IReadOnlyList<string> entries)
+    {
+        string? failure = null;
+        foreach (var dock in themes.Current.Surfaces.OfType<DockSurface>())
+        {
+            var json = new JsonArray(entries.Select(e => (JsonNode?)JsonValue.Create(e)).ToArray());
+            if (!OverridesFile.TrySetSurfaceValue(session.OverridesPath, dock.Id, "defaultPinned", json, out string? error))
+            {
+                Log.Write($"dock \"{dock.Id}\": imported apps not saved: {error}");
+                failure ??= error ?? "?";
+            }
+        }
+
+        Log.Write($"dock: {entries.Count} app(s) imported from the Windows taskbar{(failure is null ? "" : " (not all saved)")}");
+        PinsImported?.Invoke(entries.Count, failure);
     }
 
     internal WindowsPreferences Preferences()

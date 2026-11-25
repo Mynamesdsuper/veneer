@@ -66,9 +66,11 @@ sealed class SettingsWindow : Window
         Content = grid;
 
         app.Changed += Build;
+        app.PinsImported += OnPinsImported;
         Closed += (_, _) =>
         {
             app.Changed -= Build;
+            app.PinsImported -= OnPinsImported;
             StopPendingSaves();
         };
     }
@@ -280,6 +282,17 @@ sealed class SettingsWindow : Window
             page.Children.Add(Section(surface is DockSurface ? Strings.SurfaceDock(surface.Id) : Strings.SurfaceBar(surface.Id)));
             foreach (var setting in SurfaceSettings.For(theme, surface))
                 page.Children.Add(SettingRow(setting));
+        }
+
+        if (theme.Surfaces.OfType<DockSurface>().Any())
+        {
+            page.Children.Add(Section(Strings.PinImportSection));
+            page.Children.Add(Note(Strings.PinImportSettingsNote));
+            page.Children.Add(Button(Strings.PinImportButton, () =>
+            {
+                status = app.OfferPinImport() ? null : (Strings.PinImportNothing, false);
+                Build();
+            }));
         }
 
         var orphans = app.LastLoad?.OrphanOverrides ?? [];
@@ -524,6 +537,12 @@ sealed class SettingsWindow : Window
         string Value(string name) => key?.GetValue(name)?.ToString() ?? "?";
         string windows = int.TryParse(Value("CurrentBuildNumber"), out int build) && build >= 22000 ? "Windows 11" : "Windows";
         return $"{windows} {Value("EditionID")} {Value("DisplayVersion")}, build {Value("CurrentBuildNumber")}.{Value("UBR")}";
+    }
+
+    void OnPinsImported(int count, string? error)
+    {
+        status = error is null ? (Strings.PinImportDone(count), false) : (Strings.NotSaved(error), true);
+        Build();
     }
 
     // ----- small pieces -----

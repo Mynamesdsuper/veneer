@@ -85,6 +85,23 @@ public class ProfileTests : IDisposable
     }
 
     [Fact]
+    public void Pin_import_flag_and_active_profile_share_the_settings_file()
+    {
+        Assert.False(Store.PinImportOffered);
+        Store.Create("Work");
+        Store.SetActive("Work");
+        Store.PinImportOffered = true;
+        Assert.True(Store.PinImportOffered);
+        Assert.Equal("Work", Store.Active);
+
+        Store.SetActive("default");
+        Assert.True(Store.PinImportOffered); // switching profiles keeps the flag
+
+        File.WriteAllText(Path.Combine(dir, ProfileStore.SettingsFileName), "{ broken");
+        Assert.False(Store.PinImportOffered);
+    }
+
+    [Fact]
     public void Duplicate_copies_theme_overrides_and_windows_preferences()
     {
         Store.Save("default", new Profile("other"));

@@ -132,10 +132,8 @@ public sealed class AppWindowTracker : IDisposable
         return cloaked == 0;
     }
 
-    static readonly PROPERTYKEY AppUserModelId = new() { fmtid = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), pid = 5 };
-
     /// <summary>The window's own AppUserModelID property (set by Store apps and apps with an explicit id).</summary>
-    static unsafe string? WindowAumid(HWND h)
+    static string? WindowAumid(HWND h)
     {
         try
         {
@@ -143,16 +141,7 @@ public sealed class AppWindowTracker : IDisposable
             var store = (IPropertyStore)obj;
             try
             {
-                var key = AppUserModelId;
-                store.GetValue(&key, out PROPVARIANT value);
-                try
-                {
-                    return value.Anonymous.Anonymous.vt == VARENUM.VT_LPWSTR ? value.Anonymous.Anonymous.Anonymous.pwszVal.ToString() : null;
-                }
-                finally
-                {
-                    PInvoke.PropVariantClear(ref value);
-                }
+                return ShellItems.Aumid(store);
             }
             finally
             {
@@ -340,6 +329,30 @@ public static class ShellItems
         catch (Exception e) when (e is not OutOfMemoryException)
         {
             Log.Write($"icon for \"{parsingName}\": {e.Message}");
+            return null;
+        }
+    }
+
+    static readonly PROPERTYKEY AppUserModelId = new() { fmtid = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), pid = 5 };
+
+    /// <summary>The <c>System.AppUserModel.ID</c> value of a property store (window, shortcut or shell item), or null.</summary>
+    internal static unsafe string? Aumid(IPropertyStore store)
+    {
+        try
+        {
+            var key = AppUserModelId;
+            store.GetValue(&key, out PROPVARIANT value);
+            try
+            {
+                return value.Anonymous.Anonymous.vt == VARENUM.VT_LPWSTR && value.Anonymous.Anonymous.Anonymous.pwszVal.ToString() is { Length: > 0 } id ? id : null;
+            }
+            finally
+            {
+                PInvoke.PropVariantClear(ref value);
+            }
+        }
+        catch (Exception e) when (e is not OutOfMemoryException)
+        {
             return null;
         }
     }

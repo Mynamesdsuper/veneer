@@ -253,6 +253,26 @@ static class Strings
 
     public static string Refresh => Get();
 
+    public static string PinImportTitle => Get();
+
+    public static string PinImportHeading => Get();
+
+    public static string PinImportNote => Get();
+
+    public static string PinImportImport => Get();
+
+    public static string PinImportNotNow => Get();
+
+    public static string PinImportSection => Get();
+
+    public static string PinImportSettingsNote => Get();
+
+    public static string PinImportButton => Get();
+
+    public static string PinImportNothing => Get();
+
+    public static string PinImportDone(int count) => Format(count);
+
     // A missing key shows its name instead of crashing; the resource tests catch it first.
     static string Get([CallerMemberName] string key = "") => Resources.GetString(key, CultureInfo.CurrentUICulture) ?? key;
 
