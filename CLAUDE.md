@@ -52,6 +52,10 @@ starting work.
   paths or symlinks). Zip-slip protection and size limits. Allowed extensions only.
 - Never disable Windows security features or ask the author to.
 - Event-driven (WinEvent hooks), no tight polling. Idle CPU ~0%. Per-monitor DPI v2.
+- The UI thread never waits for the disk, the registry or another process.
+- Costly effects (glass, animations) have a cheap fallback, used when Windows transparency effects are off, on
+  battery saver and while a full-screen app or game is in front.
+- Never load code into other processes. Never read other apps' pixels without the user turning it on.
 
 ## Assets and other projects
 
@@ -59,7 +63,9 @@ starting work.
   `references/`, icon sources, user themes.
 - **MacTahoe icons** (GPL-3.0): local only, for the author's theme. Convert them with a tool in `tools/` that never
   writes into the repo.
-- **WacOS** (source-available, reuse forbidden): look only. Copy no code or assets.
+- **WacOS** (source-available, reuse forbidden): look only. Copy no code, assets, shaders, algorithms or constants,
+  and do not paraphrase them. Take only product ideas and the names of public Windows APIs, then build from
+  Microsoft's docs and our own measurements. The analysis and the picked ideas are in `docs/roadmap.md` (tag "WacOS").
 - **FluidWin** (MIT): ideas are fine. Porting real logic needs its copyright notice in `THIRD-PARTY-NOTICES.md`.
   The analysis and the picked ideas are in `docs/roadmap.md` (tag "FluidWin").
 
@@ -81,6 +87,10 @@ starting work.
   state the choice, and continue.
 - Visual checks: compare surfaces against `references/` using the Debug screenshot hotkey (output in
   `artifacts/screenshots/`) and report remaining differences.
+- Fidelity: measure a look value in a reference (size, radius, blur, color) before putting it in a theme, and note
+  where it was measured in `docs/decisions.md`. No guessed numbers.
+- README: keep it in step with what works. Every screenshot shows real output; every claim about safety, network or
+  performance is checked or measured.
 - End of a phase, in this order:
   1. `dotnet build` and `dotnet test` green.
   2. A code review of the phase's diff, and fixes for the real problems found.

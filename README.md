@@ -1,56 +1,71 @@
-<h1 align="center">Veneer</h1>
+<div align="center">
 
-<h4 align="center">A themeable desktop shell for Windows 11: themes decide which bars and docks you get, where they sit and how they look.</h4>
+# Veneer
 
-<p align="center">
-  <a href="#project-status">Status</a> |
-  <a href="docs/roadmap.md">Roadmap</a> |
-  <a href="#why-veneer">Why Veneer</a> |
-  <a href="#build">Build</a> |
-  <a href="#themes">Themes</a> |
-  <a href="docs/decisions.md">Decisions</a> |
-  <a href="#license">License</a>
-</p>
+**A themeable desktop shell for Windows 11: themes decide which bars and docks you get, where they sit and how they
+look.**
+
+[![CI](https://github.com/Mynamesdsuper/veneer/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Mynamesdsuper/veneer/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green?style=flat)](LICENSE)
+![Windows 11](https://img.shields.io/badge/Windows-11_22H2+-0078D4?style=flat&logo=windows11&logoColor=white)
+![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?style=flat&logo=dotnet&logoColor=white)
+![Status](https://img.shields.io/badge/status-early_preview-orange?style=flat)
+
+[Screenshots](#screenshots) · [Status](#project-status) · [Why Veneer](#why-veneer) · [Is it safe?](#is-it-safe) ·
+[Testing](#testing-and-stability) · [Build](#build) · [Themes](#themes) · [Roadmap](docs/roadmap.md) ·
+[Decisions](docs/decisions.md) · [License](#license)
+
+</div>
 
 Veneer replaces the Windows taskbar with its own bars and dock, and lets *themes* decide everything about them:
-which components exist, which screen edge they sit on, which modules they show and how they look.
+which pieces exist, which screen edge they sit on, which modules they show and how they look. Your own tweaks sit on
+top of the theme, and the Windows taskbar always comes back when Veneer quits.
+
+Written in C# and WPF on .NET 10, with a thin Win32 layer. No Electron, no web views, no code inside other apps.
+
+![The Aqua theme, dark](docs/screenshots/aqua-dark.png)
 
 ## Screenshots
 
-The default theme, **Aqua**, on a clean desktop (dark and light):
+### Aqua, the default theme
 
-![Aqua, dark](docs/screenshots/aqua-dark.png)
+A glass menu bar on top and a magnifying dock at the bottom, with original artwork, in dark and light.
 
-![Aqua, light](docs/screenshots/aqua-light.png)
+| | |
+|---|---|
+| ![Aqua, light](docs/screenshots/aqua-light.png) **Light** variant: it follows the Windows mode | ![Aqua details](docs/screenshots/aqua-details.png) **Logo menu** and the **dock** magnifying under the cursor, with its label |
 
-The logo menu and the magnifying dock with its label:
+### Strip
 
-![Aqua details](docs/screenshots/aqua-details.png)
+The same engine with a completely different layout: one floating, taskbar-like bar and no dock.
 
-**Strip**, one floating taskbar-like bar and no dock (dark and light):
+| | |
+|---|---|
+| ![Strip, dark](docs/screenshots/strip-dark.png) **Dark** | ![Strip, light](docs/screenshots/strip-light.png) **Light** |
 
-![Strip, dark](docs/screenshots/strip-dark.png)
+### A personal theme
 
-![Strip, light](docs/screenshots/strip-light.png)
+What a local theme can look like: a macOS-like setup built with `tools/svg-icons`. It is **not part of Veneer** and
+is not distributed here: its wallpapers and its icons (MacTahoe, GPL-3.0) belong to their owners.
 
-An example of a personal theme: a local macOS-like theme, built with `tools/svg-icons` (dark and light). It is
-**not part of Veneer** and is not distributed here: its wallpapers and its icons (MacTahoe, GPL-3.0) belong to their
-owners.
+| | |
+|---|---|
+| ![Local macOS-like theme, dark](docs/screenshots/golden-gate-dark.png) **Dark** | ![Local macOS-like theme, light](docs/screenshots/golden-gate-light.png) **Light** |
 
-![Local macOS-like theme, dark](docs/screenshots/golden-gate-dark.png)
+### Settings
 
-![Local macOS-like theme, light](docs/screenshots/golden-gate-light.png)
+The settings window in the Windows 11 style, with Veneer's own frame, in English and Italian. Every value shows
+whether it comes from the theme or from you, with "reset to theme value".
 
-The settings window, in the Windows 11 style (dark and light):
-
-![Veneer settings](docs/screenshots/settings.png)
+![Veneer settings, dark and light](docs/screenshots/settings.png)
 
 ## Project status
 
-**Early. Not usable day to day yet.** The theme engine works and is tested. The app already draws blurred bars
+**Early preview. Not ready for daily use yet.** The theme engine works and is tested. The app draws blurred bars
 from a theme with all their modules and a dock with magnification, hides the taskbar and always gives it back.
-Themes also set the wallpaper, accent color and light/dark mode, with a full restore. The default theme, Aqua, gives a
-polished macOS-like desktop out of the box. Profiles switch theme, overrides and Windows settings together, from the Veneer menu in the bar or the notification area, and a settings window (English and Italian) changes the main values, installs themes and copies a diagnostics report. The checklist of every feature is in [docs/roadmap.md](docs/roadmap.md).
+Themes also set the wallpaper, accent color and light/dark mode, with a full restore. Profiles switch theme,
+overrides and Windows settings together, and a settings window changes the main values, installs themes and copies
+a diagnostics report. Every feature has its checkbox in [docs/roadmap.md](docs/roadmap.md).
 
 | What | Status |
 |---|---|
@@ -76,6 +91,7 @@ polished macOS-like desktop out of the box. Profiles switch theme, overrides and
 | Two bundled themes with very different layouts: Aqua (menu bar + dock) and Strip (one floating taskbar-like bar) | ✅ Done (Phase 8a) |
 | Icon conversion tool (SVG → PNG with an exe map) and visual fidelity pass | ✅ Done (Phase 8b) |
 | More dock items (Downloads, Recycle Bin, one dot per window) | ⏳ Next (Phase 8c) |
+| Reduced effects, stall watch, stress test, measured performance | ⏳ Planned (Phase 9) |
 | First release | ⏳ Planned (Phase 9) |
 | Multi-monitor, display scaling above 100%, ARM64 | ❔ Not verified yet |
 
@@ -97,25 +113,40 @@ Veneer is built around a different idea:
 - **Always reversible.** The Windows taskbar comes back when Veneer exits, even after a crash. Every
   Windows setting a theme changes (wallpaper, accent color, light/dark mode) can be restored to what you had.
 
-## Planned features
+## Is it safe?
 
-### First release (MVP)
+A fair question for anything that hides your taskbar. You do not have to trust the author: the code is MIT and
+every claim below can be checked in it.
 
-| Area | What it does |
-|------|--------------|
-| **Bars** | On any screen edge, optionally reserving screen space. Modules: logo menu (system actions), active app name, clock, volume, network, battery, spacers. |
-| **Dock** | Bottom, left or right edge. Pinned and running apps, running indicator, hover magnification, drag to reorder, context menu, separators. |
-| **Theme engine** | Layout + styling, design tokens, light/dark variants, hot reload, install from `.zip`, strict validation. |
-| **Windows integration** | Optional per theme: wallpaper, accent color, light/dark mode, with a snapshot to restore the originals. |
-| **Personalization layer** | Your overrides on top of any theme, with "reset to theme value" per setting. |
-| **Profiles** | Create, duplicate, switch from the tray, the settings window or a hotkey. |
-| **Bundled themes** | Two original themes with very different layouts, to show what the engine can do. |
+- **No network at all.** Veneer contacts no server: no telemetry, no accounts, no update check. (An opt-in update
+  check is planned after the first release; it will verify the file's hash and never update silently.)
+- **No administrator rights.** Veneer runs as your user. No services, no drivers, no scheduled tasks.
+- **Nothing inside other apps.** Veneer never loads code into other processes and never reads other apps' menus.
+  It only lists their windows and reads the apps' names and icons, to show them in the dock and the bar.
+- **Themes cannot run code.** A theme is JSON plus images and fonts. Paths must stay inside the theme folder (no
+  `..`, absolute paths or links), only known file types are read, and `.zip` installs are checked for size and
+  zip-slip.
+- **What it changes, and how it gives it back:**
+  - The taskbar: auto-hide plus hidden, restored on exit, crash, kill (by a watchdog process), Explorer restart,
+    next start and power loss. **Ctrl+Alt+Shift+F12** ends Veneer and restores the taskbar if it ever hangs.
+  - Wallpaper, accent color and light/dark mode, only if the theme asks and you allow each one: a snapshot is saved
+    before the first change, and "Restore original Windows settings" puts back exactly what you had.
+  - Start with Windows: one entry under `HKCU\...\Run`, off by default.
+  - Only your user's registry hive (`HKCU`) is written. Veneer's own files live in `%APPDATA%\Veneer`.
 
-### Later
+## Testing and stability
 
-Desktop widgets (calendar, weather, battery, photos), a live theme editor, an in-app theme gallery,
-automatic profile switching (time of day, power, running apps), accent color from wallpaper, a launcher,
-full multi-monitor support.
+- **339 unit tests** for the theme engine, overrides, profiles, layout, dock logic and file safety, run by CI on
+  every push.
+- **Every exit path of the taskbar** was tested on a real PC: normal exit, unhandled exception, `FailFast`,
+  `taskkill /f`, "End process tree", Explorer restart. The results are in [docs/decisions.md](docs/decisions.md).
+- **Windows settings restore** is checked value by value against a record taken before each real run (0 differences
+  expected).
+- **A self-test mode** drives the real app (menus, dock hover, profile and theme switches, settings pages,
+  screenshots) without simulated input, so visual checks can be repeated.
+- **A code review at the end of every phase**, with the fixes listed in [docs/decisions.md](docs/decisions.md).
+- **Known gaps:** multi-monitor, display scaling above 100%, ARM64 and logoff with the taskbar hidden are not
+  verified yet. Drag to reorder and snap layouts still need a test by hand.
 
 ## Roadmap
 
@@ -130,9 +161,12 @@ full multi-monitor support.
 | 6 | Look and feel: what the engine can draw, and a real default theme | ✅ |
 | 7 | Profiles, settings window, tray, theme install, start with Windows | ✅ |
 | 8 | Bundled themes | ⏳ in progress (8a, 8b done) |
-| 9 | Polish, documentation, first release | ⏳ |
+| 9 | Polish, reduced effects, stability checks, documentation, first release | ⏳ |
 
-Every feature, phase by phase, with its checkbox: [docs/roadmap.md](docs/roadmap.md).
+**Later:** a frosted "glass material" option, desktop widgets (calendar, weather, battery, photos), a launcher,
+live window previews, a live theme editor, an in-app theme gallery, automatic profile switching, accent color from
+the wallpaper, full multi-monitor support. Every feature, phase by phase, with its checkbox:
+[docs/roadmap.md](docs/roadmap.md).
 
 ## Requirements
 
@@ -168,7 +202,7 @@ src/
 tests/
   Veneer.Core.Tests/
 themes/             Themes shipped with Veneer (original assets only).
-tools/              Developer tools (e.g. icon import). Never used by the theme loader.
+tools/              Developer tools (icon conversion, theme art). Never used by the theme loader.
 docs/
   theme-format.md   How to write a theme.
   roadmap.md        Full plan with a checklist of every feature.
@@ -190,7 +224,10 @@ The project is not ready for contributions yet. Issues with ideas and feedback a
 
 ## License
 
-[MIT](LICENSE).
+[MIT](LICENSE): use, change and share the code freely, keeping the copyright notice.
+
+The bundled themes use original assets only. Assets in your own themes (icons, fonts, wallpapers) keep their own
+licenses.
 
 Veneer is an independent project. It is not affiliated with, endorsed by or sponsored by Microsoft or
 Apple. Windows is a trademark of Microsoft Corporation; macOS is a trademark of Apple Inc.

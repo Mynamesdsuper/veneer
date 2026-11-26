@@ -22,12 +22,13 @@ Every phase ends with `dotnet build` and `dotnet test` green and one commit.
 - [Phase 4: dock](#phase-4-dock): ✅ done
 - [Phase 5: Windows settings from themes](#phase-5-windows-settings-from-themes): ✅ done
 - [Phase 6: look and feel](#phase-6-look-and-feel): ✅ done
-- [Phase 7: profiles, settings, tray, install, autostart](#phase-7-profiles-settings-tray-install-autostart): ⏳ next
-- [Phase 8: bundled themes](#phase-8-bundled-themes)
+- [Phase 7: profiles, settings, tray, install, autostart](#phase-7-profiles-settings-tray-install-autostart): ✅ done
+- [Phase 8: bundled themes](#phase-8-bundled-themes): ⏳ in progress (8a, 8b done; 8c next)
 - [Phase 9: polish and first release](#phase-9-polish-and-first-release)
 - [After the first release](#after-the-first-release)
 - [Not verified yet](#not-verified-yet)
 - [Ideas from FluidWin](#ideas-from-fluidwin)
+- [Ideas from WacOS](#ideas-from-wacos) (look only)
 
 ---
 
@@ -350,7 +351,14 @@ Split in three blocks: 8a (`strip` and the engine parts it needs), 8b (icon tool
 
 ## Phase 9: polish and first release
 
-- [ ] Performance pass: idle CPU about 0%, no stutter.
+- [ ] Performance pass: idle CPU about 0%, no stutter. Publish the measured numbers (CPU at rest, memory, PC used)
+      in the README. (WacOS)
+- [ ] Reduced effects: glass falls back to its tint when Windows "Transparency effects" is off, on battery saver,
+      and while a full-screen game or app is in front; everything comes back afterwards. (WacOS)
+- [ ] Stall watch: a background thread pings the UI thread; when it does not answer for 1 s, the log gets what it
+      was doing. The UI thread never waits for the disk, the registry or another process. (WacOS)
+- [ ] Stress test (15 min): windows open, minimize and close non-stop while the dock follows; sample memory,
+      handles and GDI/USER objects. They must stay flat. (WacOS)
 - [ ] Complete [theme-format.md](theme-format.md).
 - [ ] Self-contained release build.
 - [ ] First release.
@@ -371,7 +379,15 @@ Not built yet. The theme format already leaves room for these.
 - [ ] Control center panel, opened from a bar or dock module: Wi-Fi, Bluetooth, dark mode, keep awake, volume mixer,
       clipboard history, calendar. Online services (weather, news) optional.
 
+**Glass material** (WacOS idea; needs a spike, see [Ideas from WacOS](#ideas-from-wacos))
+- [ ] Level 1, frosted glass: on top of today's composition glass, extra blur, color boost ("vibrancy"), a thin
+      light edge and a soft specular highlight. Values come from the theme; the user can turn it off.
+- [ ] Level 2, glass that bends what is behind it at the edges (refraction). Only if the spike shows it is cheap
+      and safe enough; off by default.
+- [ ] Continuous ("smoothed") corners as a theme option for glass, tiles and menus.
+
 **Dock** (FluidWin)
+- [ ] Downloads stack views beyond the menu list: a fan and a grid, chosen by the theme or the user. (WacOS)
 - [ ] Live window previews on hover (`DwmRegisterThumbnail`), styled by the theme.
 - [ ] Jump lists (new window, recent files) in the dock menu. Needs a spike first: there is no simple public API to
       read other apps' jump lists.
@@ -433,3 +449,55 @@ look, so every idea taken from it is shown by the theme and can be turned off by
   restyle or take over other apps' windows, which is a non-goal, and they break most easily with Windows updates.
 - Custom cursors: a theme may change only wallpaper, accent color and light/dark mode.
 - Turning off Windows notification banners: it stays off until the user signs out, so it cannot be undone at once.
+
+## Ideas from WacOS
+
+Source: https://github.com/renzyxx/WacOS (read on 2026-11-26). A single-person native C++ project (Win32,
+Direct2D, DirectComposition) that turns Windows 11 into a close copy of macOS: menu bar, dock, a file manager,
+search, control center, widgets, about twenty built-in apps and title bars on other apps' windows.
+
+**License: source-available, reuse forbidden.** It forbids copying or adapting its code, algorithms, shaders,
+assets or configuration. So Veneer takes from it **only** product ideas and the names of public Windows APIs, which
+are documented by Microsoft anyway. Every value Veneer uses comes from its own measurements of its own references,
+never from WacOS's constants. Nothing from it is ever pasted, translated or paraphrased into this repository.
+
+**How it gets so close to macOS** (what we learned):
+
+1. **Measure, then match.** Sizes, radii, blur and colors are measured from real screenshots and design references,
+   and each value says where it was measured. Every change is logged with how it was checked and what was not.
+2. **Glass in layers.** The base is the same idea as Veneer's dock glass: Windows' blurred backdrop clipped to a
+   smooth rounded shape on the compositor. On top: extra blur and a color boost through Direct2D effects that the
+   compositor runs on the GPU, then a hairline edge and a specular highlight drawn with gradients.
+3. **"Real" glass costs a lot.** Windows' backdrop cannot be distorted, so the refracting glass captures the windows
+   behind it (Windows Graphics Capture), rebuilds that picture on the GPU and bends it near the edges. It needs a
+   capture per window (tens of MB of video memory each), workarounds for black captures, and must be turned off in
+   games, on battery and on weak PCs.
+4. **Fallbacks everywhere.** A "light mode" (battery, weak PC), a "game mode" (full-screen game in front: costly
+   effects and mouse hooks off, lower priority) and "reduce transparency" all fall back to plain frosted glass.
+5. **Details people notice:** continuous corners instead of circular ones, large soft shadows, animations timed to
+   the display refresh instead of timers.
+6. **Reliability work:** a thread that logs when the UI stops answering, stress tests that watch memory and handle
+   counts, and a README that lists every network host the app contacts and what it sends.
+
+**Taken into Veneer** (tagged "WacOS" in the phases above):
+
+| Where | Items |
+|-------|-------|
+| Phase 9 | Measured performance numbers in the README, reduced effects (transparency off, battery saver, full-screen game), stall watch, stress test. |
+| After the first release | Glass material (level 1 frosted, level 2 refraction after a spike), continuous corners, Downloads stack fan and grid. |
+| README | Badges, a contents line, screenshots in a grid with captions, "Is it safe?" and "Testing and stability" sections. |
+
+**Spike notes for the glass material** (public APIs only):
+- Level 1 fits what Veneer already has: `GlassPlate` uses a composition host backdrop, and composition effect brushes
+  (Gaussian blur, saturation, color matrix) can be chained on it without Win2D.
+- Level 2 needs Windows Graphics Capture of the windows behind the glass. Open questions: the yellow capture border
+  and its opt-out, video memory per captured window, the privacy of reading other windows' pixels, GPU cost with an
+  animated wallpaper (the author runs Wallpaper Engine), and laptops with two GPUs (use the adapter that drives the
+  screen).
+
+**Not for Veneer** (they conflict with settled decisions or hard rules):
+- Reading other apps' real menus: the bar shows the active app's name and a fixed menu.
+- Loading code (title bar DLLs) into other processes: unsafe, breaks with updates, and trips anti-cheat.
+- Replacement apps (file manager, notes, calendar, settings clones): Veneer is a shell skin, not an app suite.
+- Shipping Apple's fonts, sounds, cursors, icons or wallpapers, even only in release packages.
+- Custom cursors and lock screen mods: a theme may change only wallpaper, accent color and light/dark mode.

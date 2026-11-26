@@ -6,6 +6,23 @@ Record each decision with its date, context, the options considered and the outc
 
 C# + WPF on .NET 10 (LTS), Windows 11 only. .NET 8 reached end of support on 2026-11-10.
 
+## 2026-11-26: Lessons from WacOS (look only)
+
+- WacOS (source-available, reuse forbidden) was read again to see how it gets so close to macOS. The findings, the
+  picked ideas and what Veneer will not do are in [roadmap.md](roadmap.md#ideas-from-wacos). Only product ideas and
+  public Windows API names are taken; no code, shaders, algorithms or constants.
+- **New rules in `CLAUDE.md`:** the UI thread never waits for the disk, the registry or another process; costly
+  effects have a cheap fallback (transparency off, battery saver, full-screen app); no code loaded into other
+  processes, no reading other apps' pixels unless the user turns it on; theme look values are measured in a
+  reference, with the source noted here; README claims about safety, network and performance must be checked.
+- **Its glass, in short:** the base is the same as Veneer's dock glass (the compositor's host backdrop clipped to a
+  rounded shape), plus GPU effects for blur and color boost and a drawn edge highlight. Its refracting glass needs a
+  capture of the windows behind it, which is costly and has privacy questions: for Veneer it is a later, opt-in
+  spike (level 2), after the frosted level 1.
+- **README** reorganized: badges, contents line, screenshots in a grid with captions, new "Is it safe?" (checked:
+  no network code, no elevation in the manifest, registry writes only under `HKCU`) and "Testing and stability"
+  sections.
+
 ## 2026-11-26: SVG icon tool and the fidelity pass (Phase 8b)
 
 - **`tools/svg-icons`** is a small console app with Svg.Skia 5.2.4, the only place that dependency lives (the app never
