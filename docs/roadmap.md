@@ -334,9 +334,12 @@ Split in three blocks: 8a (`strip` and the engine parts it needs), 8b (icon tool
 - [ ] Carried over: drag to reorder in the `apps` module; one indicator style for the app in front.
 
 **Fidelity and tools** (8b)
-- [ ] Tool in `tools/`: convert chosen SVG icons to PNG, with an editable exe → icon map.
-- [ ] Visual fidelity pass against private reference screenshots, with the remaining differences listed. Themes
+- [x] Tool in `tools/`: convert chosen SVG icons to PNG, with an editable exe → icon map (`tools/svg-icons`).
+- [x] Visual fidelity pass against private reference screenshots, with the remaining differences listed. Themes
       that use non-redistributable assets stay local and never enter the repository.
+- [x] Fix found on the way: a bar without blur showed DWM's dark frame through a see-through background.
+- [ ] Carried over: a pinned app and its running window with a different AppUserModelID (Steam: `steam.exe` vs
+      `Valve.Steam.Client`) show as two dock items.
 - [x] Theme styling for module hover and pressed states, and for menus: done in Phase 6a.
 
 **Dock items the reference themes need** (FluidWin, 8c)

@@ -6,6 +6,32 @@ Record each decision with its date, context, the options considered and the outc
 
 C# + WPF on .NET 10 (LTS), Windows 11 only. .NET 8 reached end of support on 2026-11-10.
 
+## 2026-11-26: SVG icon tool and the fidelity pass (Phase 8b)
+
+- **`tools/svg-icons`** is a small console app with Svg.Skia 5.2.4, the only place that dependency lives (the app never
+  references it). It is in `Veneer.slnx` so CI builds it. Input: a JSON map `{ "exe name": "path/to/icon.svg" }`,
+  the SVG folder and the output folder; output: `<exe name>.png`, 256×256, centered and scaled to fit, which is the
+  name the dock already looks up in `iconFolder`. Store apps have no exe when pinned, so a theme maps their PNG with
+  `iconOverrides` `aumid:` keys.
+- **The map logic is in Core** (`Themes/IconMap`, tested): names must be valid file names, paths go through
+  `AssetPaths.TryResolve` (no `..`, absolute paths or links, `.svg` only), nothing under a `links` folder (icon sets
+  keep symlinks to other icons there), missing files are reported. The good entries are still converted.
+- **It never writes into a repository.** The output folder is refused when it, or any folder above it, holds a
+  `.git` entry: converted icons can be non-redistributable (GPL-3.0 icon sets), and this covers every repository,
+  not only Veneer's. An output file that is a link is not overwritten.
+- **Fidelity pass** with a local theme built from private references (not in the repository). Found and fixed: a
+  bar with `blur: false` kept DWM's extended frame, so a see-through background showed DWM's dark frame color
+  instead of the desktop. A bar without blur now uses the per-pixel transparent window (as rounded bars do), and a
+  fully transparent background is drawn at alpha 1 so the bar keeps taking clicks. Side effects: such a bar's
+  corners are rounded by WPF, and a floating one has no DWM shadow. The built-in fallback bar takes this path too
+  (checked).
+- **Known limit:** the repository check walks the folder names as written; it does not follow a junction that
+  points into a repository.
+- **Remaining differences** against the references: no system font like the reference's (Inter instead); the
+  placeholder logo; no Downloads stack, Recycle Bin or separator before them (8c); no search or control-center
+  icons in the bar; no text shadow on a transparent bar; a pinned app whose window reports another
+  AppUserModelID (Steam) shows twice in the dock (carried over).
+
 ## 2026-11-25: The Strip theme, the apps module and floating bars (Phase 8a)
 
 - **Strip = one floating bar, no dock.** Menu on a tile at the start, pinned and running apps in the center, status

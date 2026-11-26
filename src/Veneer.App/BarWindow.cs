@@ -139,7 +139,8 @@ sealed class BarWindow : Window
     bool Floating => margin > 0 || radius > 0;
 
     // Above the radius DWM can round, DWM's backdrop and frame would fill the square corners (see DockWindow).
-    bool Layered => radius > SurfaceWindow.MaxNativeCornerRadius;
+    // Without blur, DWM's extended frame would show its dark frame color through a see-through background.
+    bool Layered => radius > SurfaceWindow.MaxNativeCornerRadius || !bar.Style.Blur;
 
     void TryGlass(nint hwnd)
     {
@@ -172,7 +173,9 @@ sealed class BarWindow : Window
             return;
         }
 
-        root.Background = ThemeVisuals.Brush(style.Background);
+        // A fully transparent pixel of a per-pixel transparent window lets clicks through: keep alpha 1 at least.
+        var background = style.Background ?? default;
+        root.Background = background.A == 0 ? new SolidColorBrush(Color.FromArgb(1, background.R, background.G, background.B)) : ThemeVisuals.Brush(background);
         root.BorderBrush = ThemeVisuals.BorderBrush(style.Border, style.BorderHighlight);
         bool border = style.Border is not null || (Floating && style.BorderHighlight is not null);
         // A bar on the edge has one line, on the side facing the desktop; a floating bar is outlined all around.

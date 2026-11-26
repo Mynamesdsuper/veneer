@@ -1,0 +1,10 @@
+{
+  // Example map for tools/svg-icons. Keys: exe names without ".exe" (the dock looks up "<key>.png" in the theme's
+  // iconFolder). Values: SVG paths relative to the icon set folder given on the command line.
+  // Store apps have no exe when pinned: map their PNG in theme.json with "iconOverrides": { "aumid:...": "..." }.
+  // Keep your real map outside the repository, next to the icon sources.
+  "explorer": "file-manager.svg",
+  "discord": "discord.svg",
+  "spotify": "spotify-client.svg",
+  "steam": "steam.svg"
+}

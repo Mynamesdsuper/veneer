@@ -489,3 +489,6 @@ PROMPT.md
 # Never commit user themes or icon sources (may contain non-redistributable assets)
 user-themes/
 icon-sources/
+
+# Local wallpapers for the private Golden Gate theme (not redistributable)
+wallpaper/

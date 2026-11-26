@@ -60,7 +60,8 @@ polished macOS-like desktop out of the box. Profiles switch theme, overrides and
 | First-run import of the taskbar's pinned apps (Store apps included, no duplicates) | ✅ Done (Phase 7c) |
 | Settings window polish and Veneer's own window frame (title bar, caption buttons, snap layouts kept) | ✅ Done (Phase 7d; snap flyout and drag still to be tried by hand) |
 | Two bundled themes with very different layouts: Aqua (menu bar + dock) and Strip (one floating taskbar-like bar) | ✅ Done (Phase 8a) |
-| Icon conversion tool and visual fidelity pass; more dock items (Downloads, Recycle Bin, one dot per window) | ⏳ Next (Phase 8b, 8c) |
+| Icon conversion tool (SVG → PNG with an exe map) and visual fidelity pass | ✅ Done (Phase 8b) |
+| More dock items (Downloads, Recycle Bin, one dot per window) | ⏳ Next (Phase 8c) |
 | First release | ⏳ Planned (Phase 9) |
 | Multi-monitor, display scaling above 100%, ARM64 | ❔ Not verified yet |
 
@@ -114,7 +115,7 @@ full multi-monitor support.
 | 5 | Windows settings from themes (wallpaper, accent, light/dark) with restore | ✅ |
 | 6 | Look and feel: what the engine can draw, and a real default theme | ✅ |
 | 7 | Profiles, settings window, tray, theme install, start with Windows | ✅ |
-| 8 | Bundled themes | ⏳ in progress (8a done) |
+| 8 | Bundled themes | ⏳ in progress (8a, 8b done) |
 | 9 | Polish, documentation, first release | ⏳ |
 
 Every feature, phase by phase, with its checkbox: [docs/roadmap.md](docs/roadmap.md).

@@ -125,7 +125,7 @@ Each surface has:
 | `edge` | `top` \| `bottom` \| `left` \| `right` | **Required.** A dock cannot use `top`. |
 | `monitor` | string | Only `primary` for now. |
 | `style.background`, `style.foreground`, `style.border` | color | On a bar, the border is a 1 px line on the side facing the desktop (all around a floating bar). |
-| `style.blur` | boolean (`false`) | Real blur behind the surface. Without blur, a translucent background shows the desktop unblurred. |
+| `style.blur` | boolean (`false`) | Real blur behind the surface. Without blur, a translucent background shows the desktop unblurred; a fully transparent bar (`#00000000`) still takes clicks. |
 | `style.font` | string | A key of `fonts` (a font file in the theme) or an installed font family. Default: the Windows 11 UI font. |
 | `style.fontSize` | number 4–200 (`12`) | In device-independent pixels. |
 | `style.fontWeight` | `thin` \| `extralight` \| `light` \| `regular` \| `medium` \| `semibold` \| `bold` \| `extrabold` \| `black` | |
