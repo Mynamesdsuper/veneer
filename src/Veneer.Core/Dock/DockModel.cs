@@ -6,8 +6,11 @@ namespace Veneer.Core.Dock;
 /// <summary>A running app as the dock sees it: its windows grouped by AppUserModelID, or by exe when it has none.</summary>
 public sealed record RunningApp(string Key, string? Aumid, string? ExePath, IReadOnlyList<nint> Windows);
 
-/// <summary>One dock cell: a pinned entry, a running app, both, or a separator.</summary>
-public sealed record DockItem(string Key, string? Pinned, RunningApp? Running)
+/// <summary>
+/// One dock cell: a pinned entry, a running app, both, a separator, or a built-in <see cref="Extra"/> item
+/// (<see cref="DockModel.Downloads"/>, <see cref="DockModel.Trash"/>).
+/// </summary>
+public sealed record DockItem(string Key, string? Pinned, RunningApp? Running, string? Extra = null)
 {
     public bool IsRunning => Running is not null;
 
@@ -18,6 +21,12 @@ public static class DockModel
 {
     /// <summary>A pinned-list entry that draws a separator line.</summary>
     public const string Separator = "---";
+
+    /// <summary>Built-in dock items, shown at the end of the dock after a separator when the theme turns them on.</summary>
+    public const string Downloads = "downloads", Trash = "trash";
+
+    /// <summary>Theme <c>iconOverrides</c> keys for the built-in items (<c>dock:trash-full</c>: a Recycle Bin with files in it).</summary>
+    public static readonly IReadOnlySet<string> ExtraIconKeys = new HashSet<string> { "dock:downloads", "dock:trash", "dock:trash-full" };
 
     // URIs whose app is a known Store app, so a pinned "ms-settings:" lights up when Settings is open.
     static readonly Dictionary<string, string> UriApps = new(StringComparer.OrdinalIgnoreCase)
@@ -70,9 +79,10 @@ public static class DockModel
 
     /// <summary>
     /// Pinned entries first, in their order, each joined with its running app; then the other running apps in the
-    /// order given, after a separator when <paramref name="separateRunning"/> is set.
+    /// order given, after a separator when <paramref name="separateRunning"/> is set; then the built-in
+    /// <paramref name="extras"/>, always after a separator.
     /// </summary>
-    public static List<DockItem> Build(IReadOnlyList<string> pinned, IReadOnlyList<RunningApp> running, bool separateRunning = false)
+    public static List<DockItem> Build(IReadOnlyList<string> pinned, IReadOnlyList<RunningApp> running, bool separateRunning = false, IReadOnlyList<string>? extras = null)
     {
         var items = new List<DockItem>();
         var used = new HashSet<string>();
@@ -91,11 +101,13 @@ public static class DockModel
             items.Add(new DockItem(app?.Key ?? "pin:" + entry.ToLowerInvariant(), entry, app));
         }
 
-
         var others = running.Where(a => !used.Contains(a.Key)).ToList();
         if (separateRunning && others.Count > 0 && items.Count > 0 && !items[^1].IsSeparator)
             items.Add(new DockItem("sep:running", Separator, null));
         items.AddRange(others.Select(a => new DockItem(a.Key, null, a)));
+        if (extras is { Count: > 0 } && items.Count > 0 && !items[^1].IsSeparator)
+            items.Add(new DockItem("sep:extras", Separator, null));
+        items.AddRange((extras ?? []).Select(e => new DockItem("extra:" + e, null, null, e)));
         return items;
     }
 

@@ -9,7 +9,7 @@ namespace Veneer.App;
 /// Debug builds only: drives the running app from the command line, without simulated input. Steps run in order:
 /// <c>wait:&lt;seconds&gt;</c>, <c>menu</c> (open the logo menu), <c>close-menu</c>, <c>screenshot</c>,
 /// <c>dock-click</c>, <c>dock-close</c>, <c>dock-pin</c>, <c>dock-unpin</c>, <c>dock-menu</c> with <c>:&lt;text&gt;</c>
-/// (the first dock icon whose key contains the text), <c>demo</c> (dock shows pinned apps only), <c>dock-hover:&lt;0..1|off&gt;</c>, <c>dock-reveal:on|off</c>, <c>dock-sweep</c> (magnification frame rate), <c>app</c> (start winver.exe so the foreground app changes; it holds no user data), <c>close-app</c>, <c>crash</c> (unhandled exception), <c>menu-item:&lt;text&gt;</c> (clicks the open menu's first item containing the text), <c>veneer-menu</c> (Veneer's own menu at the mouse, as from the notification-area icon),
+/// (the first dock icon whose key contains the text), <c>demo</c> (dock shows pinned apps only), <c>dock-hover:&lt;0..1|off&gt;</c>, <c>dock-reveal:on|off</c>, <c>dock-sweep</c> (magnification frame rate), <c>app</c> (start winver.exe so the foreground app changes; it holds no user data; again for a second window), <c>close-app</c> (closes them all), <c>dock-shot</c> (the dock icons drawn by WPF: no other window), <c>menu-shot</c> (the open menu, drawn by WPF), <c>menu-count</c> (its item count to the log), <c>trash-drop:&lt;path, with | for the drive colon&gt;</c> (as if dropped on the Recycle Bin item), <c>crash</c> (unhandled exception), <c>menu-item:&lt;text&gt;</c> (clicks the open menu's first item containing the text), <c>veneer-menu</c> (Veneer's own menu at the mouse, as from the notification-area icon),
 /// <c>profile:&lt;name&gt;</c>, <c>theme:&lt;folder name&gt;</c>, <c>autostart:on|off</c> (writes HKCU Run),
 /// <c>settings[:&lt;page id&gt;]</c>, <c>settings-shot</c> (the settings window only), <c>settings-render</c> (the same, drawn by WPF
 /// instead of copied from the screen: no other window can show in it; no frame shadow or rounded corners),
@@ -26,7 +26,7 @@ static class SelfTest
     public static void Run(string script, App app)
     {
         var steps = new Queue<string>(script.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
-        Process? started = null;
+        var started = new List<Process>();
         var timer = new DispatcherTimer { Interval = TimeSpan.Zero };
         timer.Tick += (_, _) =>
         {
@@ -65,11 +65,26 @@ static class SelfTest
 
                     break;
                 case ["app"]:
-                    started = Process.Start("winver.exe");
+                    started.Add(Process.Start("winver.exe"));
                     break;
                 case ["close-app"]:
-                    if (started is not null)
-                        Veneer.Interop.WindowTools.Quit(started.Id);
+                    foreach (var p in started)
+                        Veneer.Interop.WindowTools.Quit(p.Id);
+                    break;
+                case ["dock-shot"]:
+                    if (app.FirstDock?.IconsView is { } icons)
+                        app.SaveRendering(icons);
+                    break;
+                case ["menu-shot"]:
+                    if (Modules.LastMenu is { IsOpen: true } openMenu)
+                        app.SaveRendering(openMenu);
+                    break;
+                case ["trash-drop", var path]:
+                    // What a file dropped on the Recycle Bin item does (| stands for the drive colon).
+                    DockWindow.MoveToTrash([path.Replace('|', ':')]);
+                    break;
+                case ["menu-count"]:
+                    Log.Write($"self-test: open menu has {(Modules.LastMenu is { IsOpen: true } m ? m.Items.Count : -1)} items");
                     break;
                 case ["dock-click", var key]:
                     app.FirstDock?.ClickItem(key);

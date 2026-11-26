@@ -26,6 +26,8 @@ sealed class DockWindow : Window
     readonly AppList apps;
     readonly DispatcherTimer debounce = new() { Interval = TimeSpan.FromMilliseconds(150) };
     readonly DockIconsWindow icons;
+    readonly DispatcherTimer trashCheck = new() { Interval = TimeSpan.FromMilliseconds(300) };
+    uint[] trashWatch = [];
     EdgeTrigger? trigger;
     AppBar? appBar;
     GlassPlate? plate;
@@ -42,7 +44,17 @@ sealed class DockWindow : Window
         this.area = area;
         this.dpi = dpi;
         this.tracker = tracker;
-        apps = new AppList(dock.Id, dock.DefaultPinned, tracker, overridesPath, dock.SeparateRunning, () => Refresh(force: true));
+        var extras = new List<string>();
+        if (dock.Downloads)
+            extras.Add(DockModel.Downloads);
+        if (dock.Trash)
+            extras.Add(DockModel.Trash);
+        apps = new AppList(dock.Id, dock.DefaultPinned, tracker, overridesPath, dock.SeparateRunning, () => Refresh(force: true), extras);
+        trashCheck.Tick += (_, _) =>
+        {
+            trashCheck.Stop();
+            CheckTrash();
+        };
         Title = $"Veneer {dock.Id}";
         ResizeMode = ResizeMode.NoResize;
         ShowInTaskbar = false;
@@ -104,6 +116,12 @@ sealed class DockWindow : Window
                 }
             }
 
+            if (dock.Trash)
+            {
+                trashWatch = RecycleBin.Watch(hwnd);
+                CheckTrash();
+            }
+
             appBar = new AppBar(hwnd);
             appBar.FullScreenChanged += full => FullScreenChanged?.Invoke(full);
             // An owned window always stays above its owner: the icons can never fall behind the plate, even when
@@ -118,6 +136,8 @@ sealed class DockWindow : Window
             closed = true;
             apps.Closed = true;
             debounce.Stop();
+            trashCheck.Stop();
+            RecycleBin.Unwatch(trashWatch);
             tracker.Changed -= OnWindowsChanged;
             icons.Close();
             trigger?.Close();
@@ -299,7 +319,16 @@ sealed class DockWindow : Window
 
     public void RemoveAppBar() => appBar?.Remove();
 
-    public void OnShellRestarted() => appBar?.OnShellRestarted();
+    public void OnShellRestarted()
+    {
+        appBar?.OnShellRestarted();
+        if (!dock.Trash || closed)
+            return;
+        // The notifications may have gone with the old Explorer: register again and ask once.
+        RecycleBin.Unwatch(trashWatch);
+        trashWatch = RecycleBin.Watch(hwnd);
+        CheckTrash();
+    }
 
     nint Hook(nint hwnd, int msg, nint wParam, nint lParam, ref bool handled)
     {
@@ -309,15 +338,77 @@ sealed class DockWindow : Window
             return result;
         }
 
+        if (msg == RecycleBin.ChangedMessage)
+        {
+            trashCheck.Stop(); // emptying a full bin sends a burst: ask once it is over
+            trashCheck.Start();
+            handled = true;
+            return 0;
+        }
+
         if (appBar?.WndProc(msg, wParam, lParam) == true)
             handled = true;
         return 0;
+    }
+
+    // ----- Recycle Bin -----
+
+    /// <summary>The Recycle Bin holds files: its dock item shows the full icon.</summary>
+    public bool TrashFull { get; private set; }
+
+    // The query asks every drive, so it runs off the UI thread; the icon changes when the answer arrives.
+    void CheckTrash() => Task.Run(() =>
+    {
+        bool full = !RecycleBin.IsEmpty();
+        Dispatcher.InvokeAsync(() =>
+        {
+            if (closed || full == TrashFull)
+                return;
+            Log.Write($"{dock.Id}: recycle bin {(full ? "full" : "empty")}");
+            TrashFull = full;
+            icons.Rebuild();
+        });
+    });
+
+    /// <summary>Empties the Recycle Bin after Windows' own confirmation, which may take a while: off the UI thread.</summary>
+    public static void EmptyTrash() => RunShellOperation(RecycleBin.Empty);
+
+    /// <summary>Files dropped on the Recycle Bin item go to the bin through Windows, with its progress and undo.</summary>
+    public static void MoveToTrash(IReadOnlyList<string> paths) => RunShellOperation(() => RecycleBin.Delete(paths));
+
+    // Shell file operations show their own windows and want a single-threaded apartment.
+    static void RunShellOperation(Action action)
+    {
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception e) when (e is not OutOfMemoryException)
+            {
+                Log.Write($"recycle bin: {e.Message}");
+            }
+        }) { IsBackground = true, Name = "Veneer shell operation" };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
     }
 
     // ----- actions on items -----
 
     public void Activate(DockItem item)
     {
+        switch (item.Extra)
+        {
+            case DockModel.Trash:
+                RecycleBin.Open();
+                return;
+            case DockModel.Downloads:
+                if (Items.IndexOf(item) is >= 0 and var i)
+                    icons.OpenMenu(i);
+                return;
+        }
+
         if (apps.Activate(item) && dock.BounceOnLaunch && Items.IndexOf(item) is >= 0 and var index)
             icons.Bounce(index);
     }
@@ -369,6 +460,9 @@ sealed class DockWindow : Window
     public void Hover(double? fraction) => icons.Hover(fraction);
 
     public bool Revealed => revealed;
+
+    /// <summary>The icons' drawing surface, for a WPF-only rendering in self-tests.</summary>
+    public FrameworkElement? IconsView => icons.Content as FrameworkElement;
 }
 
 /// <summary>Auto-hide: a thin, almost invisible strip on the screen edge that brings the dock back on hover.</summary>

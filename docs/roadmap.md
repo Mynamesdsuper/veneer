@@ -23,7 +23,7 @@ Every phase ends with `dotnet build` and `dotnet test` green and one commit.
 - [Phase 5: Windows settings from themes](#phase-5-windows-settings-from-themes): ✅ done
 - [Phase 6: look and feel](#phase-6-look-and-feel): ✅ done
 - [Phase 7: profiles, settings, tray, install, autostart](#phase-7-profiles-settings-tray-install-autostart): ✅ done
-- [Phase 8: bundled themes](#phase-8-bundled-themes): ⏳ in progress (8a, 8b done; 8c next)
+- [Phase 8: bundled themes](#phase-8-bundled-themes): ✅ done
 - [Phase 9: polish and first release](#phase-9-polish-and-first-release)
 - [After the first release](#after-the-first-release)
 - [Not verified yet](#not-verified-yet)
@@ -344,10 +344,10 @@ Split in three blocks: 8a (`strip` and the engine parts it needs), 8b (icon tool
 - [x] Theme styling for module hover and pressed states, and for menus: done in Phase 6a.
 
 **Dock items the reference themes need** (FluidWin, 8c)
-- [ ] One dot per window (up to 3, theme setting `runningIndicator.mode`) and the app's window list in the dock
+- [x] One dot per window (up to 3, theme setting `runningIndicator.mode`) and the app's window list in the dock
       menu.
-- [ ] Downloads stack: a dock item that shows the latest downloaded files on click.
-- [ ] Recycle Bin: a dock item that shows empty/full and accepts dropped files.
+- [x] Downloads stack: a dock item that shows the latest downloaded files on click (theme `downloads`, a toggle in Settings).
+- [x] Recycle Bin: a dock item that shows empty/full and accepts dropped files (theme `trash`, a toggle in Settings).
 
 ## Phase 9: polish and first release
 
@@ -369,6 +369,15 @@ Not built yet. The theme format already leaves room for these.
 
 **Desktop**
 - [ ] Desktop widgets: calendar, weather, battery, photos.
+
+**Bar widgets** (a taskbar the user builds from widgets)
+- [ ] Widget modules for bars, shown as tiles: the user picks which widgets, their order and size, and saves
+      setups per profile. Widgets are built-in Veneer modules; a theme only places and styles them.
+- [ ] Local widgets first: clock with weather line, date, next calendar event with countdown, Pomodoro, todos,
+      screen time, a folder tile (2x2 app grid).
+- [ ] Online widgets later, each opt-in: AI plan usage, GitHub/Linear activity, revenue, follower counts. Keys and
+      sign-ins stored with Windows Credential Manager or DPAPI (never plain JSON), network on a timer, no tight
+      polling. No third-party logos shipped: system app icon, neutral glyph, or user-supplied.
 - [ ] Launcher / search: apps, files and folders (Windows Search index), settings, quick math. (FluidWin)
 - [ ] Full multi-monitor support; the dock can follow the mouse to another monitor. (FluidWin)
 

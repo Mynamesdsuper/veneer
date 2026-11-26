@@ -73,6 +73,14 @@ static class Strings
 
     public static string DockCloseAll => Get();
 
+    public static string DockOpen => Get();
+
+    public static string DockOpenFolder => Get();
+
+    public static string DockEmptyTrash => Get();
+
+    public static string DockNoFiles => Get();
+
     public static string AppsPin => Get();
 
     public static string AppsUnpin => Get();
@@ -192,6 +200,10 @@ static class Strings
     public static string SettingMagnificationScale => Get();
 
     public static string SettingAutoHide => Get();
+
+    public static string SettingDownloads => Get();
+
+    public static string SettingTrash => Get();
 
     public static string EdgeTop => Get();
 

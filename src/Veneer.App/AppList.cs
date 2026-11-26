@@ -9,7 +9,7 @@ namespace Veneer.App;
 /// The pinned and running apps of one surface (a dock, or the <c>apps</c> modules of a bar) and what the user can do
 /// with them. <paramref name="pinnedChanged"/> runs whenever <see cref="Pinned"/> changes, so the surface redraws.
 /// </summary>
-sealed class AppList(string surfaceId, IReadOnlyList<string> pinned, AppWindowTracker tracker, string? overridesPath, bool separateRunning, Action pinnedChanged)
+sealed class AppList(string surfaceId, IReadOnlyList<string> pinned, AppWindowTracker tracker, string? overridesPath, bool separateRunning, Action pinnedChanged, IReadOnlyList<string>? extras = null)
 {
     string signature = "";
 
@@ -24,8 +24,9 @@ sealed class AppList(string surfaceId, IReadOnlyList<string> pinned, AppWindowTr
     /// <summary>Rebuilds <see cref="Items"/> from the current windows. True when the icons changed, not only the window handles.</summary>
     public bool Update(bool force = false)
     {
-        var list = DockModel.Build(Pinned, Running(), separateRunning);
-        string sig = string.Join('|', list.Select(i => $"{i.Key}:{i.IsRunning}"));
+        var list = DockModel.Build(Pinned, Running(), separateRunning, extras);
+        // The window count (up to 3) is in it too: one indicator per window needs a redraw when it changes.
+        string sig = string.Join('|', list.Select(i => $"{i.Key}:{Math.Min(i.Running?.Windows.Count ?? 0, 3)}"));
         Items = list;
         if (sig == signature && !force)
             return false;

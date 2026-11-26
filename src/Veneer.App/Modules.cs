@@ -152,6 +152,9 @@ static class Modules
     /// </summary>
     public static string Checked(string text, bool on) => (on ? "✓ " : "   ") + text;
 
+    /// <summary>Text shown as is in a menu header: a "_" would otherwise mark an access key and vanish.</summary>
+    public static string Plain(string text) => text.Replace("_", "__");
+
     public static MenuItem Item(string header, Action action, bool enabled = true)
     {
         var item = new MenuItem { Header = header, IsEnabled = enabled };

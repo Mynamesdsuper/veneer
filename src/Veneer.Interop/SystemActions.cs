@@ -120,6 +120,9 @@ public static class WindowTools
         }
     }
 
+    /// <summary>A window's title. For another process's window Windows answers from its own copy: a hung app cannot block it.</summary>
+    public static string TitleOf(nint hwnd) => Title((HWND)hwnd);
+
     static unsafe string Title(HWND h)
     {
         int length = PInvoke.GetWindowTextLength(h);

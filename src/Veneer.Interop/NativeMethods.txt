@@ -75,3 +75,15 @@ NOTIFYICONDATAW
 ExtractIconEx
 DestroyIcon
 EnumDisplayMonitors
+SHGetKnownFolderIDList
+FOLDERID_RecycleBinFolder
+SHQueryRecycleBin
+SHEmptyRecycleBin
+SHChangeNotifyRegister
+SHChangeNotifyDeregister
+SHGetStockIconInfo
+SHDefExtractIcon
+SHFileOperation
+ILFree
+FO_DELETE
+FOLDERID_Downloads

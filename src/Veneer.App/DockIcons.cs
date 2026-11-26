@@ -20,12 +20,22 @@ static class DockIcons
         Names.Clear();
     }
 
-    public static ImageSource? For(Theme theme, DockItem item, uint dpi)
+    // The Recycle Bin's shell name: the same in every Windows language, unlike its display name.
+    const string RecycleBinFolder = "::{645FF040-5081-101B-9F08-00AA002F954E}";
+    static readonly Lazy<string?> DownloadsFolder = new(KnownFolders.Downloads);
+
+    /// <summary>Where the dock's Downloads item points; null when Windows has no Downloads folder.</summary>
+    public static string? Downloads => DownloadsFolder.Value;
+
+    /// <summary>The icon of <paramref name="item"/>; <paramref name="trashFull"/> picks the full Recycle Bin.</summary>
+    public static ImageSource? For(Theme theme, DockItem item, uint dpi, bool trashFull = false)
     {
-        string key = $"{theme.Id}|{item.Key}";
+        bool full = trashFull && item.Extra == DockModel.Trash;
+        string key = $"{theme.Id}|{item.Key}|{full}";
         if (Cache.TryGetValue(key, out var cached))
             return cached;
-        var image = FromTheme(theme, item)
+        var image = FromTheme(theme, item, full)
+            ?? (item.Extra == DockModel.Trash ? TrashIcon(full, SurfaceLayout.ToPhysical(256, Math.Max(dpi, 96u))) : null)
             ?? (Aumid(item) is { } aumid && ShellItems.PackagedIcon(aumid) is { } packaged ? Load(packaged) : null)
             ?? FromShell(item, SurfaceLayout.ToPhysical(256, Math.Max(dpi, 96u)));
         Cache[key] = image;
@@ -40,8 +50,15 @@ static class DockIcons
     static string? Aumid(DockItem item) =>
         item.Running?.Aumid ?? (item.Pinned is { } p ? (DockModel.IsAumid(p) ? p : DockModel.AumidForUri(p)) : null);
 
-    static ImageSource? FromTheme(Theme theme, DockItem item)
+    static ImageSource? FromTheme(Theme theme, DockItem item, bool trashFull)
     {
+        if (item.Extra is { } extra)
+        {
+            // A theme with only "dock:trash" keeps one look for both states rather than a Windows icon when full.
+            string? own = (trashFull ? theme.IconOverrides.GetValueOrDefault("dock:trash-full") : null) ?? theme.IconOverrides.GetValueOrDefault("dock:" + extra);
+            return own is null ? null : Load(own);
+        }
+
         string? exe = Exe(item)?.ToLowerInvariant();
         string? aumid = Aumid(item);
         string? path = null;
@@ -62,8 +79,27 @@ static class DockIcons
 
     static ImageSource? Load(string path) => ThemeVisuals.LoadImage(path);
 
+    static ImageSource? TrashIcon(bool full, int size)
+    {
+        nint icon = RecycleBin.Icon(full, size);
+        if (icon == 0)
+            return null;
+        try
+        {
+            var image = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(icon, System.Windows.Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+            image.Freeze();
+            return image;
+        }
+        finally
+        {
+            RecycleBin.FreeIcon(icon);
+        }
+    }
+
     static string? ParsingName(DockItem item) =>
-        Aumid(item) is { } aumid ? ShellItems.ParsingName(aumid, isAumid: true)
+        item.Extra == DockModel.Downloads ? Downloads
+        : item.Extra == DockModel.Trash ? RecycleBinFolder
+        : Aumid(item) is { } aumid ? ShellItems.ParsingName(aumid, isAumid: true)
         : item.Running?.ExePath ?? (item.Pinned is { } p ? ShellItems.ParsingName(p, isAumid: false) : null);
 
     static ImageSource? FromShell(DockItem item, int size)

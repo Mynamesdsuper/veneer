@@ -95,6 +95,8 @@ public static class SurfaceSettings
             enabled,
             scale,
             toggle("autoHide", dock.AutoHide),
+            toggle("downloads", dock.Downloads),
+            toggle("trash", dock.Trash),
         ];
     }
 }

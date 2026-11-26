@@ -499,6 +499,34 @@ public class ThemeLoaderTests
         Assert.Contains(r.Errors, e => e.Path == path);
     }
 
+    [Fact]
+    public void Dock_extras_window_dots_and_their_icons_are_read()
+    {
+        var r = LoadSample(json: Replace("\"size\": 4 },", "\"size\": 4, \"mode\": \"window\" }, \"downloads\": true, \"trash\": true,")
+            .Replace("\"exe:code.exe\": \"assets/icons/vscode.png\"", "\"exe:code.exe\": \"assets/icons/vscode.png\", \"dock:trash-full\": \"assets/icons/vscode.png\""));
+
+        Assert.Empty(r.Diagnostics);
+        var dock = (DockSurface)r.Theme!.Surfaces[1];
+        Assert.Equal(IndicatorMode.Window, dock.RunningIndicator.Mode);
+        Assert.True(dock.Downloads);
+        Assert.True(dock.Trash);
+        Assert.True(r.Theme.IconOverrides.ContainsKey("dock:trash-full"));
+
+        var plain = (DockSurface)LoadSample().Theme!.Surfaces[1];
+        Assert.Equal(IndicatorMode.App, plain.RunningIndicator.Mode);
+        Assert.False(plain.Downloads || plain.Trash);
+    }
+
+    [Fact]
+    public void Bad_indicator_mode_is_an_error_and_unknown_dock_icon_keys_a_warning()
+    {
+        var r = LoadSample(json: Replace("\"size\": 4 },", "\"size\": 4, \"mode\": \"tab\" },")
+            .Replace("\"exe:code.exe\": \"assets/icons/vscode.png\"", "\"exe:code.exe\": \"assets/icons/vscode.png\", \"dock:music\": \"assets/icons/vscode.png\""));
+
+        Assert.Contains(r.Errors, e => e.Path == "surfaces[id=dock].runningIndicator.mode");
+        Assert.Contains(r.Diagnostics, d => d.Path == "iconOverrides.dock:music" && d.Severity == Severity.Warning);
+    }
+
     const string AppsModule = """
         "center": [ { "module": "apps", "iconSize": 24, "separateRunning": false, "runningIndicator": { "shape": "line", "color": "$text", "size": 3 },
                       "style": { "background": "#33FFFFFF", "cornerRadius": 8 } } ],

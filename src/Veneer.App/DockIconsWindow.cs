@@ -84,6 +84,9 @@ sealed class DockIconsWindow : Window
             if (!IsMouseOver)
                 owner.SetRevealed(false);
         };
+        AllowDrop = true; // files dragged from Explorer onto the Recycle Bin item
+        DragOver += OnDragOver;
+        Drop += OnDrop;
         MouseLeftButtonDown += OnLeftDown;
         MouseLeftButtonUp += OnLeftUp;
         MouseRightButtonUp += (_, e) =>
@@ -159,10 +162,10 @@ sealed class DockIconsWindow : Window
         {
             FrameworkElement view = item.IsSeparator
                 ? new Rectangle { Fill = ThemeVisuals.Brush(Dock.Style.Border ?? Dock.Style.Foreground) ?? Brushes.Gray, Opacity = 0.6, IsHitTestVisible = false }
-                : new Image { Source = DockIcons.For(owner.Theme, item, owner.Dpi), Stretch = Stretch.Uniform, ToolTip = Dock.Label is null ? DockIcons.Name(item) : null };
+                : new Image { Source = DockIcons.For(owner.Theme, item, owner.Dpi, owner.TrashFull), Stretch = Stretch.Uniform, ToolTip = Dock.Label is null ? DockIcons.Name(item) : null };
             cellViews.Add(view);
             canvas.Children.Add(view);
-            var indicator = item.IsRunning ? Indicator() : null;
+            var indicator = item.Running is { } app ? Indicator(Dock.RunningIndicator.Count(app.Windows.Count)) : null;
             indicators.Add(indicator);
             if (indicator is not null)
                 canvas.Children.Add(indicator);
@@ -171,15 +174,28 @@ sealed class DockIconsWindow : Window
         Relayout();
     }
 
-    FrameworkElement Indicator()
+    // One mark, or a row of up to three (one per window) along the dock, a mark's size apart; lines share the length.
+    FrameworkElement Indicator(int count)
     {
         var ind = Dock.RunningIndicator;
         var brush = ThemeVisuals.Brush(ind.Color ?? Dock.Style.Foreground) ?? Brushes.Black;
         bool line = ind.Shape == IndicatorShape.Line;
-        double longSide = Dock.IconSize * 0.4;
-        return line
-            ? new Rectangle { Fill = brush, Width = Horizontal ? longSide : ind.Size, Height = Horizontal ? ind.Size : longSide, RadiusX = ind.Size / 2, RadiusY = ind.Size / 2, IsHitTestVisible = false }
-            : new Ellipse { Fill = brush, Width = ind.Size, Height = ind.Size, IsHitTestVisible = false };
+        double gap = ind.Size, along = line ? Math.Max(ind.Size, (Dock.IconSize * 0.4 - (count - 1) * gap) / count) : ind.Size;
+        var row = new StackPanel { Orientation = Horizontal ? Orientation.Horizontal : Orientation.Vertical, IsHitTestVisible = false };
+        for (int k = 0; k < count; k++)
+        {
+            Shape mark = line ? new Rectangle { RadiusX = ind.Size / 2, RadiusY = ind.Size / 2 } : new Ellipse();
+            mark.Fill = brush;
+            mark.Width = Horizontal ? along : ind.Size;
+            mark.Height = Horizontal ? ind.Size : along;
+            mark.Margin = k == 0 ? default : Horizontal ? new Thickness(gap, 0, 0, 0) : new Thickness(0, gap, 0, 0);
+            row.Children.Add(mark);
+        }
+
+        double total = count * along + (count - 1) * gap;
+        row.Width = Horizontal ? total : ind.Size;
+        row.Height = Horizontal ? ind.Size : total;
+        return row;
     }
 
     // ----- layout -----
@@ -469,8 +485,29 @@ sealed class DockIconsWindow : Window
         if (item.IsSeparator)
             return;
         var menu = new ContextMenu();
-        menu.Items.Add(new MenuItem { Header = DockIcons.Name(item), IsEnabled = false });
+        menu.Items.Add(new MenuItem { Header = Modules.Plain(DockIcons.Name(item)), IsEnabled = false });
         menu.Items.Add(new Separator());
+        switch (item.Extra)
+        {
+            case DockModel.Downloads:
+                OpenDownloads(menu, index);
+                return;
+            case DockModel.Trash:
+                menu.Items.Add(Modules.Item(Strings.DockOpen, RecycleBin.Open));
+                menu.Items.Add(Modules.Item(Strings.DockEmptyTrash, DockWindow.EmptyTrash, owner.TrashFull)); // Windows asks first
+                Modules.Open(menu, cellViews[index], Dock.Edge);
+                return;
+        }
+
+        // The app's windows, most recently used first: a click brings that one to the front.
+        foreach (nint w in item.Running?.Windows ?? [])
+        {
+            string title = WindowTools.TitleOf(w);
+            menu.Items.Add(Modules.Item(Modules.Plain(title.Length > 60 ? title[..59] + "…" : title is "" ? DockIcons.Name(item) : title), () => WindowTools.Activate(w)));
+        }
+
+        if (item.IsRunning)
+            menu.Items.Add(new Separator());
         if (item.Pinned is null)
             menu.Items.Add(Modules.Item(Strings.DockKeep, () => owner.KeepInDock(item)));
         else
@@ -482,6 +519,46 @@ sealed class DockIconsWindow : Window
         }
 
         Modules.Open(menu, cellViews[index], Dock.Edge);
+    }
+
+    // The newest downloads, read off the UI thread; the menu opens when the list is ready.
+    void OpenDownloads(ContextMenu menu, int index)
+    {
+        if (DockIcons.Downloads is not { } folder)
+            return;
+        var view = cellViews[index];
+        Task.Run(() => DownloadsStack.Latest(folder, 10)).ContinueWith(t => Dispatcher.InvokeAsync(() =>
+        {
+            if (t.Status != TaskStatus.RanToCompletion || !IsLoaded || index >= cellViews.Count || cellViews[index] != view)
+                return; // a failed read (already logged), or the dock was rebuilt meanwhile
+            foreach (string path in t.Result)
+                menu.Items.Add(Modules.Item(Modules.Plain(System.IO.Path.GetFileName(path)), () => SystemActions.Open(path)));
+            if (t.Result.Count == 0)
+                menu.Items.Add(Modules.Header(Strings.DockNoFiles));
+            menu.Items.Add(new Separator());
+            menu.Items.Add(Modules.Item(Strings.DockOpenFolder, () => SystemActions.Open(folder)));
+            Modules.Open(menu, view, Dock.Edge);
+        }), TaskScheduler.Default);
+    }
+
+    // ----- files dropped on the Recycle Bin -----
+
+    int TrashIndexAt(DragEventArgs e) =>
+        IndexAt(Along(e.GetPosition(canvas))) is >= 0 and var i && owner.Items[i].Extra == DockModel.Trash ? i : -1;
+
+    void OnDragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = TrashIndexAt(e) >= 0 && e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    void OnDrop(object sender, DragEventArgs e)
+    {
+        if (TrashIndexAt(e) >= 0 && e.Data.GetData(DataFormats.FileDrop) is string[] { Length: > 0 } paths)
+            DockWindow.MoveToTrash(paths);
+        // Answer "nothing done": told "moved", Explorer may delete the source files itself, for good.
+        e.Effects = DragDropEffects.None;
+        e.Handled = true;
     }
 
     /// <summary>Debug self-test: magnify as if the cursor were at <paramref name="fraction"/> of the row (null: stop).</summary>

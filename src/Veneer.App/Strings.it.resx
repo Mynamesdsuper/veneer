@@ -35,6 +35,10 @@
   <data name="DockRemove" xml:space="preserve"><value>Rimuovi dal Dock</value></data>
   <data name="DockClose" xml:space="preserve"><value>Chiudi</value></data>
   <data name="DockCloseAll" xml:space="preserve"><value>Chiudi tutte le finestre</value></data>
+  <data name="DockOpen" xml:space="preserve"><value>Apri</value></data>
+  <data name="DockOpenFolder" xml:space="preserve"><value>Apri cartella</value></data>
+  <data name="DockEmptyTrash" xml:space="preserve"><value>Svuota Cestino…</value></data>
+  <data name="DockNoFiles" xml:space="preserve"><value>Nessun file</value></data>
   <data name="AppsPin" xml:space="preserve"><value>Fissa sulla barra</value></data>
   <data name="AppsUnpin" xml:space="preserve"><value>Togli dalla barra</value></data>
   <data name="SettingsTitle" xml:space="preserve"><value>Impostazioni di Veneer</value></data>
@@ -95,6 +99,8 @@
   <data name="SettingMagnification" xml:space="preserve"><value>Ingrandisci le icone sotto il mouse</value></data>
   <data name="SettingMagnificationScale" xml:space="preserve"><value>Ingrandimento</value></data>
   <data name="SettingAutoHide" xml:space="preserve"><value>Nascondi automaticamente</value></data>
+  <data name="SettingDownloads" xml:space="preserve"><value>Download nel dock</value></data>
+  <data name="SettingTrash" xml:space="preserve"><value>Cestino nel dock</value></data>
   <data name="EdgeTop" xml:space="preserve"><value>In alto</value></data>
   <data name="EdgeBottom" xml:space="preserve"><value>In basso</value></data>
   <data name="EdgeLeft" xml:space="preserve"><value>A sinistra</value></data>

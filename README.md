@@ -90,7 +90,7 @@ a diagnostics report. Every feature has its checkbox in [docs/roadmap.md](docs/r
 | Settings window polish and Veneer's own window frame (title bar, caption buttons, snap layouts kept) | ✅ Done (Phase 7d; snap flyout and drag still to be tried by hand) |
 | Two bundled themes with very different layouts: Aqua (menu bar + dock) and Strip (one floating taskbar-like bar) | ✅ Done (Phase 8a) |
 | Icon conversion tool (SVG → PNG with an exe map) and visual fidelity pass | ✅ Done (Phase 8b) |
-| More dock items (Downloads, Recycle Bin, one dot per window) | ⏳ Next (Phase 8c) |
+| More dock items: Downloads, Recycle Bin (empty/full, drop files on it), one dot per window and a window list | ✅ Done (Phase 8c) |
 | Reduced effects, stall watch, stress test, measured performance | ⏳ Planned (Phase 9) |
 | First release | ⏳ Planned (Phase 9) |
 | Multi-monitor, display scaling above 100%, ARM64 | ❔ Not verified yet |
@@ -122,7 +122,10 @@ every claim below can be checked in it.
   check is planned after the first release; it will verify the file's hash and never update silently.)
 - **No administrator rights.** Veneer runs as your user. No services, no drivers, no scheduled tasks.
 - **Nothing inside other apps.** Veneer never loads code into other processes and never reads other apps' menus.
-  It only lists their windows and reads the apps' names and icons, to show them in the dock and the bar.
+  It only lists their windows and reads the apps' names, icons and window titles, to show them in the dock and the bar.
+- **Your files stay where they are.** The dock's Downloads item reads the names of the newest files only when you
+  click it. The Recycle Bin item empties the bin only through Windows' own confirmation, and files dropped on it go
+  to the bin, never deleted for good.
 - **Themes cannot run code.** A theme is JSON plus images and fonts. Paths must stay inside the theme folder (no
   `..`, absolute paths or links), only known file types are read, and `.zip` installs are checked for size and
   zip-slip.
@@ -136,7 +139,7 @@ every claim below can be checked in it.
 
 ## Testing and stability
 
-- **339 unit tests** for the theme engine, overrides, profiles, layout, dock logic and file safety, run by CI on
+- **348 unit tests** for the theme engine, overrides, profiles, layout, dock logic and file safety, run by CI on
   every push.
 - **Every exit path of the taskbar** was tested on a real PC: normal exit, unhandled exception, `FailFast`,
   `taskkill /f`, "End process tree", Explorer restart. The results are in [docs/decisions.md](docs/decisions.md).
@@ -160,10 +163,10 @@ every claim below can be checked in it.
 | 5 | Windows settings from themes (wallpaper, accent, light/dark) with restore | ✅ |
 | 6 | Look and feel: what the engine can draw, and a real default theme | ✅ |
 | 7 | Profiles, settings window, tray, theme install, start with Windows | ✅ |
-| 8 | Bundled themes | ⏳ in progress (8a, 8b done) |
+| 8 | Bundled themes | ✅ |
 | 9 | Polish, reduced effects, stability checks, documentation, first release | ⏳ |
 
-**Later:** a frosted "glass material" option, desktop widgets (calendar, weather, battery, photos), a launcher,
+**Later:** a frosted "glass material" option, desktop widgets (calendar, weather, battery, photos), widget tiles for the bars, a launcher,
 live window previews, a live theme editor, an in-app theme gallery, automatic profile switching, accent color from
 the wallpaper, full multi-monitor support. Every feature, phase by phase, with its checkbox:
 [docs/roadmap.md](docs/roadmap.md).

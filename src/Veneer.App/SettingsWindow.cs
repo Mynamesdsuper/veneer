@@ -678,6 +678,8 @@ sealed class SettingsWindow : VeneerWindow
         "magnification.enabled" => Strings.SettingMagnification,
         "magnification.maxScale" => Strings.SettingMagnificationScale,
         "autoHide" => Strings.SettingAutoHide,
+        "downloads" => Strings.SettingDownloads,
+        "trash" => Strings.SettingTrash,
         _ => key,
     };
 

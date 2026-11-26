@@ -65,6 +65,8 @@
       "padding": 7,
       "margin": 8,
       "bounceOnLaunch": true,
+      "downloads": true,
+      "trash": true,
       "style": {
         "background": "$glass", "border": "$edge", "borderHighlight": "$edgeLight", "blur": true,
         "spacing": 6, "foreground": "$text"

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using Veneer.Core.Dock;
 using Veneer.Core.Modules;
 
 namespace Veneer.Core.Themes;
@@ -42,8 +43,8 @@ internal sealed partial class ThemeBinder(string root, List<Diagnostic> diagnost
 
         var fonts = AssetMap(Obj(o, "fonts", ""), "fonts", AssetPaths.FontExtensions, key => true, "");
         var icons = AssetMap(Obj(o, "iconOverrides", ""), "iconOverrides", AssetPaths.ImageExtensions,
-            key => key.StartsWith("exe:", StringComparison.Ordinal) || key.StartsWith("aumid:", StringComparison.Ordinal),
-            "use \"exe:name.exe\" or \"aumid:AppUserModelId\"");
+            key => key.StartsWith("exe:", StringComparison.Ordinal) || key.StartsWith("aumid:", StringComparison.Ordinal) || DockModel.ExtraIconKeys.Contains(key),
+            $"use \"exe:name.exe\", \"aumid:AppUserModelId\" or one of {string.Join(", ", DockModel.ExtraIconKeys)}");
         string? iconFolder = Folder(o, "iconFolder", "");
         var surfaces = Surfaces(o["surfaces"]);
 
@@ -157,14 +158,17 @@ internal sealed partial class ThemeBinder(string root, List<Diagnostic> diagnost
             Num(s, "padding", p, 0, 100) ?? 0,
             ind is null
                 ? new RunningIndicator(IndicatorShape.Dot, null, 4)
-                : new RunningIndicator(Enum<IndicatorShape>(ind, "shape", ip) ?? IndicatorShape.Dot, Color(ind, "color", ip), Num(ind, "size", ip, 1, 20) ?? 4),
+                : new RunningIndicator(Enum<IndicatorShape>(ind, "shape", ip) ?? IndicatorShape.Dot, Color(ind, "color", ip), Num(ind, "size", ip, 1, 20) ?? 4,
+                    Enum<IndicatorMode>(ind, "mode", ip) ?? IndicatorMode.App),
             Bool(s, "autoHide", p) ?? false,
             StringList(s, "defaultPinned", p),
             Num(s, "margin", p, 0, 200) ?? 0,
             Bool(s, "reserveSpace", p) ?? true,
             Bool(s, "separateRunning", p) ?? true,
             Popup(Obj(s, "label", p), ThemeLayers.Join(p, "label")),
-            Bool(s, "bounceOnLaunch", p) ?? false);
+            Bool(s, "bounceOnLaunch", p) ?? false,
+            Bool(s, "downloads", p) ?? false,
+            Bool(s, "trash", p) ?? false);
     }
 
     List<ModuleSpec> Modules(JsonObject s, string key, string p)

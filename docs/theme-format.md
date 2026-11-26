@@ -186,11 +186,14 @@ state names are ignored with a warning; missing states keep the glyph.
 | `runningIndicator.shape` | `dot` \| `line` (`dot`) | |
 | `runningIndicator.color` | color | |
 | `runningIndicator.size` | number 1–20 (`4`) | |
+| `runningIndicator.mode` | `app` \| `window` (`app`) | `window`: one mark per open window, up to three, a mark's size apart (lines share the length). |
 | `autoHide` | boolean (`false`) | Hidden until the mouse touches the screen edge; hides again 0.6 s after it leaves. An auto-hidden dock never reserves space. |
 | `separateRunning` | boolean (`true`) | A separator between the pinned apps and the other running apps. |
 | `defaultPinned` | array of strings | See below. |
 | `label` | pop-up style | The app name shown above the icon under the mouse. Without it, Windows tooltips. |
 | `bounceOnLaunch` | boolean (`false`) | The icon hops a few times when its app is started from the dock. |
+| `downloads` | boolean (`false`) | A Downloads item at the end of the dock, after a separator. A click lists the 10 newest files and folders of the Windows Downloads folder (unfinished downloads, hidden and system files left out) and "Open Folder". The user can turn it on or off in Settings. |
+| `trash` | boolean (`false`) | A Recycle Bin item at the very end of the dock. Its icon shows empty or full (the shell tells Veneer, no polling). A click opens the bin; the menu has "Empty Recycle Bin…", which goes through Windows' own confirmation; files dropped on it go to the bin through Windows, never deleted for good. The user can turn it on or off in Settings. |
 
 Pinned entries can be:
 
@@ -232,7 +235,7 @@ The look of Veneer's menus (logo menu, active app, dock). Without it, menus keep
 
 ### Icons
 
-- `iconOverrides`: keys are `exe:<name.exe>` or `aumid:<AppUserModelID>`, values are image paths.
+- `iconOverrides`: keys are `exe:<name.exe>` or `aumid:<AppUserModelID>`, values are image paths. The dock's own items use `dock:downloads`, `dock:trash` and `dock:trash-full` (a bin with files in it; without it, `dock:trash` is used for both states). Without them, the Windows icons are used.
 - `iconFolder`: a folder of images named after the exe, for example `discord.png` for `discord.exe`.
 - Order: `iconOverrides` (`aumid:` first, then `exe:`), then `iconFolder`, then the icon Windows shows.
 

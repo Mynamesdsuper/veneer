@@ -31,6 +31,13 @@ public enum IndicatorShape
     Line,
 }
 
+/// <summary>One indicator per running app, or one per open window (up to three, like macOS).</summary>
+public enum IndicatorMode
+{
+    App,
+    Window,
+}
+
 /// <summary>
 /// A fully merged (theme → variant → user overrides), token-resolved and validated theme.
 /// Asset paths are absolute and guaranteed to be inside <see cref="RootDirectory"/>.
@@ -151,11 +158,17 @@ public sealed record DockSurface(
     bool ReserveSpace,
     bool SeparateRunning,
     PopupStyle? Label = null,
-    bool BounceOnLaunch = false) : Surface(Id, Edge, Monitor, Style);
+    bool BounceOnLaunch = false,
+    bool Downloads = false,
+    bool Trash = false) : Surface(Id, Edge, Monitor, Style);
 
 public sealed record Magnification(bool Enabled, double MaxScale, int Radius);
 
-public sealed record RunningIndicator(IndicatorShape Shape, ThemeColor? Color, double Size);
+public sealed record RunningIndicator(IndicatorShape Shape, ThemeColor? Color, double Size, IndicatorMode Mode = IndicatorMode.App)
+{
+    /// <summary>How many marks a running app with <paramref name="windows"/> open windows gets.</summary>
+    public int Count(int windows) => Mode == IndicatorMode.Window ? Math.Clamp(windows, 1, 3) : 1;
+}
 
 /// <summary>
 /// A module in a bar. <see cref="Options"/> holds the module's own settings (already token-resolved and checked).

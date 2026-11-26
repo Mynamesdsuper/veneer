@@ -6,6 +6,38 @@ Record each decision with its date, context, the options considered and the outc
 
 C# + WPF on .NET 10 (LTS), Windows 11 only. .NET 8 reached end of support on 2026-11-10.
 
+## 2026-11-26: Dock items: window dots, window list, Downloads, Recycle Bin (Phase 8c)
+
+- **One mark per window**: theme `runningIndicator.mode` = `app` (default, one mark, like macOS) or `window` (one
+  per open window, up to three, a mark's size apart; lines share the old length). The dock redraws when an app's
+  window count changes (the count, capped at 3, is part of the item signature). Values are Veneer's own, not
+  measured from a reference: no reference theme uses window dots yet.
+- **Window list**: the dock menu of a running app lists its windows, most recently used first, by title
+  (`GetWindowText`: for another process's window Windows answers from its own copy, so a hung app cannot block the
+  dock). A click brings that window to the front. Titles longer than 60 characters are cut; `_` is shown as is.
+- **Downloads and Recycle Bin are theme booleans** (`downloads`, `trash`), not entries in the pinned list and not
+  an `extras` list as first planned: two booleans reuse the settings window's toggles, origins and "reset" as they
+  are. They sit at the very end of the dock after their own separator, Downloads first. Bundled Aqua and the local
+  Golden Gate theme turn both on; Strip has no dock.
+- **Downloads**: the folder comes from `SHGetKnownFolderPath(FOLDERID_Downloads)` (it can be moved). A click (left
+  or right) reads the 10 newest entries on a worker thread (`DownloadsStack.Latest`, in Core with a test): newest
+  by the later of creation and write time, because browsers keep the server's date as the write time. Hidden,
+  system, links and unfinished downloads (`.crdownload`, `.part`, `.partial`, `.download`, `.tmp`) are skipped. A
+  menu entry opens the file through the shell, the same as a double click in Explorer (SmartScreen and the
+  downloaded-file mark still apply). Fan and grid views stay in "After the first release".
+- **Recycle Bin state**: `SHChangeNotifyRegister` on the bin (recursive, all events) plus the global
+  `SHCNE_UPDATEIMAGE`, posting a message to the dock window; after a 300 ms quiet time `SHQueryRecycleBin` runs on a
+  worker thread (it asks every drive). Measured: a file sent to the bin by another process turned the icon full
+  0.1 s later. Icons: theme `iconOverrides` `dock:trash` / `dock:trash-full` (full falls back to `dock:trash`, so a
+  theme keeps one look), else the Windows stock icons `SIID_RECYCLER` / `SIID_RECYCLERFULL`.
+- **Emptying and dropping** run on their own STA thread (shell operations show their own windows and may take
+  long). Empty = `SHEmptyRecycleBin` without `SHERB_NOCONFIRMATION`, so Windows asks first (Microsoft's docs; the
+  self-tests never empty the bin, so this is still to be tried by hand). The menu item is disabled while the bin is
+  empty. Dropped files go through `SHFileOperation(FO_DELETE, FOF_ALLOWUNDO)`: to the bin, with Windows' progress
+  and its question for files too big for the bin. Tested with the `trash-drop` self-test step (the file landed in
+  the bin); a real drag from Explorer is still to be tried by hand.
+- New self-test steps: `dock-shot` and `menu-shot` (drawn by WPF, no screen copy, so no other window can be in the
+  picture), `menu-count`, `trash-drop:<path>`; `app` can run twice for an app with two windows.
 ## 2026-11-26: Lessons from WacOS (look only)
 
 - WacOS (source-available, reuse forbidden) was read again to see how it gets so close to macOS. The findings, the
