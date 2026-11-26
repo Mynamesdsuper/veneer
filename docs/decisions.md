@@ -6,6 +6,44 @@ Record each decision with its date, context, the options considered and the outc
 
 C# + WPF on .NET 10 (LTS), Windows 11 only. .NET 8 reached end of support on 2026-11-10.
 
+## 2026-11-26: Reduced effects and the stall watch (Phase 9a)
+
+- **When effects are reduced**: Windows "Transparency effects" off, or energy saver on (battery saver before
+  Windows 11 24H2). Rule in Core (`ReducedEffects.Active`, tested). A full-screen app needs no rule: bars and dock
+  are already hidden then, and DWM does not compose hidden windows.
+- **What changes**: every surface and pop-up with `blur: true` loses the blur, and its background is drawn without
+  its alpha (`#66FFFFFF` → `#FFFFFFFF`), like Windows' own acrylic fallback (a solid color). Surfaces without blur
+  keep their look. This reuses the `blur: false` path from Phase 8b, so there is no second drawing path. The theme
+  stays unchanged on disk and in the settings window; only the surfaces are built from the reduced copy
+  (`ReducedEffects.Apply`). Open: a glass surface without a background stays see-through (no theme has one); a
+  theme fallback color can be added if one needs it.
+- **How Windows tells us** (event-driven, nothing polls): transparency through WinRT
+  `UISettings.AdvancedEffectsEnabled` and its `AdvancedEffectsEnabledChanged` event (read on the thread pool);
+  energy saver through `RegisterPowerSettingNotification` on the message window, for both
+  `GUID_ENERGY_SAVER_STATUS` and the older `GUID_POWER_SAVING_STATUS` (GUIDs from `winnt.h`, Windows SDK
+  10.0.26100). Windows sends the current value right after registering.
+- **Measured**: with the transparency setting turned off and on (registry value plus the `ImmersiveColorSet`
+  broadcast, as Settings does), the bar went to a solid color and back within about 0.5 s each time; the change
+  event fired before the broadcast. Energy saver: registration works; switching it on is still to be tried by hand
+  (no command switches it on a desktop PC).
+- **Stall watch** (`StallWatch`, App): a background thread asks the UI thread for a no-op at `Send` priority once
+  a second. No answer within 1 s → the log gets "not answered … (doing: X)" and then the full pause length. .NET
+  cannot read another thread's stack, so `X` is the last mark set with `StallWatch.Doing(...)` (surface rebuild,
+  theme load, settings window, dock icon load). The exit line gives the slowest sampled answer. Cost: one wake-up
+  per second on two threads. Tested with the new `stall:<ms>` self-test step (2.5 s block → logged as 2324 ms from
+  the first ping).
+- **Log writes no longer touch the disk on the caller's thread**: `Log.Write` queues the line and a background
+  thread appends it; `Log.Flush` runs at exit, on crash (in `Cleanup`) and on `ProcessExit`.
+- **Measured on the test PC** (Aqua, Debug build): building the bar and the dock takes 650–680 ms at start (icons
+  not cached yet) and about 500 ms on a later rebuild. The time goes to WPF window creation (about 50 ms per
+  window), app-bar registration and removal with Explorer (about 60 ms each) and the dock's first refresh (about
+  190 ms). It only happens at start (nothing is on screen yet), on a theme or profile switch, a display change or a
+  reduced-effects change. Accepted for now; app-bar calls must stay on the window's own thread.
+- **Still on the UI thread, accepted**: small reads done when the user acts (the Veneer menu reads the profile and
+  theme folders and the autostart value; the settings window reads its files; the light/dark check reads
+  `windows.json` and one registry value). Each is a few hundred bytes on a local disk. The stress test (9b) runs
+  with the stall watch on to catch any that matter.
+
 ## 2026-11-26: Dock items: window dots, window list, Downloads, Recycle Bin (Phase 8c)
 
 - **One mark per window**: theme `runningIndicator.mode` = `app` (default, one mark, like macOS) or `window` (one

@@ -91,7 +91,8 @@ a diagnostics report. Every feature has its checkbox in [docs/roadmap.md](docs/r
 | Two bundled themes with very different layouts: Aqua (menu bar + dock) and Strip (one floating taskbar-like bar) | ✅ Done (Phase 8a) |
 | Icon conversion tool (SVG → PNG with an exe map) and visual fidelity pass | ✅ Done (Phase 8b) |
 | More dock items: Downloads, Recycle Bin (empty/full, drop files on it), one dot per window and a window list | ✅ Done (Phase 8c) |
-| Reduced effects, stall watch, stress test, measured performance | ⏳ Planned (Phase 9) |
+| Reduced effects (no blur while Windows transparency effects are off or energy saver is on) and a stall watch in the log | ✅ Done (Phase 9a; energy saver still to be tried by hand) |
+| Stress test, measured performance | ⏳ Planned (Phase 9b) |
 | First release | ⏳ Planned (Phase 9) |
 | Multi-monitor, display scaling above 100%, ARM64 | ❔ Not verified yet |
 

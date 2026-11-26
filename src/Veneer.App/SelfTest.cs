@@ -9,7 +9,7 @@ namespace Veneer.App;
 /// Debug builds only: drives the running app from the command line, without simulated input. Steps run in order:
 /// <c>wait:&lt;seconds&gt;</c>, <c>menu</c> (open the logo menu), <c>close-menu</c>, <c>screenshot</c>,
 /// <c>dock-click</c>, <c>dock-close</c>, <c>dock-pin</c>, <c>dock-unpin</c>, <c>dock-menu</c> with <c>:&lt;text&gt;</c>
-/// (the first dock icon whose key contains the text), <c>demo</c> (dock shows pinned apps only), <c>dock-hover:&lt;0..1|off&gt;</c>, <c>dock-reveal:on|off</c>, <c>dock-sweep</c> (magnification frame rate), <c>app</c> (start winver.exe so the foreground app changes; it holds no user data; again for a second window), <c>close-app</c> (closes them all), <c>dock-shot</c> (the dock icons drawn by WPF: no other window), <c>menu-shot</c> (the open menu, drawn by WPF), <c>menu-count</c> (its item count to the log), <c>trash-drop:&lt;path, with | for the drive colon&gt;</c> (as if dropped on the Recycle Bin item), <c>crash</c> (unhandled exception), <c>menu-item:&lt;text&gt;</c> (clicks the open menu's first item containing the text), <c>veneer-menu</c> (Veneer's own menu at the mouse, as from the notification-area icon),
+/// (the first dock icon whose key contains the text), <c>demo</c> (dock shows pinned apps only), <c>dock-hover:&lt;0..1|off&gt;</c>, <c>dock-reveal:on|off</c>, <c>dock-sweep</c> (magnification frame rate), <c>app</c> (start winver.exe so the foreground app changes; it holds no user data; again for a second window), <c>close-app</c> (closes them all), <c>dock-shot</c> (the dock icons drawn by WPF: no other window), <c>menu-shot</c> (the open menu, drawn by WPF), <c>menu-count</c> (its item count to the log), <c>trash-drop:&lt;path, with | for the drive colon&gt;</c> (as if dropped on the Recycle Bin item), <c>crash</c> (unhandled exception), <c>stall:&lt;ms&gt;</c> (blocks the UI thread, for the stall watch), <c>menu-item:&lt;text&gt;</c> (clicks the open menu's first item containing the text), <c>veneer-menu</c> (Veneer's own menu at the mouse, as from the notification-area icon),
 /// <c>profile:&lt;name&gt;</c>, <c>theme:&lt;folder name&gt;</c>, <c>autostart:on|off</c> (writes HKCU Run),
 /// <c>settings[:&lt;page id&gt;]</c>, <c>settings-shot</c> (the settings window only), <c>settings-render</c> (the same, drawn by WPF
 /// instead of copied from the screen: no other window can show in it; no frame shadow or rounded corners),
@@ -117,6 +117,10 @@ static class SelfTest
                     break;
                 case ["dock-sweep"]:
                     app.FirstDock?.Sweep();
+                    break;
+                case ["stall", var ms]:
+                    using (StallWatch.Doing("self-test stall"))
+                        Thread.Sleep(int.Parse(ms, System.Globalization.CultureInfo.InvariantCulture)); // blocks the UI thread on purpose
                     break;
                 case ["crash"]:
                     throw new InvalidOperationException("simulated crash (self-test)");

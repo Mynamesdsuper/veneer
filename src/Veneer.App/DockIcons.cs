@@ -34,6 +34,7 @@ static class DockIcons
         string key = $"{theme.Id}|{item.Key}|{full}";
         if (Cache.TryGetValue(key, out var cached))
             return cached;
+        using var mark = StallWatch.Doing($"loading the icon of {item.Key}");
         var image = FromTheme(theme, item, full)
             ?? (item.Extra == DockModel.Trash ? TrashIcon(full, SurfaceLayout.ToPhysical(256, Math.Max(dpi, 96u))) : null)
             ?? (Aumid(item) is { } aumid && ShellItems.PackagedIcon(aumid) is { } packaged ? Load(packaged) : null)

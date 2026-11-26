@@ -353,9 +353,9 @@ Split in three blocks: 8a (`strip` and the engine parts it needs), 8b (icon tool
 
 - [ ] Performance pass: idle CPU about 0%, no stutter. Publish the measured numbers (CPU at rest, memory, PC used)
       in the README. (WacOS)
-- [ ] Reduced effects: glass falls back to its tint when Windows "Transparency effects" is off, on battery saver,
+- [x] Reduced effects: glass falls back to its tint when Windows "Transparency effects" is off, on battery saver,
       and while a full-screen game or app is in front; everything comes back afterwards. (WacOS)
-- [ ] Stall watch: a background thread pings the UI thread; when it does not answer for 1 s, the log gets what it
+- [x] Stall watch: a background thread pings the UI thread; when it does not answer for 1 s, the log gets what it
       was doing. The UI thread never waits for the disk, the registry or another process. (WacOS)
 - [ ] Stress test (15 min): windows open, minimize and close non-stop while the dock follows; sample memory,
       handles and GDI/USER objects. They must stay flat. (WacOS)

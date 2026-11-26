@@ -44,6 +44,8 @@ sealed class App : Application
     readonly WindowsSettingsService windowsSettings = new();
     HwndSource? messages;
     HotKeys? hotKeys;
+    SystemEffects? effects;
+    bool reducedEffects; // glass off: transparency effects off or energy saver on
     int cleanedUp;
 
     public App(Options options, ITaskbar taskbar)
@@ -65,6 +67,7 @@ sealed class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        StallWatch.Start(Dispatcher);
         CreateMessageWindow();
 
         themes.Loaded += r => Dispatcher.BeginInvoke(() => OnThemeLoaded(r));
@@ -202,6 +205,7 @@ sealed class App : Application
     /// <summary>Opens the settings window on <paramref name="page"/>, or brings it to the front when it is already open.</summary>
     public void OpenSettings(string? page = null)
     {
+        using var mark = StallWatch.Doing("opening the settings window");
         if (settings is null)
         {
             settings = new SettingsWindow(this);
@@ -270,6 +274,7 @@ sealed class App : Application
 
     void OnThemeLoaded(ThemeLoadResult result)
     {
+        using var mark = StallWatch.Doing("applying a theme load");
         foreach (var d in result.Diagnostics)
             Log.Write($"theme: {d}");
         if (!result.Success)
@@ -440,6 +445,8 @@ sealed class App : Application
     /// <summary>Closes every surface and builds them again from the current theme.</summary>
     void Rebuild()
     {
+        using var mark = StallWatch.Doing("rebuilding the surfaces");
+        long started = System.Diagnostics.Stopwatch.GetTimestamp();
         foreach (var bar in bars)
         {
             bar.RemoveAppBar();
@@ -455,10 +462,11 @@ sealed class App : Application
 
         docks.Clear();
 
-        var theme = themes.Current;
-        if (!ReferenceEquals(theme, applied))
+        var loaded = themes.Current;
+        if (!ReferenceEquals(loaded, applied))
             DockIcons.Clear(); // a reloaded theme may have new icon files: no stale images
-        applied = theme;
+        applied = loaded;
+        var theme = reducedEffects ? ReducedEffects.Apply(loaded) : loaded;
         ThemeVisuals.Current = theme;
         var monitor = Monitors.Primary();
         var barSurfaces = theme.Surfaces.OfType<BarSurface>().ToList();
@@ -496,7 +504,7 @@ sealed class App : Application
             docks.Add(window);
         }
 
-        Log.Write($"theme \"{theme.Id}\": {bars.Count} bar(s), {docks.Count} dock(s) on a {monitor.Bounds.Width}x{monitor.Bounds.Height} monitor at {monitor.Dpi} dpi");
+        Log.Write($"theme \"{theme.Id}\": {bars.Count} bar(s), {docks.Count} dock(s) on a {monitor.Bounds.Width}x{monitor.Bounds.Height} monitor at {monitor.Dpi} dpi, built in {System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds:0} ms");
     }
 
     // A hidden top-level window: it receives the shell's TaskbarCreated broadcast (message-only windows do not) and hotkeys.
@@ -510,6 +518,8 @@ sealed class App : Application
         RegisterHotKey(HotKeyReload, 'R');
         RegisterHotKey(HotKeyRestoreTaskbar, 'T');
         RegisterHotKey(HotKeyNextProfile, 'P');
+        effects = new SystemEffects(() => Dispatcher.BeginInvoke(OnEffectsChanged));
+        effects.Watch(messages.Handle);
         tray = new TrayIcon(messages.Handle, "Veneer");
         tray.Clicked += () => Modules.OpenAtMouse(VeneerMenu());
 #if DEBUG
@@ -542,6 +552,10 @@ sealed class App : Application
                 bar.OnShellRestarted();
             foreach (var dock in docks)
                 dock.OnShellRestarted();
+        }
+        else if (effects?.WndProc(msg, wParam, lParam) == true)
+        {
+            // energy saver changed; OnEffectsChanged follows
         }
         else if (hotKeys!.WndProc(msg, wParam) || tray?.WndProc(msg, lParam) == true)
         {
@@ -604,6 +618,18 @@ sealed class App : Application
             bar.Visibility = fullScreen ? Visibility.Hidden : Visibility.Visible;
         foreach (var dock in docks)
             dock.SetFullScreen(fullScreen); // plate, icons and auto-hide strip together
+    }
+
+    // Transparency effects or energy saver changed: glass surfaces switch between blur and their solid tint.
+    void OnEffectsChanged()
+    {
+        bool reduced = effects is { } e && ReducedEffects.Active(e.Transparency, e.EnergySaver);
+        if (reduced == reducedEffects)
+            return;
+        reducedEffects = reduced;
+        Log.Write($"effects: {(reduced ? "reduced" : "full")} (transparency {(effects!.Transparency ? "on" : "off")}, energy saver {(effects.EnergySaver ? "on" : "off")})");
+        if (applied is not null)
+            Rebuild(); // otherwise the theme load under way builds the surfaces with the new look
     }
 
     public void OpenVeneerMenu() => Modules.OpenAtMouse(VeneerMenu());
@@ -678,13 +704,15 @@ sealed class App : Application
             Step(() => appWindows?.Dispose());
             Step(Modules.Shutdown);
             Step(() => hotKeys?.Dispose());
+            Step(() => effects?.Dispose());
             Step(() => tray?.Dispose());
             Step(themes.Dispose);
         }
         finally
         {
             taskbar.Restore("exit");
-            Log.Write("exit");
+            Log.Write($"exit ({StallWatch.Summary})");
+            Log.Flush(); // a crash may end the process before the log thread runs again
         }
 
         static void Step(Action action)
