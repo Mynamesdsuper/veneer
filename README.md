@@ -27,6 +27,12 @@ The logo menu and the magnifying dock with its label:
 
 ![Aqua details](docs/screenshots/aqua-details.png)
 
+**Strip**, one floating taskbar-like bar and no dock (dark and light):
+
+![Strip, dark](docs/screenshots/strip-dark.png)
+
+![Strip, light](docs/screenshots/strip-light.png)
+
 The settings window, in the Windows 11 style (dark and light):
 
 ![Veneer settings](docs/screenshots/settings.png)
