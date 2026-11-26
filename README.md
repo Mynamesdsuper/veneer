@@ -33,6 +33,14 @@ The logo menu and the magnifying dock with its label:
 
 ![Strip, light](docs/screenshots/strip-light.png)
 
+An example of a personal theme: a local macOS-like theme, built with `tools/svg-icons` (dark and light). It is
+**not part of Veneer** and is not distributed here: its wallpapers and its icons (MacTahoe, GPL-3.0) belong to their
+owners.
+
+![Local macOS-like theme, dark](docs/screenshots/golden-gate-dark.png)
+
+![Local macOS-like theme, light](docs/screenshots/golden-gate-light.png)
+
 The settings window, in the Windows 11 style (dark and light):
 
 ![Veneer settings](docs/screenshots/settings.png)
